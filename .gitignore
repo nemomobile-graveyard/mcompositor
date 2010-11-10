@@ -14,6 +14,7 @@ debian/duicompositor-tests
 debian/mcompositor-dev/
 debian/mcompositor-dbg/
 debian/mcompositor-functional-tests/
+debian/mcompositor-utils/
 debian/mcompositor/
 *.debhelper
 *.debhelper.log
