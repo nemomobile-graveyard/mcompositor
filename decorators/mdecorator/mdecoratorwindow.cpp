@@ -112,7 +112,15 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     managedWindowAtom = XInternAtom(QX11Info::display(),
                                     "_MDECORATOR_MANAGED_WINDOW", False);
 
+    homeButtonPanel = new MHomeButtonPanel();
+    escapeButtonPanel = new MEscapeButtonPanel();
+    navigationBar = new MNavigationBar();
     statusBar = new MStatusBar();
+
+    connect(homeButtonPanel, SIGNAL(buttonClicked()), this,
+            SIGNAL(homeClicked()));
+    connect(escapeButtonPanel, SIGNAL(buttonClicked()), this,
+            SIGNAL(escapeClicked()));
 
     sceneManager()->appearSceneWindowNow(statusBar);
     setOnlyStatusbar(false);
@@ -135,7 +143,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
 
 void MDecoratorWindow::setWindowTitle(const QString& title)
 {
-    Q_UNUSED(title)
+    navigationBar->setViewMenuDescription(title);
 }
 
 MDecoratorWindow::~MDecoratorWindow()
@@ -179,6 +187,15 @@ bool MDecoratorWindow::x11Event(XEvent *e)
 
 void MDecoratorWindow::setOnlyStatusbar(bool mode)
 {
+    if (mode) {
+        sceneManager()->disappearSceneWindowNow(navigationBar);
+        sceneManager()->disappearSceneWindowNow(homeButtonPanel);
+        sceneManager()->disappearSceneWindowNow(escapeButtonPanel);
+    } else {
+        sceneManager()->appearSceneWindowNow(navigationBar);
+        sceneManager()->appearSceneWindowNow(homeButtonPanel);
+        sceneManager()->appearSceneWindowNow(escapeButtonPanel);
+    }
     only_statusbar = mode;
 }
 
@@ -232,6 +249,17 @@ void MDecoratorWindow::setInputRegion()
     QRegion region;
     QRect r = statusBar->boundingRect().toRect();
     region += r;
+    if (!only_statusbar) {
+        QRect r2 = navigationBar->boundingRect().toRect();
+        QRegion tmp(0, r.height(), r2.width(), r2.height());
+        region += tmp;
+        r2 = homeButtonPanel->boundingRect().toRect();
+        tmp = QRegion(0, r.height(), r2.width(), r2.height());
+        region += tmp;
+        r2 = escapeButtonPanel->boundingRect().toRect();
+        tmp = QRegion(0, r.height(), r2.width(), r2.height());
+        region += tmp;
+    }
     decoratorRect = region.boundingRect();
 
     XRectangle rect = itemRectToScreenRect(decoratorRect);

@@ -20,6 +20,9 @@
 #define MDECORATORWINDOW_H
 
 #include <MWindow>
+#include <MHomeButtonPanel>
+#include <MEscapeButtonPanel>
+#include <MNavigationBar>
 #include <mstatusbar.h>
 
 #include <X11/Xlib.h>
@@ -71,6 +74,9 @@ private:
     void setMDecoratorWindowProperty();
     XRectangle itemRectToScreenRect(const QRect& r);
 
+    MHomeButtonPanel *homeButtonPanel;
+    MEscapeButtonPanel *escapeButtonPanel;
+    MNavigationBar *navigationBar;
     MStatusBar *statusBar;
     QRect decoratorRect;
     bool only_statusbar;
