@@ -3736,7 +3736,7 @@ void MCompositeManager::dumpState(const char *heading)
             continue;
         }
 
-        const QRectF &r = gi->boundingRect();
+        const QRectF &r = gi->sceneBoundingRect();
         const MCompositeWindow *cw = dynamic_cast<const MCompositeWindow *>(gi);
         qDebug("  %p: %dx%d%+d%+d %s", cw ? (void *)cw : (void *)gi,
                   (int)r.width(), (int)r.height(), (int)r.x(), (int)r.y(),
