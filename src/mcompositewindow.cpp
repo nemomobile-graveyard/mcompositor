@@ -121,7 +121,7 @@ MCompositeWindow::~MCompositeWindow()
     MCompositeManager *p = (MCompositeManager *) qApp;
     p->d->removeWindow(window());
 
-    if (t_ping || t_reappear) {
+    if (window() && (t_ping || t_reappear)) {
         stopPing();
         t_ping = t_reappear = 0;
     }
@@ -823,5 +823,9 @@ bool MCompositeWindow::isMapped() const
 
 MCompositeWindowGroup* MCompositeWindow::group() const
 {
+#ifdef GLES2_VERSION
     return renderer()->current_window_group;
+#else
+    return 0;
+#endif
 }
