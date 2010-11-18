@@ -1031,15 +1031,10 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
             GTA("  has _MEEGOTOUCH_ALWAYS_MAPPED");
             continue;
         }
+        // NOTE: this WILL pass transient application window (this is intended!)
         if (!cw->isAppWindow(true)) {
-            /* Non-transient TYPE_MENU on the same stacking layer? */
-            if (getLastVisibleParent(pc)) {
-                GTA("  has last visible parent");
-                continue;
-            } else if (pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)) {
-                GTA("  not a menu");
-                continue;
-            }
+            GTA("  not an application window (or non-transient menu)");
+            continue;
         }
         if (pc->windowState() != NormalState) {
             GTA("  not in normal state");
@@ -1758,7 +1753,10 @@ void MCompositeManagerPrivate::pingTopmost()
              cw->startPing();
              found = true;
              continue;
-         }
+         } else if (!found && !saw_desktop && cw->isMapped()
+                    && cw->isAppWindow(true))
+             // topmost app does not support pinging, don't ping things under it
+             found = true;
          cw->stopPing();
     }
 }
@@ -2113,7 +2111,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         int home_i = stacking_list.indexOf(duihome);
         for (int i = 0; i <= last_i; ++i) {
             MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
-            if (!cw || !cw->isMapped()) continue;
+            if (!cw || !cw->isMapped() || !cw->propertyCache()) continue;
             if (device_state->displayOff()) {
                 cw->setWindowObscured(true);
                 // setVisible(false) is not needed because updates are frozen
@@ -2136,7 +2134,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 if (cw->window() != duihome)
                     cw->setVisible(false);
             }
-            if (!duihome || (duihome && i >= home_i))
+            if ((!duihome && !cw->propertyCache()->alwaysMapped())
+                || (duihome && i >= home_i))
                 setWindowState(cw->window(), NormalState);
         }
     }
@@ -2774,6 +2773,17 @@ void MCompositeManagerPrivate::setWindowState(Window w, int state)
 void MCompositeManager::setWindowState(Window w, int state)
 {
    d->setWindowState(w, state);
+}
+
+void MCompositeManager::queryDialogAnswer(unsigned int window, bool yes_answer)
+{
+    MCompositeWindow *cw = COMPOSITE_WINDOW(window);
+    if (!cw || !cw->propertyCache() || !cw->propertyCache()->isMapped())
+        return;
+    if (yes_answer)
+        d->closeHandler(cw);
+    else
+        cw->startDialogReappearTimer();
 }
 
 void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
@@ -3437,6 +3447,7 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)
     MDecoratorFrame::instance()->setManagedWindow(w, true);
     MDecoratorFrame::instance()->setOnlyStatusbar(false);
     MDecoratorFrame::instance()->setAutoRotation(true);
+    MDecoratorFrame::instance()->showQueryDialog(true);
     dirtyStacking(false);
     MDecoratorFrame::instance()->raise();
     
