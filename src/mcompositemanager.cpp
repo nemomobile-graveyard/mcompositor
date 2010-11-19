@@ -1037,7 +1037,10 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
             continue;
         }
         // NOTE: this WILL pass transient application window (this is intended!)
-        if (!cw->isAppWindow(true)) {
+        if ((pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU)
+             && getLastVisibleParent(pc))
+            || (pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
+                && !cw->isAppWindow(true))) {
             GTA("  not an application window (or non-transient menu)");
             continue;
         }
@@ -3343,7 +3346,7 @@ void MCompositeManagerPrivate::enableCompositing(bool forced)
     if (!overlay_mapped)
         showOverlayWindow(true);
     else
-        enableRedirection();
+        enableRedirection(true);
 }
 
 void MCompositeManagerPrivate::showOverlayWindow(bool show)
@@ -3365,6 +3368,7 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
                                 ShapeSet, Unsorted);
         overlay_mapped = false;
     } else if (show && (!overlay_mapped || first_call)) {
+        enableRedirection(false);
         XShapeCombineRectangles(QX11Info::display(), xoverlay,
                                 ShapeBounding, 0, 0, &fs, 1,
                                 ShapeSet, Unsorted);
@@ -3378,12 +3382,12 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
                                    ShapeInput, 0, 0, r);
         XFixesDestroyRegion(QX11Info::display(), r);
         overlay_mapped = true;
-        enableRedirection();
+        emit compositingEnabled();
     }
     first_call = false;
 }
 
-void MCompositeManagerPrivate::enableRedirection()
+void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
 {
     for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
             it != windows.end(); ++it) {
@@ -3398,8 +3402,9 @@ void MCompositeManagerPrivate::enableRedirection()
     // no delay: application does not need to redraw when maximizing it
     scene()->views()[0]->setUpdatesEnabled(true);
     // NOTE: enableRedirectedRendering() calls glwidget->update() if needed
-    // At this point everything should be rendered off-screen
-    emit compositingEnabled();
+    if (emit_signal)
+        // At this point everything should be rendered off-screen
+        emit compositingEnabled();
 }
 
 void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
