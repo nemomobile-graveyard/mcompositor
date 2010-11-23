@@ -1147,10 +1147,12 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
     }
 
     if (top && cw && !MCompositeWindow::hasTransitioningWindow()) {
+#ifdef GLES2_VERSION
         if (compositing) {
             showOverlayWindow(false);
             compositing = false;
         }
+#endif
         // unredirect the chosen window and any docks and OR windows above it
         // TODO: what else should be unredirected?
         if (!((MTexturePixmapItem *)cw)->isDirectRendered()) {
@@ -1169,6 +1171,12 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
                 }
             }
         }
+#ifndef GLES2_VERSION
+        if (compositing) {
+            showOverlayWindow(false);
+            compositing = false;
+        }
+#endif
         ret = true;
     }
     return ret;
@@ -3372,7 +3380,9 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
                                 ShapeSet, Unsorted);
         overlay_mapped = false;
     } else if (show && (!overlay_mapped || first_call)) {
+#ifdef GLES2_VERSION
         enableRedirection(false);
+#endif
         XShapeCombineRectangles(QX11Info::display(), xoverlay,
                                 ShapeBounding, 0, 0, &fs, 1,
                                 ShapeSet, Unsorted);
@@ -3386,6 +3396,9 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
                                    ShapeInput, 0, 0, r);
         XFixesDestroyRegion(QX11Info::display(), r);
         overlay_mapped = true;
+#ifndef GLES2_VERSION
+        enableRedirection(false);
+#endif
         emit compositingEnabled();
     }
     first_call = false;
@@ -3430,7 +3443,9 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
             return;
     }
 
+#ifdef GLES2_VERSION  
     showOverlayWindow(false);
+#endif
 
     for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
             it != windows.end(); ++it) {
@@ -3441,6 +3456,10 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
             ((MTexturePixmapItem *)tp)->enableDirectFbRendering();
         setWindowDebugProperties(it.key());
     }
+
+#ifndef GLES2_VERSION  
+    showOverlayWindow(false);
+#endif
 
     if (MDecoratorFrame::instance()->decoratorItem())
         MDecoratorFrame::instance()->lower();
