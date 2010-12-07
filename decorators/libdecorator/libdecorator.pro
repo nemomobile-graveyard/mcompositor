@@ -10,10 +10,12 @@ HEADERS += mabstractdecorator.h \
            mrmiclient_p.h \
            mrmiclient.h \
            mrmiserver_p.h \
-           mrmiserver.h
+           mrmiserver.h \
+           mabstractappinterface.h
 SOURCES += mabstractdecorator.cpp \
            mrmiclient.cpp \
-           mrmiserver.cpp
+           mrmiserver.cpp \
+           mabstractappinterface.cpp
 
 target.path=/usr/lib
 INSTALLS += target
