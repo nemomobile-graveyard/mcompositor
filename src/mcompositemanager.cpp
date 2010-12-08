@@ -27,6 +27,7 @@
 #include "mdevicestate.h"
 #include "mcompositemanagerextension.h"
 #include "mcompmgrextensionfactory.h"
+#include "mcompositordebug.h"
 #include <mrmiserver.h>
 
 #include <QX11Info>
@@ -494,6 +495,7 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
                    !availScreenRect.isEmpty()) {
             QRect r = availScreenRect;
             XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
+            MOVE_RESIZE(window, r.x(), r.y(), r.width(), r.height());
         }
         if (win && win->propertyCache()->isMapped())
             priv->dirtyStacking(false);
@@ -509,6 +511,7 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
         int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
         int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
         XMoveResizeWindow(dpy, window, 0, 0, xres, yres);
+        MOVE_RESIZE(window, 0, 0, xres, yres);
         MCompositeWindow *win = priv->windows.value(window, 0);
         if (win) {
             win->propertyCache()->setRequestedGeometry(QRect(0, 0, xres, yres));
@@ -1433,6 +1436,7 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
         wc.sibling =  e->above;
         wc.stack_mode = e->detail;
         XConfigureWindow(QX11Info::display(), e->window, value_mask, &wc);
+        RECONFIG(e->window, value_mask, e->x, e->y, wc.width, wc.height);
     }
 }
 
@@ -1469,6 +1473,7 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
             wc.sibling =  e->above;
             wc.stack_mode = e->detail;
             XConfigureWindow(QX11Info::display(), e->window, value_mask, &wc);
+            RECONFIG(e->window, value_mask, e->x, e->y, e->width, e->height);
         }
         // store configure request for handling it at window mapping time
         QList<XConfigureRequestEvent*> def;
@@ -1533,10 +1538,13 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             QRect r = (QRegion(QApplication::desktop()->screenGeometry()) - dock_region).boundingRect();
             if (availScreenRect != r)
                 availScreenRect = r;
-            if (need_geometry_modify(e->window))
+            if (need_geometry_modify(e->window)) {
                 XMoveResizeWindow(dpy, e->window, r.x(), r.y(), r.width(), r.height());
+                MOVE_RESIZE(e->window, r.x(), r.y(), r.width(), r.height());
+            }
         } else if (a.width() != xres && a.height() != yres) {
             XResizeWindow(dpy, e->window, xres, yres);
+            RESIZE(e->window, xres, yres);
         }
     }
 
@@ -1602,6 +1610,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
                     frame->setAttribute(Qt::WA_TranslucentBackground);
                 QSize s = frame->suggestedWindowSize();
                 XResizeWindow(QX11Info::display(), e->window, s.width(), s.height());
+                RESIZE(e->window, s.width(), s.height());
 
                 XReparentWindow(QX11Info::display(), frame->winId(),
                                 RootWindow(QX11Info::display(), 0), 0, 0);
