@@ -63,7 +63,7 @@ public:
     void setInputRegion();
     void managedWindowChanged(Qt::HANDLE);
     void showQueryDialog(bool visible);
-    void setApplicationMenu(QList<MAction*> actions);
+    void addActions(QList<MAction*> actions);
 
 protected:
     virtual void closeEvent(QCloseEvent * event );

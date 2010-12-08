@@ -35,12 +35,16 @@ QDataStream &operator<<(QDataStream &out, const IPCAction &myObj)
     out<<myObj.m_text;
     out<<myObj.m_checkable;
     out<<myObj.m_checked;
+    out<<(int)myObj.m_type;
+    out<<myObj.m_icon;
     return out;
 }
 
 QDataStream &operator>>(QDataStream &in, IPCAction &myObj)
 {
-    in>>myObj.m_key>>myObj.m_text>>myObj.m_checkable>>myObj.m_checked;
+    int type;
+    in>>myObj.m_key>>myObj.m_text>>myObj.m_checkable>>myObj.m_checked>>type>>myObj.m_icon;
+    myObj.m_type=(IPCAction::ActionType)type;
     return in;
 }
 
@@ -48,7 +52,6 @@ class MAbstractAppInterfacePrivate
 {
 public:
 
-    QList<IPCAction> appmenu;
     MRmiClient* remote_app;
     MAbstractAppInterface* q_ptr;
 };
@@ -73,11 +76,9 @@ MAbstractAppInterface::~MAbstractAppInterface()
 {
 }
 
-void MAbstractAppInterface::RemoteSetAppMenu(QList<IPCAction> menu)
+void MAbstractAppInterface::RemoteSetActions(QList<IPCAction> menu)
 {
-    Q_D(MAbstractAppInterface);
-    d->appmenu = menu;
-    appMenuChanged(menu);
+    actionsChanged(menu);
 }
 
 void MAbstractAppInterface::RemoteSetClientKey(const QString& key)

@@ -22,15 +22,18 @@
 #include <MSceneManager>
 #include <MScene>
 #include <MApplicationMenu>
-#include <MAction>
+#include <MApplicationPage>
 #include <MLabel>
 #include <QGraphicsLinearLayout>
+#include <mbutton.h>
+#include <mwidgetaction.h>
 
 #include <QApplication>
 #include <QDesktopWidget>
 #include <QX11Info>
 #include <QGLFormat>
 #include <QGLWidget>
+#include <QLabel>
 
 #include "mdecoratorwindow.h"
 
@@ -45,6 +48,24 @@
 #include <mabstractappinterface.h>
 #include <mdesktopentry.h>
 #include <mbuttonmodel.h>
+
+/*void myMessageOutput(QtMsgType type, const char *msg)
+ {
+     switch (type) {
+     case QtDebugMsg:
+         fprintf(stderr, "Debug: %s\n", msg);
+         break;
+     case QtWarningMsg:
+         fprintf(stderr, "Warning: %s\n", msg);
+         break;
+     case QtCriticalMsg:
+         fprintf(stderr, "Critical: %s\n", msg);
+         break;
+     case QtFatalMsg:
+         fprintf(stderr, "Fatal: %s\n", msg);
+         abort();
+     }
+ }*/
 
 class MDecorator: public MAbstractDecorator
 {
@@ -113,7 +134,7 @@ public:
     {
     }
 
-    virtual void appMenuChanged(QList<IPCAction> newMenu)
+    virtual void actionsChanged(QList<IPCAction> newMenu)
     {
         qCritical()<<__PRETTY_FUNCTION__<<"new Actions:"<<newMenu.count();
         QList<MAction*> menu;
@@ -121,11 +142,9 @@ public:
 
         foreach(IPCAction act, newMenu) {
             MAction* mact = createMAction(act);
-            connect(mact,SIGNAL(triggered(bool)),SLOT(actionTriggered(bool)));
-            connect(mact,SIGNAL(toggled(bool)),SLOT(actionToggled(bool)));
             menu.append(mact);
         }
-        decorwindow->setApplicationMenu(menu);
+        decorwindow->addActions(menu);
     }
 
 public slots:
@@ -148,22 +167,68 @@ public slots:
 
         MAction* act = static_cast<MAction*>(sender());
         if(actionHash.contains(act))
-            triggered(actionHash[act], val);
+            toggled(actionHash[act], val);
     }
 
 private:
 
     MAction* createMAction(const IPCAction& act)
     {
+        //Normal MActions doesn't support custom QIcons, therefore we use MButtons and MWidgetAction
         qCritical()<<"creating Action: checkable"<<act.isCheckable()<<"checked"<<act.isChecked();
-        MAction* mact = new MAction(decorwindow);
-        mact->setText(act.text());
-        mact->setCheckable(act.isCheckable());
-        mact->setChecked(act.isChecked());
-        mact->setLocation(MAction::ApplicationMenuLocation);
+
+        MAction* mact;
+        if(act.type() == IPCAction::MenuAction) {
+            mact = new MAction(decorwindow);
+            mact->setText(act.text());
+            mact->setCheckable(act.isCheckable());
+            mact->setChecked(act.isChecked());
+            mact->setIcon(act.icon());
+            mact->setLocation(MAction::ApplicationMenuLocation);
+        } else {
+            mact = new MWidgetAction(decorwindow);
+            MButton* mbut = new MButton;
+            mbut->setMinimumSize(0,0);
+            mbut->setObjectName("toolbaractioncommand");
+            mbut->setIcon(act.icon());
+            static_cast<MWidgetAction*>(mact)->setWidget(mbut);
+            mact->setText(act.text());
+            mact->setCheckable(act.isCheckable());
+            mact->setChecked(act.isChecked());
+            mact->setLocation(MAction::ToolBarLocation);
+
+            updateViewAndStyling(mbut,act.isChecked());
+
+            if(act.isCheckable())
+                connect(mbut,SIGNAL(toggled(bool)),mact,SIGNAL(toggled(bool)));
+            else
+                connect(mbut,SIGNAL(clicked(bool)),mact,SIGNAL(triggered(bool)));
+        }
+        connect(mact,SIGNAL(triggered(bool)),SLOT(actionTriggered(bool)));
+        connect(mact,SIGNAL(toggled(bool)),SLOT(actionToggled(bool)));
+
         actionHash[mact] = act;
         return mact;
     }
+
+    void updateViewAndStyling(MButton *button, bool buttonGroup) const
+    {
+        QString toolBarButtonDefaultViewType = buttonGroup ? "toolbartab" : "toolbar";
+
+        if (button && !button->text().isEmpty() && button->icon().isNull()) {
+            // Only label -> could use different styling
+            button->setTextVisible(true); //In this case we will show label (as it is all we have)
+            if (button->viewType() != toolBarButtonDefaultViewType)
+                button->setViewType(toolBarButtonDefaultViewType);
+            button->setStyleName("ToolBarLabelOnlyButton");
+        } else {
+            if (button->viewType() != toolBarButtonDefaultViewType)
+                button->setViewType(toolBarButtonDefaultViewType);
+            button->setStyleName("ToolBarIconButton");
+            button->setTextVisible(true);
+        }
+    }
+
     QHash<MAction*,IPCAction> actionHash;
 
     MDecoratorWindow *decorwindow;
@@ -235,8 +300,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
         connect(escapeButtonPanel, SIGNAL(buttonClicked()), this,
                 SIGNAL(escapeClicked()));
 
-    setComponentsDisplayMode(NavigationBar, MApplicationPageModel::Show);
-
     connect(navigationBar,SIGNAL(viewmenuTriggered()),SLOT(menuAppearing()));
 
     /*sceneManager()->appearSceneWindowNow(statusBar);
@@ -277,7 +340,7 @@ void MDecoratorWindow::noButtonClicked()
 
 void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w)
 {
-    app->appMenuChanged(QList<IPCAction>());
+    app->actionsChanged(QList<IPCAction>());
     if (w != managed_window && messageBox)
         showQueryDialog(false);
     managed_window = w;
@@ -516,20 +579,18 @@ void MDecoratorWindow::closeEvent(QCloseEvent * event )
     return event->ignore();
 }
 
-void MDecoratorWindow::setApplicationMenu(QList<MAction*> new_actions)
+void MDecoratorWindow::addActions(QList<MAction*> new_actions)
 {
     qCritical()<<__PRETTY_FUNCTION__;
 
     QList<QAction*> oldactions = actions();
 
-    //first add the new actions, otherwise the bar will disappear because there are no actions
+    foreach(QAction* act, oldactions)
+        removeAction(act);
+
     foreach(MAction* act, new_actions) {
         this->addAction(act);
     }
-
-    //clear actions first;
-    foreach(QAction* act, oldactions)
-        removeAction(act);
 
     if(new_actions.isEmpty())
         navigationBar->setArrowIconVisible(false);
@@ -560,7 +621,7 @@ void MDecoratorWindow::menuAppearing()
 void MDecoratorWindow::menuAppeared()
 {
     //force a repaint, otherwise not the whole menu is displayed
-    repaint();
+    //repaint();
 }
 
 void MDecoratorWindow::menuDisappeared()

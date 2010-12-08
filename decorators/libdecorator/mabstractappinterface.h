@@ -33,17 +33,24 @@ class QMenu;
 class IPCAction
 {
 public:
+    enum ActionType{
+        MenuAction,
+        ToolBarAction
+    };
+
     IPCAction()
         : m_checkable(false)
         , m_checked(false)
+        , m_type(MenuAction)
     {
     }
 
-
-    IPCAction(const QAction& act)
+    IPCAction(const QAction& act, IPCAction::ActionType type)
         : m_text(act.text())
         , m_checkable(act.isCheckable())
         , m_checked(act.isChecked())
+        , m_type(type)
+        , m_icon(act.icon())
     {
         m_key = QUuid::createUuid();
     }
@@ -56,6 +63,10 @@ public:
 
     bool isChecked() const {return m_checked;  }
 
+    IPCAction::ActionType type() const {return m_type; }
+
+    QIcon icon() const {return m_icon; }
+
     friend QDataStream &operator<<(QDataStream &, const IPCAction &);
     friend QDataStream &operator>>(QDataStream &, IPCAction &);
 
@@ -65,6 +76,8 @@ private:
     QString m_text;
     bool m_checkable;
     bool m_checked;
+    ActionType m_type;
+    QIcon m_icon;
 };
 
 QDataStream &operator<<(QDataStream &out, const IPCAction &myObj);
@@ -90,13 +103,13 @@ public:
 
 public slots:
 
-    void RemoteSetAppMenu(QList<IPCAction> menu);
+    void RemoteSetActions(QList<IPCAction> menu);
 
     void RemoteSetClientKey(const QString& key);
 
 protected:
 
-    virtual void appMenuChanged(QList<IPCAction>) = 0;
+    virtual void actionsChanged(QList<IPCAction>) = 0;
 
 private:
 
