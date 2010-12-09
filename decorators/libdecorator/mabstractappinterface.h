@@ -103,13 +103,13 @@ public:
 
 public slots:
 
-    void RemoteSetActions(QList<IPCAction> menu);
+    void RemoteSetActions(QList<IPCAction> menu, uint window);
 
     void RemoteSetClientKey(const QString& key);
 
 protected:
 
-    virtual void actionsChanged(QList<IPCAction>) = 0;
+    virtual void actionsChanged(QList<IPCAction>, WId window) = 0;
 
 private:
 

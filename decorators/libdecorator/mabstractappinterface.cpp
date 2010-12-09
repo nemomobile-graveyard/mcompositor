@@ -76,9 +76,10 @@ MAbstractAppInterface::~MAbstractAppInterface()
 {
 }
 
-void MAbstractAppInterface::RemoteSetActions(QList<IPCAction> menu)
+void MAbstractAppInterface::RemoteSetActions(QList<IPCAction> menu, uint window)
 {
-    actionsChanged(menu);
+    qCritical()<<__PRETTY_FUNCTION__<<menu.count()<<window;
+    actionsChanged(menu, (WId)window);
 }
 
 void MAbstractAppInterface::RemoteSetClientKey(const QString& key)

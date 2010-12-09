@@ -49,24 +49,6 @@
 #include <mdesktopentry.h>
 #include <mbuttonmodel.h>
 
-/*void myMessageOutput(QtMsgType type, const char *msg)
- {
-     switch (type) {
-     case QtDebugMsg:
-         fprintf(stderr, "Debug: %s\n", msg);
-         break;
-     case QtWarningMsg:
-         fprintf(stderr, "Warning: %s\n", msg);
-         break;
-     case QtCriticalMsg:
-         fprintf(stderr, "Critical: %s\n", msg);
-         break;
-     case QtFatalMsg:
-         fprintf(stderr, "Fatal: %s\n", msg);
-         abort();
-     }
- }*/
-
 class MDecorator: public MAbstractDecorator
 {
     Q_OBJECT
@@ -134,8 +116,16 @@ public:
     {
     }
 
-    virtual void actionsChanged(QList<IPCAction> newMenu)
+    void setManagedWindow(WId window)
     {
+        currentWindow = window;
+    }
+
+    virtual void actionsChanged(QList<IPCAction> newMenu, WId window)
+    {
+        if(window != currentWindow)
+            return;
+
         qCritical()<<__PRETTY_FUNCTION__<<"new Actions:"<<newMenu.count();
         QList<MAction*> menu;
         actionHash.clear();
@@ -191,13 +181,15 @@ private:
             mbut->setMinimumSize(0,0);
             mbut->setObjectName("toolbaractioncommand");
             mbut->setIcon(act.icon());
+            if(act.icon().isNull())
+                mbut->setText(act.text());
             static_cast<MWidgetAction*>(mact)->setWidget(mbut);
             mact->setText(act.text());
             mact->setCheckable(act.isCheckable());
             mact->setChecked(act.isChecked());
             mact->setLocation(MAction::ToolBarLocation);
 
-            updateViewAndStyling(mbut,act.isChecked());
+            updateViewAndStyling(mbut,false);
 
             if(act.isCheckable())
                 connect(mbut,SIGNAL(toggled(bool)),mact,SIGNAL(toggled(bool)));
@@ -215,7 +207,7 @@ private:
     {
         QString toolBarButtonDefaultViewType = buttonGroup ? "toolbartab" : "toolbar";
 
-        if (button && !button->text().isEmpty() && button->icon().isNull()) {
+        if (button && button->icon().isNull()) {
             // Only label -> could use different styling
             button->setTextVisible(true); //In this case we will show label (as it is all we have)
             if (button->viewType() != toolBarButtonDefaultViewType)
@@ -232,6 +224,7 @@ private:
     QHash<MAction*,IPCAction> actionHash;
 
     MDecoratorWindow *decorwindow;
+    WId currentWindow;
 };
 
 #if 0
@@ -340,7 +333,8 @@ void MDecoratorWindow::noButtonClicked()
 
 void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w)
 {
-    app->actionsChanged(QList<IPCAction>());
+    app->setManagedWindow(w);
+    app->actionsChanged(QList<IPCAction>(),w);
     if (w != managed_window && messageBox)
         showQueryDialog(false);
     managed_window = w;
@@ -589,7 +583,9 @@ void MDecoratorWindow::addActions(QList<MAction*> new_actions)
         removeAction(act);
 
     foreach(MAction* act, new_actions) {
+        act->blockSignals(true);
         this->addAction(act);
+        act->blockSignals(false);
     }
 
     if(new_actions.isEmpty())
