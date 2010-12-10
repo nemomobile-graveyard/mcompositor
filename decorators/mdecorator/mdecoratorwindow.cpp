@@ -138,7 +138,7 @@ public:
     }
 
 public slots:
-    void actionTriggered(bool val)
+    void actionTriggered(bool val) const
     {
         qCritical()<<"triggered";
         if(!sender() && !qobject_cast<MAction*>(sender()))
@@ -149,7 +149,7 @@ public slots:
             triggered(actionHash[act],val);
     }
 
-    void actionToggled(bool val)
+    void actionToggled(bool val) const
     {
         qCritical()<<"toggled";
         if(!sender() && !qobject_cast<MAction*>(sender()))

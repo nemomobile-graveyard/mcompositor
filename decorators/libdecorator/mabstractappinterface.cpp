@@ -91,7 +91,7 @@ void MAbstractAppInterface::RemoteSetClientKey(const QString& key)
     d->remote_app = new MRmiClient(key, this);
 }
 
-void MAbstractAppInterface::triggered(IPCAction act, bool val)
+void MAbstractAppInterface::triggered(IPCAction act, bool val) const
 {
     Q_D(MAbstractAppInterface);
 
@@ -99,7 +99,7 @@ void MAbstractAppInterface::triggered(IPCAction act, bool val)
         d->remote_app->invoke("QtMaemo6AppInterface", "triggered", QVariant::fromValue(act), val);
 }
 
-void MAbstractAppInterface::toggled(IPCAction act, bool val)
+void MAbstractAppInterface::toggled(IPCAction act, bool val) const
 {
     Q_D(MAbstractAppInterface);
 

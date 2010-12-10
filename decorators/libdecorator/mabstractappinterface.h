@@ -29,10 +29,11 @@ class MRmiClient;
 class QRect;
 class QMenu;
 
-
+/*! The IPCAction class is used to send a QAction over IPC*/
 class IPCAction
 {
 public:
+    /*! defines the location of the action*/
     enum ActionType{
         MenuAction,
         ToolBarAction
@@ -52,9 +53,12 @@ public:
         , m_type(type)
         , m_icon(act.icon())
     {
+        if(m_text.contains('&'))
+            m_text.remove('&');
         m_key = QUuid::createUuid();
     }
 
+    /*! the uniqueid() of the action*/
     QUuid id() const {return m_key; }
 
     QString text() const {return m_text; }
@@ -67,6 +71,7 @@ public:
 
     QIcon icon() const {return m_icon; }
 
+    //friend to access the member variables directly because we don't have setter
     friend QDataStream &operator<<(QDataStream &, const IPCAction &);
     friend QDataStream &operator>>(QDataStream &, IPCAction &);
 
@@ -86,25 +91,33 @@ QDataStream &operator>>(QDataStream &in, IPCAction &myObj);
 Q_DECLARE_METATYPE(IPCAction);
 Q_DECLARE_METATYPE(QList<IPCAction>);
 /*!
- * MAbstractDecorator is the base class for window decorators
+ * MAbstractAppInterface is the base class for Application Interface
+
+   It is used to communicate to the current decorated Application.
  */
 class MAbstractAppInterface: public QObject
 {
     Q_OBJECT
 public:
     /*!
-     * Initializes MAbstractDecorator and the connections to MCompositor
+     * Initializes MAbstractAppInterface and listens for Messages from the Application
      */
     MAbstractAppInterface(QObject *parent = 0);
     virtual ~MAbstractAppInterface() = 0;
 
-    void triggered(IPCAction act, bool val);
-    void toggled(IPCAction act, bool val);
+    /*! Sends the triggered signal for the given Action to the current decorated Application*/
+    void triggered(IPCAction act, bool val) const;
+    /*! Sends the toggled signal for the given Action to the current decorated Application*/
+    void toggled(IPCAction act, bool val) const;
 
 public slots:
 
+    /*! set the List of Actions in the Menu/ToolBar of the decorator. The window is used
+        to check for the current decorated window */
     void RemoteSetActions(QList<IPCAction> menu, uint window);
 
+    /*! sets the Client Key which is used to send Messages back to the Server of the current
+        decorated Application*/
     void RemoteSetClientKey(const QString& key);
 
 protected:
