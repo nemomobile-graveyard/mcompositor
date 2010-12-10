@@ -106,9 +106,9 @@ public:
     virtual ~MAbstractAppInterface() = 0;
 
     /*! Sends the triggered signal for the given Action to the current decorated Application*/
-    void triggered(IPCAction act, bool val) const;
+    void triggered(IPCAction act, bool val);
     /*! Sends the toggled signal for the given Action to the current decorated Application*/
-    void toggled(IPCAction act, bool val) const;
+    void toggled(IPCAction act, bool val);
 
 public slots:
 
