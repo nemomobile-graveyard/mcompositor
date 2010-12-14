@@ -83,6 +83,7 @@ signals:
     void escapeClicked();
 
 private:
+    void setWindowVisibility(Window window, bool visible);
     void setSceneSize();
     void setMDecoratorWindowProperty();
 

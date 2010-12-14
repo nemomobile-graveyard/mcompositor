@@ -27,6 +27,8 @@
 #include <QGraphicsLinearLayout>
 #include <mbutton.h>
 #include <mwidgetaction.h>
+#include <mcomponentdata.h>
+#include "mondisplaychangeevent.h"
 
 #include <QApplication>
 #include <QDesktopWidget>
@@ -34,6 +36,7 @@
 #include <QGLFormat>
 #include <QGLWidget>
 #include <QLabel>
+#include <QWindowStateChangeEvent>
 
 #include "mdecoratorwindow.h"
 
@@ -380,8 +383,32 @@ bool MDecoratorWindow::x11Event(XEvent *e)
         if (data)
             XFree(data);
         return true;
+    } else if (e->type == VisibilityNotify) {
+        XVisibilityEvent *xevent = (XVisibilityEvent *) e;
+
+        switch (xevent->state) {
+        case VisibilityFullyObscured:
+            setWindowVisibility(xevent->window, false);
+            break;
+        case VisibilityUnobscured:
+        case VisibilityPartiallyObscured:
+            setWindowVisibility(xevent->window, true);
+            break;
+        default:
+            break;
+        }
     }
     return false;
+}
+
+void MDecoratorWindow::setWindowVisibility(Window window, bool visible)
+{
+    Q_FOREACH(MWindow * win, MComponentData::instance()->windows()) {
+        if (win && win->effectiveWinId() == window) {
+            MOnDisplayChangeEvent ev(visible, QRectF(QPointF(0, 0), win->visibleSceneSize()));
+            QApplication::instance()->sendEvent(win, &ev);
+        }
+    }
 }
 
 void MDecoratorWindow::showQueryDialog(bool visible)
@@ -577,21 +604,29 @@ void MDecoratorWindow::addActions(QList<MAction*> new_actions)
 {
     qCritical()<<__PRETTY_FUNCTION__;
 
+    setUpdatesEnabled(false);
+
     QList<QAction*> oldactions = actions();
 
+    qCritical()<<"deleting Actions";
     foreach(QAction* act, oldactions)
         removeAction(act);
 
+    qCritical()<<"inserting Actions";
     foreach(MAction* act, new_actions) {
+        //the signals have to be disabled because LMT using setChecked on the action and that would lead to an trigger/toggle signal
         act->blockSignals(true);
         this->addAction(act);
         act->blockSignals(false);
     }
 
+    qCritical()<<"inserting finished";
     if(new_actions.isEmpty())
         navigationBar->setArrowIconVisible(false);
     else
         navigationBar->setArrowIconVisible(true);
+
+    setUpdatesEnabled(true);
 }
 
 void MDecoratorWindow::menuAppearing()
@@ -605,6 +640,7 @@ void MDecoratorWindow::menuAppearing()
         if(menu) {
             connect(menu,SIGNAL(appeared()),SLOT(menuAppeared()));
             connect(menu,SIGNAL(disappeared()),SLOT(menuDisappeared()));
+            connect(this,SIGNAL(displayExited()),menu,SLOT(disappear()));
         }
     }
 
@@ -629,5 +665,7 @@ void MDecoratorWindow::menuDisappeared()
     setInputRegion();
     setBackgroundBrush(QBrush(Qt::NoBrush));
 }
+
+
 
 #include "mdecoratorwindow.moc"
