@@ -31,20 +31,25 @@
 
 QDataStream &operator<<(QDataStream &out, const IPCAction &myObj)
 {
-    out<<myObj.m_key;
-    out<<myObj.m_text;
-    out<<myObj.m_checkable;
-    out<<myObj.m_checked;
-    out<<(int)myObj.m_type;
-    out<<myObj.m_icon;
+    out << myObj.m_key;
+    out << myObj.m_text;
+    out << myObj.m_checkable;
+    out << myObj.m_checked;
+    out << (int)myObj.m_type;
+    out << myObj.m_icon;
     return out;
 }
 
 QDataStream &operator>>(QDataStream &in, IPCAction &myObj)
 {
     int type;
-    in>>myObj.m_key>>myObj.m_text>>myObj.m_checkable>>myObj.m_checked>>type>>myObj.m_icon;
-    myObj.m_type=(IPCAction::ActionType)type;
+    in >> myObj.m_key;
+    in >> myObj.m_text;
+    in >> myObj.m_checkable;
+    in >> myObj.m_checked;
+    in >> type;
+    in >> myObj.m_icon;
+    myObj.m_type = (IPCAction::ActionType)type;
     return in;
 }
 
@@ -63,9 +68,11 @@ MAbstractAppInterface::MAbstractAppInterface(QObject *parent)
     Q_D(MAbstractAppInterface);
 
     qRegisterMetaType<IPCAction>();
-    qRegisterMetaTypeStreamOperators<IPCAction>("IPCAction");
+    qRegisterMetaTypeStreamOperators<IPCAction>();
     qRegisterMetaType<QList<IPCAction> >();
-    qRegisterMetaTypeStreamOperators<QList<IPCAction> >("QList<IPCAction> ");
+    qRegisterMetaTypeStreamOperators<QList<IPCAction> >();
+    qRegisterMetaType<QUuid >();
+    qRegisterMetaTypeStreamOperators<QUuid >();
 
     MRmiServer *s = new MRmiServer(".mabstractappdecorator", this);
     s->exportObject(this);
@@ -78,7 +85,7 @@ MAbstractAppInterface::~MAbstractAppInterface()
 
 void MAbstractAppInterface::RemoteSetActions(QList<IPCAction> menu, uint window)
 {
-    qCritical()<<__PRETTY_FUNCTION__<<menu.count()<<window;
+    //qCritical()<<__PRETTY_FUNCTION__<<menu.count()<<window;
     actionsChanged(menu, (WId)window);
 }
 
@@ -86,24 +93,24 @@ void MAbstractAppInterface::RemoteSetClientKey(const QString& key)
 {
     Q_D(MAbstractAppInterface);
 
-    if(d->remote_app)
-        delete d->remote_app;
+    delete d->remote_app;
+
     d->remote_app = new MRmiClient(key, this);
 }
 
-void MAbstractAppInterface::triggered(IPCAction act, bool val)
+void MAbstractAppInterface::triggered(QUuid id, bool val)
 {
     Q_D(MAbstractAppInterface);
 
-    if(d->remote_app)
-        d->remote_app->invoke("QtMaemo6AppInterface", "triggered", QVariant::fromValue(act), val);
+    if (d->remote_app)
+        d->remote_app->invoke("QtMaemo6AppInterface", "triggered", QVariant::fromValue(id), val);
 }
 
-void MAbstractAppInterface::toggled(IPCAction act, bool val)
+void MAbstractAppInterface::toggled(QUuid id, bool val)
 {
     Q_D(MAbstractAppInterface);
 
-    if(d->remote_app)
-        d->remote_app->invoke("QtMaemo6AppInterface", "toggled", QVariant::fromValue(act), val);
+    if (d->remote_app)
+        d->remote_app->invoke("QtMaemo6AppInterface", "toggled", QVariant::fromValue(id), val);
 }
 

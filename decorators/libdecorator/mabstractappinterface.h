@@ -53,7 +53,7 @@ public:
         , m_type(type)
         , m_icon(act.icon())
     {
-        if(m_text.contains('&'))
+        if (m_text.contains('&'))
             m_text.remove('&');
         m_key = QUuid::createUuid();
     }
@@ -90,6 +90,7 @@ QDataStream &operator>>(QDataStream &in, IPCAction &myObj);
 
 Q_DECLARE_METATYPE(IPCAction);
 Q_DECLARE_METATYPE(QList<IPCAction>);
+Q_DECLARE_METATYPE(QUuid);
 /*!
  * MAbstractAppInterface is the base class for Application Interface
 
@@ -106,9 +107,9 @@ public:
     virtual ~MAbstractAppInterface() = 0;
 
     /*! Sends the triggered signal for the given Action to the current decorated Application*/
-    void triggered(IPCAction act, bool val);
+    void triggered(QUuid id, bool val);
     /*! Sends the toggled signal for the given Action to the current decorated Application*/
-    void toggled(IPCAction act, bool val);
+    void toggled(QUuid id, bool val);
 
 public slots:
 

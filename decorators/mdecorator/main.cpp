@@ -21,6 +21,7 @@
 #include <MApplication>
 #include "mdecoratorwindow.h"
 
+//#define MDECORATOR_DEBUG
 #ifdef MDECORATOR_DEBUG
 #include <QFile>
 
@@ -28,28 +29,28 @@ QFile* file = 0;
 
 void myMessageOutput(QtMsgType type, const char *msg)
 {
-    if(!file) {
+    if (!file) {
         file = new QFile("/tmp/mdecorator.log");
         file->open(QIODevice::Text | QIODevice::WriteOnly);
     }
     QTextStream stream(file);
 
     switch (type) {
-     case QtDebugMsg:
-         stream << "Debug: "<< msg<<"\n";
-         break;
-     case QtWarningMsg:
-         stream << "Warning: "<< msg<<"\n";
-         break;
-     case QtCriticalMsg:
-         stream << "Critical: "<< msg<<"\n";
-         break;
-     case QtFatalMsg:
-         stream << "Fatal: "<< msg<<"\n";
-         abort();
+    case QtDebugMsg:
+        stream << "Debug: "<< msg<<"\n";
+        break;
+    case QtWarningMsg:
+        stream << "Warning: "<< msg<<"\n";
+        break;
+    case QtCriticalMsg:
+        stream << "Critical: "<< msg<<"\n";
+        break;
+    case QtFatalMsg:
+        stream << "Fatal: "<< msg<<"\n";
+        abort();
     }
 }
-#endif
+#endif //MDECORATOR_DEBUG
 
 class MDecoratorApp : public MApplication
 {

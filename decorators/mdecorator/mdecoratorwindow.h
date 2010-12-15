@@ -74,7 +74,6 @@ private slots:
     void yesButtonClicked();
     void noButtonClicked();
     void menuAppearing();
-    void menuAppeared();
     void menuDisappeared();
 
 signals:
