@@ -1,13 +1,14 @@
+include(shared.pri)
+
 TEMPLATE = subdirs
 CONFIG+=ordered
-SUBDIRS = \
-    decorators \
-    src \
-    mcompositor\
-    tests \
-    translations
 
-src.depends=decorators
+addSubDirs(decorators)
+addSubDirs(src, decorators)
+addSubDirs(mcompositor, decorators src)
+addSubDirs(tests)
+addSubDirs(translations)
+
 
 QMAKE_CLEAN += \ 
 	configure-stamp \

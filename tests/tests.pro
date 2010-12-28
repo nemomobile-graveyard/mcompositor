@@ -1,6 +1,8 @@
+include(../shared.pri)
 TEMPLATE=subdirs
 
-SUBDIRS = windowctl \
-          windowstack \
-          focus-tracker \
-          functional 
+addSubDirs(windowctl)
+addSubDirs(windowstack)
+addSubDirs(focus-tracker)
+addSubDirs(functional)
+
