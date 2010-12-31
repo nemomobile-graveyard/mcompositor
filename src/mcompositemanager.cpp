@@ -468,9 +468,10 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
         MCompositeWindow *win = MCompositeWindow::compositeWindow(window);
         if (win)
             win->propertyCache()->setNetWmState(states.toList());
-        if (win && !MDecoratorFrame::instance()->managedWindow()
-            && priv->needDecoration(window, win->propertyCache())) {
+        if (win && priv->needDecoration(window, win->propertyCache()))
             win->setDecorated(true);
+        if (win && !MDecoratorFrame::instance()->managedWindow()
+            && win->needDecoration()) {
             MDecoratorFrame::instance()->setManagedWindow(win);
             MDecoratorFrame::instance()->setOnlyStatusbar(false);
             MDecoratorFrame::instance()->raise();
@@ -495,9 +496,10 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             win->propertyCache()->setRequestedGeometry(QRect(0, 0, xres, yres));
             win->propertyCache()->setNetWmState(states.toList());
         }
+        if (win && !priv->device_state->ongoingCall())
+            win->setDecorated(false);
         if (!priv->device_state->ongoingCall()
             && MDecoratorFrame::instance()->managedWindow() == window) {
-            if (win) win->setDecorated(false);
             MDecoratorFrame::instance()->lower();
             MDecoratorFrame::instance()->setManagedWindow(0);
         }
@@ -2080,6 +2082,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         && (!FULLSCREEN_WINDOW(highest_d)
             || highest_d->status() == MCompositeWindow::Hung
             || device_state->ongoingCall())) {
+        // TODO: would be more robust to set decorator's managed window here
+        // instead of in many different places in the code...
         Window deco_w = deco->decoratorItem()->window();
         int deco_i = stacking_list.indexOf(deco_w);
         if (deco_i >= 0) {
@@ -2209,7 +2213,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 cw->setWindowObscured(true);
                 // setVisible(false) is not needed because updates are frozen
                 // and for avoiding NB#174346
-                if (!duihome || (duihome && i >= home_i))
+                if (duihome && i >= home_i)
                     setWindowState(cw->window(), NormalState);
                 continue;
             }
@@ -2227,8 +2231,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 if (cw->window() != duihome)
                     cw->setVisible(false);
             }
-            if ((!duihome && !cw->propertyCache()->alwaysMapped())
-                || (duihome && i >= home_i))
+            // if !duihome, we use IconicState to stack windows to bottom
+            if (duihome && i >= home_i)
                 setWindowState(cw->window(), NormalState);
         }
     }
