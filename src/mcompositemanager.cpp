@@ -2213,7 +2213,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 cw->setWindowObscured(true);
                 // setVisible(false) is not needed because updates are frozen
                 // and for avoiding NB#174346
-                if (!duihome || (duihome && i >= home_i))
+                if (duihome && i >= home_i)
                     setWindowState(cw->window(), NormalState);
                 continue;
             }
@@ -2231,8 +2231,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 if (cw->window() != duihome)
                     cw->setVisible(false);
             }
-            if ((!duihome && !cw->propertyCache()->alwaysMapped())
-                || (duihome && i >= home_i))
+            // if !duihome, we use IconicState to stack windows to bottom
+            if (duihome && i >= home_i)
                 setWindowState(cw->window(), NormalState);
         }
     }
