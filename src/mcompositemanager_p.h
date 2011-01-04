@@ -73,7 +73,8 @@ public:
     void prepare();
     void loadPlugins();
     void activateWindow(Window w, Time timestamp,
-		        bool disableCompositing = true);
+		        bool disableCompositing = true,
+                        bool stacked = false);
     void updateWinList();
     void setWindowState(Window , int);
     void setWindowDebugProperties(Window w);
@@ -145,7 +146,7 @@ public:
         bool mapped;
     };
     QHash<Window, FrameData> framed_windows;
-    QHash<Window, QList<XConfigureRequestEvent*> > configure_reqs;
+    QHash<Window, QList<XConfigureRequestEvent> > configure_reqs;
     QHash<Window, MWindowPropertyCache*> prop_caches;
     QMultiHash<int, MCompositeManagerExtension* > m_extensions;
 

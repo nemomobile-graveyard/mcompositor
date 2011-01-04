@@ -898,14 +898,7 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 
 void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 {
-    if (configure_reqs.contains(e->window)) {
-        QList<XConfigureRequestEvent*> l = configure_reqs.value(e->window);
-        while (!l.isEmpty()) {
-            XConfigureRequestEvent *p = l.takeFirst();
-            free(p);
-        }
-        configure_reqs.remove(e->window);
-    }
+    configure_reqs.remove(e->window);
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
@@ -1170,14 +1163,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     if (e->event != QX11Info::appRootWindow())
         // handle root's SubstructureNotifys (top-levels) only
         return;
-    if (configure_reqs.contains(e->window)) {
-        QList<XConfigureRequestEvent*> l = configure_reqs.value(e->window);
-        while (!l.isEmpty()) {
-            XConfigureRequestEvent *p = l.takeFirst();
-            free(p);
-        }
-        configure_reqs.remove(e->window);
-    }
+    configure_reqs.remove(e->window);
     MWindowPropertyCache *wpc = 0;
     if (prop_caches.contains(e->window)) {
         wpc = prop_caches.value(e->window);
@@ -1458,13 +1444,7 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
             RECONFIG(e->window, value_mask, e->x, e->y, e->width, e->height);
         }
         // store configure request for handling it at window mapping time
-        QList<XConfigureRequestEvent*> def;
-        QList<XConfigureRequestEvent*> l = configure_reqs.value(e->window, def);
-        XConfigureRequestEvent *e_copy =
-                (XConfigureRequestEvent*)malloc(sizeof(*e));
-        memcpy(e_copy, e, sizeof(*e));
-        l.append(e_copy);
-        configure_reqs[e->window] = l;
+        configure_reqs[e->window].append(*e);
         return;
     }
 
@@ -2425,30 +2405,24 @@ stack_and_return:
         // only handle the MapNotify sent for the root window
         return;
 
+    bool stacked = false;
     if (configure_reqs.contains(win)) {
-        bool stacked = false;
-        QList<XConfigureRequestEvent*> l = configure_reqs.value(win);
-        while (!l.isEmpty()) {
-            XConfigureRequestEvent *p = l.takeFirst();
-            configureWindow(item, p);
-            if (p->value_mask & CWStackMode)
+        foreach (XConfigureRequestEvent crq, configure_reqs.value(win)) {
+            configureWindow(item, &crq);
+            if (crq.value_mask & CWStackMode)
                 stacked = true;
-            free(p);
         }
         configure_reqs.remove(win);
-        if (stacked) {
-            dirtyStacking(false);
-            return;
-        }
     }
 
     /* do this after bindWindow() so that the window is in stacking_list */
     if (pc->windowState() == NormalState &&
         (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win, true)))
-        activateWindow(win, CurrentTime, false);
+        activateWindow(win, CurrentTime, false, stacked);
     else {
         // desktop is stacked below the active application
-        positionWindow(win, false);
+        if (!stacked)
+            positionWindow(win, false);
         if (win == stack[DESKTOP_LAYER]) {
             // lower always mapped windows below the desktop
             for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
@@ -2737,7 +2711,8 @@ void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
 }
 
 void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
-                                              bool disableCompositing)
+                                              bool disableCompositing,
+                                              bool stacked)
 {
     MCompositeWindow *cw = COMPOSITE_WINDOW(w);
     if (!cw || !cw->isMapped()) return;
@@ -2746,12 +2721,14 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
     if (pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP) &&
         pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK) &&
         !pc->isDecorator()) {
-        // if this is a transient window, raise the "parent" instead
-        Window last = getLastVisibleParent(pc);
-        MCompositeWindow *to_stack = cw;
-        if (last) to_stack = COMPOSITE_WINDOW(last);
-        // move it to the correct position in the stack
-        positionWindow(to_stack->window(), true);
+        if (!stacked) {
+            // if this is a transient window, raise the "parent" instead
+            Window last = getLastVisibleParent(pc);
+            MCompositeWindow *to_stack = cw;
+            if (last) to_stack = COMPOSITE_WINDOW(last);
+            // move it to the correct position in the stack
+            positionWindow(to_stack->window(), true);
+        }
         // possibly set decorator
         if (cw == getHighestDecorated() || cw->status() == MCompositeWindow::Hung) {
             if (FULLSCREEN_WINDOW(cw)) {
@@ -2772,9 +2749,11 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         }
     } else if (pc->isDecorator()) {
         // if decorator crashes and reappears, stack it to bottom, raise later
-        positionWindow(w, false);
+        if (!stacked)
+            positionWindow(w, false);
     } else if (w == stack[DESKTOP_LAYER]) {
-        positionWindow(w, true);
+        if (!stacked)
+            positionWindow(w, true);
     } else
         checkInputFocus(timestamp);
 
@@ -3954,14 +3933,14 @@ void MCompositeManager::dumpState(const char *heading)
     // Pending XConfigureRequestEvent:s.
     if (!d->configure_reqs.isEmpty()) {
         // Print each as "0x123456: 10x20+30+40 [XYWH] Above 0xABCDE"
-        QHash<Window, QList<XConfigureRequestEvent*> >::const_iterator it;
-        QList<XConfigureRequestEvent*>::const_iterator ot;
+        QHash<Window, QList<XConfigureRequestEvent> >::const_iterator it;
+        QList<XConfigureRequestEvent>::const_iterator ot;
 
         qDebug("configure_reqs:");
         for (it = d->configure_reqs.constBegin();
              it != d->configure_reqs.constEnd(); ++it) {
             for (ot = it->constBegin(); ot != it->constEnd(); ++ot) {
-                const XConfigureRequestEvent *ev = *ot;
+                const XConfigureRequestEvent *ev = ot->();
 
                 // The requested geometry
                 line = QString().sprintf("  0x%lx: %dx%d%+d%+d", it.key(),
