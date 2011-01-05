@@ -776,8 +776,8 @@ QPainterPath MCompositeWindow::shape() const
 Window MCompositeWindow::lastVisibleParent() const
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
-    if (pc)
-        return pc->is_valid ? p->d->getLastVisibleParent(pc) : None;
+    if (pc && pc->is_valid)
+        return p->d->getLastVisibleParent(pc);
     else
         return None;
 }
