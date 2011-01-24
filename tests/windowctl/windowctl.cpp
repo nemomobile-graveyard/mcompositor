@@ -392,7 +392,7 @@ static void print_usage_and_exit(QString& stdOut)
          "l - use InputOnly window class\n"
          "j1 - set _MEEGOTOUCH_ALWAYS_MAPPED property to 1\n"
          "j2 - set _MEEGOTOUCH_ALWAYS_MAPPED property to 2\n"
-         "M - send _MEEGOTOUCH_TRANSITION messages when the window is ARGB\n"
+         "MTT - send _MEEGOTOUCH_TRANSITION messages when the window is ARGB\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
@@ -758,8 +758,9 @@ static bool old_main(QStringList& args, QString& stdOut)
 		       override_redirect = 1;	
 		       continue;
 		}
-		if (*p == 'M') {
-		       send_mtt = 1;	
+		if (*p == 'M' && *(p+1) == 'T' && *(p+2) == 'T') {
+		       send_mtt = 1;
+                       p += 2;
 		       continue;
 		}
 		if (*p == 't') {
