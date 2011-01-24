@@ -2433,9 +2433,12 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     }
 
 stack_and_return:
-    if (!pc || (e->event != QX11Info::appRootWindow()) || !item)
+    if (!pc || (e->event != QX11Info::appRootWindow()) || !item) {
         // only handle the MapNotify sent for the root window
+        prop_caches.remove(win);
+        delete wpc;
         return;
+    }
 
     bool stacked = false;
     if (configure_reqs.contains(win)) {
