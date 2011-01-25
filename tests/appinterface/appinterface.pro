@@ -5,7 +5,10 @@
 TEMPLATE = app
 TARGET = 
 DEPENDPATH += .
-INCLUDEPATH += .
+INCLUDEPATH += . ../../decorators/libdecorator
+QMAKE_LFLAGS += -L../../decorators/libdecorator #to link to the library of the repo not of the system
+LIBS += -ldecorator
+QT += dbus
 
 # Input
 SOURCES += main.cpp

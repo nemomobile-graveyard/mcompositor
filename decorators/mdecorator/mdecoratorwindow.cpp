@@ -143,24 +143,24 @@ public:
 public slots:
     void actionTriggered(bool val)
     {
-        //qCritical()<<"triggered";
+        qCritical()<<"triggered";
         if (!sender() || !qobject_cast<MAction*>(sender()))
             return;
 
         MAction* act = static_cast<MAction*>(sender());
         if (actionHash.contains(act))
-            triggered(actionHash.value(act).id(), val);
+            emit triggered(actionHash.value(act).id().toString(), val);
     }
 
     void actionToggled(bool val)
     {
-        //qCritical()<<"toggled";
+        qCritical()<<"toggled";
         if (!sender() || !qobject_cast<MAction*>(sender()))
             return;
 
         MAction* act = static_cast<MAction*>(sender());
         if (actionHash.contains(act))
-            toggled(actionHash.value(act).id(), val);
+            emit toggled(actionHash.value(act).id().toString(), val);
     }
 
 private:
@@ -607,6 +607,8 @@ void MDecoratorWindow::addActions(QList<MAction*> new_actions)
 
     setUpdatesEnabled(false);
 
+    navigationBar->setArrowIconVisible(false);
+
     QList<QAction*> oldactions = actions();
 
     //qCritical()<<"deleting Actions";
@@ -617,15 +619,13 @@ void MDecoratorWindow::addActions(QList<MAction*> new_actions)
     foreach (MAction* act, new_actions) {
         //the signals have to be disabled because LMT using setChecked on the action and that would lead to an trigger/toggle signal
         act->blockSignals(true);
+        if (act->location() == MAction::ApplicationMenuLocation)
+            navigationBar->setArrowIconVisible(true);
         this->addAction(act);
         act->blockSignals(false);
     }
 
-    //qCritical()<<"inserting finished";
-    if (new_actions.isEmpty())
-        navigationBar->setArrowIconVisible(false);
-    else
-        navigationBar->setArrowIconVisible(true);
+
 
     setUpdatesEnabled(true);
 }

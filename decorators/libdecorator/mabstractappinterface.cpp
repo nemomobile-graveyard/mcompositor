@@ -20,6 +20,7 @@
 #include <QtDebug>
 
 #include "mabstractappinterface.h"
+#include "mdecoratordbusadaptor.h"
 #include <mrmiserver.h>
 #include <mrmiclient.h>
 #include <QX11Info>
@@ -28,36 +29,67 @@
 #include <QDesktopWidget>
 #include <QApplication>
 #include <QMenu>
+#include <QPixmap>
 
-QDataStream &operator<<(QDataStream &out, const IPCAction &myObj)
+
+QDBusArgument &operator<<(QDBusArgument &argument, const IPCAction &action)
 {
-    out << myObj.m_key;
-    out << myObj.m_text;
-    out << myObj.m_checkable;
-    out << myObj.m_checked;
-    out << (int)myObj.m_type;
-    out << myObj.m_icon;
-    return out;
+    argument.beginStructure();
+    argument << action.m_key.toString();
+    argument << action.m_text;
+    argument << action.m_checkable;
+    argument << action.m_checked;
+    argument << (uint)action.m_type;
+
+    if (action.m_icon.isNull()) {
+        argument << QByteArray();
+    } else {
+        if (action.m_icon.pixmap(48,48).isNull())
+            qCritical() << "MDecorator: Pixmap creation failed";
+
+        QImage image = action.m_icon.pixmap(48,48).toImage();
+        if (image.isNull())
+            qCritical() << "MDecorator: Icon Conversion failed";
+        QByteArray data;
+        QBuffer buffer(&data);
+        buffer.open(QIODevice::WriteOnly);
+        if (!image.save(&buffer,"PNG"))
+            qCritical() << "MDecorator: Write to Buffer failed";
+        argument << data;
+    }
+
+    argument.endStructure();
+    return argument;
 }
-
-QDataStream &operator>>(QDataStream &in, IPCAction &myObj)
+const QDBusArgument &operator>>(const QDBusArgument &argument, IPCAction &action)
 {
+    argument.beginStructure();
     int type;
-    in >> myObj.m_key;
-    in >> myObj.m_text;
-    in >> myObj.m_checkable;
-    in >> myObj.m_checked;
-    in >> type;
-    in >> myObj.m_icon;
-    myObj.m_type = (IPCAction::ActionType)type;
-    return in;
+    QString uuid;
+    argument >> uuid;
+    action.m_key = QUuid(uuid);
+    argument >> action.m_text;
+    argument >> action.m_checkable;
+    argument >> action.m_checked;
+    argument >> type;
+    QByteArray data;
+    argument >> data;
+    if(!data.isNull()){
+        QImage image = QImage::fromData(data,"PNG");
+        if (image.isNull())
+            qCritical() << "MDecorator: Icon loading failed";
+        action.m_icon = QIcon(QPixmap::fromImage(image));
+    }
+    action.m_type = (IPCAction::ActionType)type;
+    argument.endStructure();
+    return argument;
 }
 
 class MAbstractAppInterfacePrivate
 {
 public:
 
-    MRmiClient* remote_app;
+    MDecoratorDBusAdaptor* adaptor;
     MAbstractAppInterface* q_ptr;
 };
 
@@ -67,50 +99,28 @@ MAbstractAppInterface::MAbstractAppInterface(QObject *parent)
 {
     Q_D(MAbstractAppInterface);
 
-    qRegisterMetaType<IPCAction>();
-    qRegisterMetaTypeStreamOperators<IPCAction>();
-    qRegisterMetaType<QList<IPCAction> >();
-    qRegisterMetaTypeStreamOperators<QList<IPCAction> >();
-    qRegisterMetaType<QUuid >();
-    qRegisterMetaTypeStreamOperators<QUuid >();
+    qDBusRegisterMetaType<IPCAction>();
+    qDBusRegisterMetaType<IPCActionList>();
 
-    MRmiServer *s = new MRmiServer(".mabstractappdecorator", this);
-    s->exportObject(this);
-    d->remote_app = 0;
+    /*Generate an new Adaptor using the command:
+      qdbusxml2cpp inteface.xml -a mdecoratordbusadaptor -i mabstractappinterface.h -c MDecoratorDBusAdaptor
+
+      Generate an new Interface using the command:
+      qdbusxml2cpp inteface.xml -p mdecoratordbusinterface -c MDecoratorDBusInterface -i mabstractappinterface.h
+    */
+    d_ptr->adaptor = new MDecoratorDBusAdaptor(this);
+
+    QDBusConnection::sessionBus().registerService("com.nokia.MDecorator");
+    QDBusConnection::sessionBus().registerObject("/MDecorator", this);
 }
 
 MAbstractAppInterface::~MAbstractAppInterface()
 {
 }
 
-void MAbstractAppInterface::RemoteSetActions(QList<IPCAction> menu, uint window)
+void MAbstractAppInterface::setActions(IPCActionList menu ,uint window)
 {
-    //qCritical()<<__PRETTY_FUNCTION__<<menu.count()<<window;
+    //qCritical()<<__PRETTY_FUNCTION__;
     actionsChanged(menu, (WId)window);
-}
-
-void MAbstractAppInterface::RemoteSetClientKey(const QString& key)
-{
-    Q_D(MAbstractAppInterface);
-
-    delete d->remote_app;
-
-    d->remote_app = new MRmiClient(key, this);
-}
-
-void MAbstractAppInterface::triggered(QUuid id, bool val)
-{
-    Q_D(MAbstractAppInterface);
-
-    if (d->remote_app)
-        d->remote_app->invoke("QtMaemo6AppInterface", "triggered", QVariant::fromValue(id), val);
-}
-
-void MAbstractAppInterface::toggled(QUuid id, bool val)
-{
-    Q_D(MAbstractAppInterface);
-
-    if (d->remote_app)
-        d->remote_app->invoke("QtMaemo6AppInterface", "toggled", QVariant::fromValue(id), val);
 }
 

@@ -23,6 +23,7 @@
 #include <QObject>
 #include <QAction>
 #include <QUuid>
+#include <QDBusArgument>
 
 class MAbstractAppInterfacePrivate;
 class MRmiClient;
@@ -72,8 +73,8 @@ public:
     QIcon icon() const {return m_icon; }
 
     //friend to access the member variables directly because we don't have setter
-    friend QDataStream &operator<<(QDataStream &, const IPCAction &);
-    friend QDataStream &operator>>(QDataStream &, IPCAction &);
+    friend QDBusArgument &operator<<(QDBusArgument &argument, const IPCAction &action);
+    friend const QDBusArgument &operator>>(const QDBusArgument &argument, IPCAction &action);
 
 private:
 
@@ -85,12 +86,13 @@ private:
     QIcon m_icon;
 };
 
-QDataStream &operator<<(QDataStream &out, const IPCAction &myObj);
-QDataStream &operator>>(QDataStream &in, IPCAction &myObj);
+typedef QList<IPCAction> IPCActionList;
+
+QDBusArgument &operator<<(QDBusArgument &argument, const IPCAction &action);
+const QDBusArgument &operator>>(const QDBusArgument &argument, IPCAction &action);
 
 Q_DECLARE_METATYPE(IPCAction);
-Q_DECLARE_METATYPE(QList<IPCAction>);
-Q_DECLARE_METATYPE(QUuid);
+Q_DECLARE_METATYPE(IPCActionList);
 /*!
  * MAbstractAppInterface is the base class for Application Interface
 
@@ -106,20 +108,17 @@ public:
     MAbstractAppInterface(QObject *parent = 0);
     virtual ~MAbstractAppInterface() = 0;
 
+signals:
     /*! Sends the triggered signal for the given Action to the current decorated Application*/
-    void triggered(QUuid id, bool val);
+    void triggered(QString id, bool val);
     /*! Sends the toggled signal for the given Action to the current decorated Application*/
-    void toggled(QUuid id, bool val);
+    void toggled(QString id, bool val);
 
 public slots:
 
     /*! set the List of Actions in the Menu/ToolBar of the decorator. The window is used
         to check for the current decorated window */
-    void RemoteSetActions(QList<IPCAction> menu, uint window);
-
-    /*! sets the Client Key which is used to send Messages back to the Server of the current
-        decorated Application*/
-    void RemoteSetClientKey(const QString& key);
+    void setActions(IPCActionList ,uint window);
 
 protected:
 
