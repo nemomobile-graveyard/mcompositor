@@ -1,9 +1,22 @@
-mcompositor (0.8.3-1~unreleased) unstable; urgency=low
+mcompositor (0.8.3-1) unstable; urgency=low
 
-  * unreleased
-  * Fixes: BMC#11128 [REG]Sometimes system will die after tapped close button..
+  * Dont leak damage object passed to a cache that becomes invalid.
+  * add 'M' option to windowctl to send _MEEGOTOUCH_TRANSITION messages
+  * Minimize time between MapRequest and the following XMapWindow call
+  * Fixes: NB#187924 - Status area doesnt update while Field Test Display in use
+  * Plug some leaks reported in NB#194581 and some robustness improvements
+  * Fixes: NB#216765 - In Enter passcode view, pressing Cancel button does not return to call UI when the incoming call is not answered in the background
+  * add Z command to windowctl for tracking damage events of a window
+  * Fixes: NB#216314 - With attached xserver fixes for CompositeUnredirectWindow global alpha is set incorrectly
+  * Fixes: BMC#11128 [REG]Sometimes system will die after tapped close button in an application.
+  * install public libdecorator headers
+  * destroy unused property cache
+  * use windowctl MTT to send _MEEGOTOUCH_TRANSITION
+  * dont let mdecorator managing clients falsely
+  * MCompositorWindow timer handling simplification
+  * scratchbox issue fixed.
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Fri, 07 Jan 2011 14:47:30 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 25 Jan 2011 12:20:30 +0200
 
 mcompositor (0.8.2-1) unstable; urgency=low
 
