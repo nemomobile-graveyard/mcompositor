@@ -21,6 +21,11 @@ SOURCES += mabstractdecorator.cpp \
            mdecoratordbusadaptor.cpp \
            mdecoratordbusinterface.cpp
 
+publicHeaders.files += mabstractappinterface.h \
+                       mdecoratordbusinterface.h
+publicHeaders.path = $$M_INSTALL_HEADERS/mcompositor
+INSTALLS += publicHeaders
+
 target.path=/usr/lib
 INSTALLS += target
 QMAKE_EXTRA_TARGETS += check
