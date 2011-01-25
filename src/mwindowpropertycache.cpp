@@ -113,6 +113,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
         if (!attrs) {
             //qWarning("%s: invalid window 0x%lx", __func__, window);
             init_invalid();
+            if (damage_obj)
+                XDamageDestroy(QX11Info::display(), damage_obj);
             return;
         }
     } else
