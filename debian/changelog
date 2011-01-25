@@ -1,3 +1,9 @@
+mcompositor (0.8.4-1~unreleased) unstable; urgency=low
+
+  * :)
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 25 Jan 2011 12:30:38 +0200
+
 mcompositor (0.8.3-1) unstable; urgency=low
 
   * Dont leak damage object passed to a cache that becomes invalid.
