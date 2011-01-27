@@ -184,12 +184,15 @@ static bool behindCompare(MTexturePixmapItem* a, MTexturePixmapItem* b)
 }
 
 /*!
-  Adds the given \a window to this group. The window's transformations will
-  remain unmodified
+  Adds the given \a window to this group except if it's already in the group.
+  The window's transformations will remain unmodified.  Returns whether the
+  \a window has been added.
  */
-void MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
+bool MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
 {
     Q_D(MCompositeWindowGroup);
+    if (d->item_list.contains(window))
+        return false;
     window->d->current_window_group = this;
     connect(window, SIGNAL(destroyed()), SLOT(q_removeWindow()));
     d->item_list.append(window);
@@ -199,6 +202,7 @@ void MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
     // point so this might be unecessary
     qSort(d->item_list.begin(), d->item_list.end(), behindCompare);
     updateWindowPixmap(); // FIXME: don't do this for each added child
+    return true;
 }
 
 /*!
