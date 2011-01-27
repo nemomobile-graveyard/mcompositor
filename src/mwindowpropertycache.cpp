@@ -32,6 +32,38 @@
 
 #define MAX_TYPES 10
 
+void MWindowPropertyCache::addReq(colF func, int type,
+                                  unsigned int sequence)
+{
+    if (!collect_timer) {
+        collect_timer = new QTimer(this);
+        collect_timer->setSingleShot(true);
+        collect_timer->setInterval(5000);
+        connect(collect_timer, SIGNAL(timeout()), SLOT(collectReplies()));
+    }
+    collect_timer->start();  // start or restart
+
+    if (!sequence)
+        return;
+    xcbReq *item = new xcbReq;
+    item->type = type;
+    item->sequence = sequence;
+    item->f = func;
+    Q_ASSERT(!reqHash.contains(id)); // only one request at a time
+    reqHash[(void*)item->f.type1] = item;
+}
+
+#define GET_SEQUENCE(T, FUNC) { \
+                                  colF cf; \
+                                  cf.type##T = &MWindowPropertyCache::FUNC; \
+                                  c.sequence = getSequence(cf); \
+                              }
+#define ADD_REQ(T, FUNC, COOKIE_FUNC) { \
+                                  colF cf; \
+                                  cf.type##T = &MWindowPropertyCache::FUNC; \
+                                  addReq(cf, T, COOKIE_FUNC.sequence); \
+                              }
+
 xcb_connection_t *MWindowPropertyCache::xcb_conn;
 
 void MWindowPropertyCache::init()
@@ -64,40 +96,18 @@ void MWindowPropertyCache::init()
     orientation_angle = 0;
     xcb_real_geom = 0;
     damage_object = 0;
+    getSequence_no_remove = false;
+    collect_timer = 0;
 
     memset(&req_geom, 0, sizeof(req_geom));
     memset(&home_button_geom, 0, sizeof(home_button_geom));
     memset(&close_button_geom, 0, sizeof(close_button_geom));
     window_type_atom = 0;
-    memset(&xcb_real_geom_cookie, 0, sizeof(xcb_real_geom_cookie));
 }
 
 void MWindowPropertyCache::init_invalid()
 {
     is_valid = false;
-    memset(&xcb_transient_for_cookie, 0,
-           sizeof(xcb_transient_for_cookie));
-    memset(&xcb_meego_layer_cookie, 0, sizeof(xcb_meego_layer_cookie));
-    memset(&xcb_is_decorator_cookie, 0, sizeof(xcb_is_decorator_cookie));
-    memset(&xcb_window_type_cookie, 0, sizeof(xcb_window_type_cookie));
-    memset(&xcb_decor_buttons_cookie, 0, sizeof(xcb_decor_buttons_cookie));
-    memset(&xcb_orientation_angle_cookie, 0,
-           sizeof(xcb_orientation_angle_cookie));
-    memset(&xcb_statusbar_cookie, 0, sizeof(xcb_statusbar_cookie));
-    memset(&xcb_wm_protocols_cookie, 0, sizeof(xcb_wm_protocols_cookie));
-    memset(&xcb_wm_state_cookie, 0, sizeof(xcb_wm_state_cookie));
-    memset(&xcb_wm_hints_cookie, 0, sizeof(xcb_wm_hints_cookie));
-    memset(&xcb_icon_geom_cookie, 0, sizeof(xcb_icon_geom_cookie));
-    memset(&xcb_global_alpha_cookie, 0, sizeof(xcb_global_alpha_cookie));
-    memset(&xcb_video_global_alpha_cookie, 0,
-           sizeof(xcb_video_global_alpha_cookie));
-    memset(&xcb_net_wm_state_cookie, 0, sizeof(xcb_net_wm_state_cookie));
-    memset(&xcb_always_mapped_cookie, 0, sizeof(xcb_always_mapped_cookie));
-    memset(&xcb_cannot_minimize_cookie, 0, sizeof(xcb_always_mapped_cookie));
-    memset(&xcb_pict_formats_cookie, 0, sizeof(xcb_pict_formats_cookie));
-    memset(&xcb_shape_rects_cookie, 0, sizeof(xcb_shape_rects_cookie));
-    memset(&real_geom, 0, sizeof(real_geom));
-    memset(&statusbar_geom, 0, sizeof(statusbar_geom));
 }
 
 MWindowPropertyCache::MWindowPropertyCache(Window w,
@@ -119,9 +129,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
         }
     } else
         attrs = wa;
-    if (!geom)
-        xcb_real_geom_cookie = xcb_get_geometry(xcb_conn, window);
-    else {
+    if (!geom) {
+        ADD_REQ(1, realGeometry, xcb_get_geometry(xcb_conn, window));
+    } else {
         xcb_real_geom = geom;
         real_geom = QRect(xcb_real_geom->x, xcb_real_geom->y,
                           xcb_real_geom->width, xcb_real_geom->height);
@@ -136,57 +146,70 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
         XShapeSelectInput(QX11Info::display(), window, ShapeNotifyMask);
     }
 
-    xcb_is_decorator_cookie = xcb_get_property(xcb_conn, 0, window,
-                                        ATOM(_MEEGOTOUCH_DECORATOR_WINDOW),
-                                        XCB_ATOM_CARDINAL, 0, 1);
-    xcb_transient_for_cookie = xcb_get_property(xcb_conn, 0, window,
-                                                XCB_ATOM_WM_TRANSIENT_FOR,
-                                                XCB_ATOM_WINDOW, 0, 1);
-    xcb_meego_layer_cookie = xcb_get_property(xcb_conn, 0, window,
-                                              ATOM(_MEEGO_STACKING_LAYER),
-                                              XCB_ATOM_CARDINAL, 0, 1);
-    xcb_window_type_cookie = xcb_get_property(xcb_conn, 0, window,
-                                              ATOM(_NET_WM_WINDOW_TYPE),
-                                              XCB_ATOM_ATOM, 0, MAX_TYPES);
+    ADD_REQ(11, isDecorator, 
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGOTOUCH_DECORATOR_WINDOW),
+                             XCB_ATOM_CARDINAL, 0, 1));
+    ADD_REQ(5, transientFor,
+            xcb_get_property(xcb_conn, 0, window,
+                             XCB_ATOM_WM_TRANSIENT_FOR,
+                             XCB_ATOM_WINDOW, 0, 1));
+    ADD_REQ(8, meegoStackingLayer,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGO_STACKING_LAYER),
+                             XCB_ATOM_CARDINAL, 0, 1));
+    ADD_REQ(14, windowType,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_NET_WM_WINDOW_TYPE),
+                             XCB_ATOM_ATOM, 0, MAX_TYPES));
     // FIXME: pict formats do not seem window-specific -- get them only once
-    xcb_pict_formats_cookie = xcb_render_query_pict_formats(xcb_conn);
-    xcb_decor_buttons_cookie = xcb_get_property(xcb_conn, 0, window,
-                                       ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
-                                       XCB_ATOM_CARDINAL, 0, 8);
-    xcb_orientation_angle_cookie = xcb_get_property(xcb_conn, 0, window,
-                                    ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE),
-                                    XCB_ATOM_CARDINAL, 0, 1);
-    xcb_statusbar_cookie = xcb_get_property(xcb_conn, 0, window,
-                                    ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY),
-                                    XCB_ATOM_CARDINAL, 0, 4);
-    xcb_wm_protocols_cookie = xcb_get_property(xcb_conn, 0, window,
-                                               ATOM(WM_PROTOCOLS),
-                                               XCB_ATOM_ATOM, 0, 100);
-    xcb_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
-                                  ATOM(WM_STATE), ATOM(WM_STATE), 0, 1);
+    ADD_REQ(11, hasAlpha, xcb_render_query_pict_formats(xcb_conn));
+    ADD_REQ(13, buttonGeometryHelper,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
+                             XCB_ATOM_CARDINAL, 0, 8));
+    ADD_REQ(8, orientationAngle,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE),
+                             XCB_ATOM_CARDINAL, 0, 1));
+    ADD_REQ(2, statusbarGeometry,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY),
+                             XCB_ATOM_CARDINAL, 0, 4));
+    ADD_REQ(7, supportedProtocols,
+            xcb_get_property(xcb_conn, 0, window, ATOM(WM_PROTOCOLS),
+                             XCB_ATOM_ATOM, 0, 100));
+    ADD_REQ(10, windowState,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(WM_STATE), ATOM(WM_STATE), 0, 1));
     wm_state_query = true;
-    xcb_wm_hints_cookie = xcb_get_property(xcb_conn, 0, window,
-                                  XCB_ATOM_WM_HINTS, XCB_ATOM_WM_HINTS, 0, 10);
-    xcb_icon_geom_cookie = xcb_get_property(xcb_conn, 0, window,
-                                            ATOM(_NET_WM_ICON_GEOMETRY),
-                                            XCB_ATOM_CARDINAL, 0, 4);
-    xcb_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
-                                               ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
-                                               XCB_ATOM_CARDINAL, 0, 1);
-    xcb_video_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
-                                               ATOM(_MEEGOTOUCH_VIDEO_ALPHA),
-                                               XCB_ATOM_CARDINAL, 0, 1);
-    xcb_shape_rects_cookie = xcb_shape_get_rectangles(xcb_conn, window,
-                                                      ShapeBounding);
-    xcb_net_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
-                                               ATOM(_NET_WM_STATE),
-                                               XCB_ATOM_ATOM, 0, 100);
-    xcb_always_mapped_cookie = xcb_get_property(xcb_conn, 0, window,
-                                                ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
-                                                XCB_ATOM_CARDINAL, 0, 1);
-    xcb_cannot_minimize_cookie = xcb_get_property(xcb_conn, 0, window,
-                                         ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE),
-                                         XCB_ATOM_CARDINAL, 0, 1);
+    ADD_REQ(6, getWMHints,
+            xcb_get_property(xcb_conn, 0, window, XCB_ATOM_WM_HINTS,
+                             XCB_ATOM_WM_HINTS, 0, 10));
+    ADD_REQ(12, iconGeometry,
+            xcb_get_property(xcb_conn, 0, window, ATOM(_NET_WM_ICON_GEOMETRY),
+                             XCB_ATOM_CARDINAL, 0, 4));
+    ADD_REQ(10, globalAlpha,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
+                             XCB_ATOM_CARDINAL, 0, 1));
+    ADD_REQ(10, videoGlobalAlpha,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGOTOUCH_VIDEO_ALPHA),
+                             XCB_ATOM_CARDINAL, 0, 1));
+    ADD_REQ(3, shapeRegion,
+            xcb_shape_get_rectangles(xcb_conn, window, ShapeBounding));
+    ADD_REQ(7, netWmState,
+            xcb_get_property(xcb_conn, 0, window, ATOM(_NET_WM_STATE),
+                             XCB_ATOM_ATOM, 0, 100));
+    ADD_REQ(10, alwaysMapped,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
+                             XCB_ATOM_CARDINAL, 0, 1));
+    ADD_REQ(10, cannotMinimize,
+            xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE),
+                             XCB_ATOM_CARDINAL, 0, 1));
     // add any transients to the transients list
     MCompositeManager *m = (MCompositeManager*)qApp;
     for (QList<Window>::const_iterator it = m->d->stacking_list.begin();
@@ -208,26 +231,12 @@ MWindowPropertyCache::MWindowPropertyCache()
 
 MWindowPropertyCache::~MWindowPropertyCache()
 {
-    if (custom_region) delete custom_region;
     if (!is_valid) {
+        if (custom_region) delete custom_region;
         // no pending XCB requests
         if (wmhints)
             XFree(wmhints);
         return;
-    }
-    if (!wmhints)
-        getWMHints();
-    XFree(wmhints);
-    if (attrs) {
-        free(attrs);
-        attrs = 0;
-    }
-    if (!xcb_real_geom)
-        xcb_real_geom = xcb_get_geometry_reply(xcb_conn,
-                                               xcb_real_geom_cookie, 0);
-    if (xcb_real_geom) {
-        free(xcb_real_geom);
-        xcb_real_geom = 0;
     }
     if (transient_for && transient_for != (Window)-1) {
         MCompositeManager *m = (MCompositeManager*)qApp;
@@ -235,41 +244,17 @@ MWindowPropertyCache::~MWindowPropertyCache()
         MWindowPropertyCache *p = m->d->prop_caches.value(transient_for, 0);
         if (p) p->transients.removeAll(window);
     }
-    if (transient_for == (Window)-1)
-        xcb_discard_reply(xcb_conn, xcb_transient_for_cookie.sequence);
-    if (always_mapped < 0)
-        xcb_discard_reply(xcb_conn, xcb_always_mapped_cookie.sequence);
-    if (cannot_minimize < 0)
-        xcb_discard_reply(xcb_conn, xcb_cannot_minimize_cookie.sequence);
-    desktopView(false);  // free the reply if it has been requested
-    if (meego_layer < 0)
-        xcb_discard_reply(xcb_conn, xcb_meego_layer_cookie.sequence);
-    if (is_decorator < 0)
-        xcb_discard_reply(xcb_conn, xcb_is_decorator_cookie.sequence);
-    if (window_type == MCompAtoms::INVALID)
-        xcb_discard_reply(xcb_conn, xcb_window_type_cookie.sequence);
-    if (has_alpha < 0)
-        xcb_discard_reply(xcb_conn, xcb_pict_formats_cookie.sequence);
-    if (!decor_buttons_valid)
-        xcb_discard_reply(xcb_conn, xcb_decor_buttons_cookie.sequence);
-    if (!wm_protocols_valid)
-        xcb_discard_reply(xcb_conn, xcb_wm_protocols_cookie.sequence);
-    if (custom_region_request_fired)
-        xcb_discard_reply(xcb_conn, xcb_custom_region_cookie.sequence);
-    xcb_discard_reply(xcb_conn, xcb_orientation_angle_cookie.sequence);
-    xcb_discard_reply(xcb_conn, xcb_statusbar_cookie.sequence);
-    if (wm_state_query)
-        windowState();
-    if (!icon_geometry_valid)
-        iconGeometry();
-    if (global_alpha < 0)
-        globalAlpha();
-    if (video_global_alpha < 0)
-        videoGlobalAlpha();
-    if (!shape_rects_valid)
-        shapeRegion();
-    if (!net_wm_state_valid)
-        netWmState();
+    collectReplies();
+    if (custom_region) delete custom_region;
+    if (attrs) {
+        free(attrs);
+        attrs = 0;
+    }
+    XFree(wmhints);
+    if (xcb_real_geom) {
+        free(xcb_real_geom);
+        xcb_real_geom = 0;
+    }
     damageTracking(false);
 }
 
@@ -280,8 +265,9 @@ bool MWindowPropertyCache::hasAlpha()
 
     // the following code is replacing a XRenderFindVisualFormat() call...
     xcb_render_query_pict_formats_reply_t *pict_formats_reply;
-    pict_formats_reply = xcb_render_query_pict_formats_reply(xcb_conn,
-                                xcb_pict_formats_cookie, 0);
+    xcb_render_query_pict_formats_cookie_t c;
+    GET_SEQUENCE(11, hasAlpha);
+    pict_formats_reply = xcb_render_query_pict_formats_reply(xcb_conn, c, 0);
     if (!pict_formats_reply) {
         qWarning("%s: querying alpha for 0x%lx has failed", __func__, window);
         has_alpha = 0;
@@ -332,7 +318,9 @@ const QRegion &MWindowPropertyCache::shapeRegion()
         return shape_region;
     }
     xcb_shape_get_rectangles_reply_t *r;
-    r = xcb_shape_get_rectangles_reply(xcb_conn, xcb_shape_rects_cookie, 0);
+    xcb_shape_get_rectangles_cookie_t c;
+    GET_SEQUENCE(3, shapeRegion);
+    r = xcb_shape_get_rectangles_reply(xcb_conn, c, 0);
     if (!r) {
         shape_rects_valid = true;
         shape_region = QRegion(realGeometry());
@@ -358,14 +346,16 @@ const QRegion &MWindowPropertyCache::customRegion(bool request_only)
     if (request_only || (!custom_region && !custom_region_request_fired)) {
         if (custom_region_request_fired)
             customRegion(false); // free the old reply
-        xcb_custom_region_cookie = xcb_get_property(xcb_conn, 0, window,
+        ADD_REQ(4, customRegion, xcb_get_property(xcb_conn, 0, window,
                                          ATOM(_MEEGOTOUCH_CUSTOM_REGION),
-                                         XCB_ATOM_CARDINAL, 0, 10 * 4);
+                                         XCB_ATOM_CARDINAL, 0, 10 * 4));
         custom_region_request_fired = true;
     }
     if (!request_only && custom_region_request_fired) {
         xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, xcb_custom_region_cookie, 0);
+        xcb_get_property_cookie_t c;
+        GET_SEQUENCE(4, customRegion);
+        r = xcb_get_property_reply(xcb_conn, c, 0);
         custom_region_request_fired = false;
         if (custom_region)
             delete custom_region;
@@ -391,7 +381,9 @@ Window MWindowPropertyCache::transientFor()
 {
     if (is_valid && transient_for == (Window)-1) {
         xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, xcb_transient_for_cookie, 0);
+        xcb_get_property_cookie_t c;
+        GET_SEQUENCE(5, transientFor);
+        r = xcb_get_property_reply(xcb_conn, c, 0);
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(Window))
                 transient_for = *((Window*)xcb_get_property_value(r));
@@ -420,7 +412,9 @@ int MWindowPropertyCache::cannotMinimize()
 {
     if (is_valid && cannot_minimize < 0) {
         xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, xcb_cannot_minimize_cookie, 0);
+        xcb_get_property_cookie_t c;
+        GET_SEQUENCE(10, cannotMinimize);
+        r = xcb_get_property_reply(xcb_conn, c, 0);
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
                 cannot_minimize = *((CARD32*)xcb_get_property_value(r));
@@ -437,7 +431,9 @@ int MWindowPropertyCache::alwaysMapped()
 {
     if (is_valid && always_mapped < 0) {
         xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, xcb_always_mapped_cookie, 0);
+        xcb_get_property_cookie_t c;
+        GET_SEQUENCE(10, alwaysMapped);
+        r = xcb_get_property_reply(xcb_conn, c, 0);
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
                 always_mapped = *((CARD32*)xcb_get_property_value(r));
@@ -453,17 +449,19 @@ int MWindowPropertyCache::alwaysMapped()
 int MWindowPropertyCache::desktopView(bool request_only)
 {
     static bool request_fired = false;
-    static xcb_get_property_cookie_t c;
     if (is_valid && request_only) {
         if (request_fired)
             // free the old reply
             desktopView(false);
-        c = xcb_get_property(xcb_conn, 0, window,
-                             ATOM(_MEEGOTOUCH_DESKTOP_VIEW),
-                             XCB_ATOM_CARDINAL, 0, 1);
+        ADD_REQ(9, desktopView,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_MEEGOTOUCH_DESKTOP_VIEW),
+                                 XCB_ATOM_CARDINAL, 0, 1));
         request_fired = true;
     } else if (is_valid && request_fired) {
         xcb_get_property_reply_t *r;
+        xcb_get_property_cookie_t c;
+        GET_SEQUENCE(9, desktopView);
         r = xcb_get_property_reply(xcb_conn, c, 0);
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
@@ -478,11 +476,63 @@ int MWindowPropertyCache::desktopView(bool request_only)
     return desktop_view;
 }
 
+void MWindowPropertyCache::collectReplies()
+{
+    if (reqHash.isEmpty())
+        return;
+    getSequence_no_remove = true; // don't modify the hash during iteration
+    for (QHash<void*, xcbReq*>::iterator i = reqHash.begin();
+         i != reqHash.end(); i = reqHash.erase(i)) {
+        xcbReq *item = i.value();
+        switch (item->type) {
+        case 1: (this->*item->f.type1)(); break;
+        case 2: (this->*item->f.type2)(); break;
+        case 3: (this->*item->f.type3)(); break;
+        case 4: (this->*item->f.type4)(false); break;
+        case 5: (this->*item->f.type5)(); break;
+        case 6: (this->*item->f.type6)(); break;
+        case 7: (this->*item->f.type7)(); break;
+        case 8: (this->*item->f.type8)(); break;
+        case 9: (this->*item->f.type9)(false); break;
+        case 10: (this->*item->f.type10)(); break;
+        case 11: (this->*item->f.type11)(); break;
+        case 12: (this->*item->f.type12)(); break;
+        case 13: (this->*item->f.type13)(); break;
+        case 14: (this->*item->f.type14)(); break;
+        default: qFatal("%s: unknown function type", __func__); break;
+        }
+        delete item;
+    }
+    reqHash.clear();
+    getSequence_no_remove = false;
+    if (collect_timer)
+        collect_timer->stop();
+}
+
+unsigned int MWindowPropertyCache::getSequence(colF id)
+{
+    unsigned int ret = 0;
+    void *key = (void*)id.type1;
+    xcbReq *req = reqHash.value(key, 0);
+    if (req) {
+        ret = req->sequence;
+        if (!getSequence_no_remove) {
+            reqHash.remove(key);
+            delete req;
+            if (collect_timer && reqHash.isEmpty())
+                collect_timer->stop();
+        }
+    }
+    return ret;
+}
+
 bool MWindowPropertyCache::isDecorator()
 {
     if (is_valid && is_decorator < 0) {
         xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, xcb_is_decorator_cookie, 0);
+        xcb_get_property_cookie_t c;
+        GET_SEQUENCE(11, isDecorator);
+        r = xcb_get_property_reply(xcb_conn, c, 0);
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
                 is_decorator = *((CARD32*)xcb_get_property_value(r));
@@ -499,7 +549,9 @@ unsigned int MWindowPropertyCache::meegoStackingLayer()
 {
     if (is_valid && meego_layer < 0) {
         xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, xcb_meego_layer_cookie, 0);
+        xcb_get_property_cookie_t c;
+        GET_SEQUENCE(8, meegoStackingLayer);
+        r = xcb_get_property_reply(xcb_conn, c, 0);
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
                 meego_layer = *((CARD32*)xcb_get_property_value(r));
@@ -557,7 +609,9 @@ const XWMHints &MWindowPropertyCache::getWMHints()
     }
     if (!wmhints) {
         xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, xcb_wm_hints_cookie, 0);
+        xcb_get_property_cookie_t c;
+        GET_SEQUENCE(6, getWMHints);
+        r = xcb_get_property_reply(xcb_conn, c, 0);
         int len;
         if (!r)
             goto empty_value;
@@ -592,27 +646,30 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
             if (p) p->transients.removeAll(window);
         }
         transient_for = (Window)-1;
-        xcb_transient_for_cookie = xcb_get_property(xcb_conn, 0, window,
-                                                    XCB_ATOM_WM_TRANSIENT_FOR,
-                                                    XCB_ATOM_WINDOW, 0, 1);
+        ADD_REQ(5, transientFor,
+                xcb_get_property(xcb_conn, 0, window,
+                                 XCB_ATOM_WM_TRANSIENT_FOR,
+                                 XCB_ATOM_WINDOW, 0, 1));
         return true;
     } else if (e->atom == ATOM(_MEEGOTOUCH_ALWAYS_MAPPED)) {
         if (always_mapped < 0)
             // collect the old reply
             alwaysMapped();
         always_mapped = -1;
-        xcb_always_mapped_cookie = xcb_get_property(xcb_conn, 0, window,
-                                           ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
-                                           XCB_ATOM_CARDINAL, 0, 1);
+        ADD_REQ(10, alwaysMapped,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
+                                 XCB_ATOM_CARDINAL, 0, 1));
         emit alwaysMappedChanged(this);
     } else if (e->atom == ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE)) {
         if (cannot_minimize < 0)
             // collect the old reply
             cannotMinimize();
         cannot_minimize = -1;
-        xcb_cannot_minimize_cookie = xcb_get_property(xcb_conn, 0, window,
-                                           ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE),
-                                           XCB_ATOM_CARDINAL, 0, 1);
+        ADD_REQ(10, cannotMinimize,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE),
+                                 XCB_ATOM_CARDINAL, 0, 1));
     } else if (e->atom == ATOM(_MEEGOTOUCH_DESKTOP_VIEW)) {
         emit desktopViewChanged(this);
     } else if (e->atom == ATOM(WM_HINTS)) {
@@ -621,83 +678,92 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
             getWMHints();
         XFree(wmhints);
         wmhints = 0;
-        xcb_wm_hints_cookie = xcb_get_property(xcb_conn, 0, window,
-                                  XCB_ATOM_WM_HINTS, XCB_ATOM_WM_HINTS, 0, 10);
+        ADD_REQ(6, getWMHints,
+                xcb_get_property(xcb_conn, 0, window, XCB_ATOM_WM_HINTS,
+                                 XCB_ATOM_WM_HINTS, 0, 10));
         return true;
     } else if (e->atom == ATOM(_NET_WM_WINDOW_TYPE)) {
         if (window_type == MCompAtoms::INVALID)
             // collect the old reply
             windowType();
         window_type = MCompAtoms::INVALID;
-        xcb_window_type_cookie = xcb_get_property(xcb_conn, 0, window,
-                                                  ATOM(_NET_WM_WINDOW_TYPE),
-                                                  XCB_ATOM_ATOM, 0, MAX_TYPES);
+        ADD_REQ(14, windowType,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_NET_WM_WINDOW_TYPE),
+                                 XCB_ATOM_ATOM, 0, MAX_TYPES));
     } else if (e->atom == ATOM(_NET_WM_ICON_GEOMETRY)) {
         if (!icon_geometry_valid)
             // collect the old reply
             iconGeometry();
         icon_geometry_valid = false;
-        xcb_icon_geom_cookie = xcb_get_property(xcb_conn, 0, window,
-                                            ATOM(_NET_WM_ICON_GEOMETRY),
-                                            XCB_ATOM_CARDINAL, 0, 4);
+        ADD_REQ(12, iconGeometry,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_NET_WM_ICON_GEOMETRY),
+                                 XCB_ATOM_CARDINAL, 0, 4));
         emit iconGeometryUpdated();
     } else if (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA)) {
         if (global_alpha < 0)
             // collect the old reply
             globalAlpha();
         global_alpha = -1;
-        xcb_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
-                                       ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
-                                       XCB_ATOM_CARDINAL, 0, 1);
+        ADD_REQ(10, globalAlpha,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
+                                 XCB_ATOM_CARDINAL, 0, 1));
     } else if (e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA)) {
         if (video_global_alpha < 0)
             // collect the old reply
             videoGlobalAlpha();
         video_global_alpha = -1;
-        xcb_video_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
-                                       ATOM(_MEEGOTOUCH_VIDEO_ALPHA),
-                                       XCB_ATOM_CARDINAL, 0, 1);
+        ADD_REQ(10, videoGlobalAlpha,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_MEEGOTOUCH_VIDEO_ALPHA),
+                                 XCB_ATOM_CARDINAL, 0, 1));
     } else if (e->atom == ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS)) {
         if (!decor_buttons_valid)
             // collect the old reply
             buttonGeometryHelper();
         decor_buttons_valid = false;
-        xcb_decor_buttons_cookie = xcb_get_property(xcb_conn, 0, window,
-                                       ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
-                                       XCB_ATOM_CARDINAL, 0, 8);
+        ADD_REQ(13, buttonGeometryHelper,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
+                                 XCB_ATOM_CARDINAL, 0, 8));
         emit meegoDecoratorButtonsChanged(window);
     } else if (e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE)) {
-        xcb_discard_reply(xcb_conn, xcb_orientation_angle_cookie.sequence);
-        xcb_orientation_angle_cookie = xcb_get_property(xcb_conn, 0, window,
-                                    ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE),
-                                    XCB_ATOM_CARDINAL, 0, 1);
+        orientationAngle();
+        ADD_REQ(8, orientationAngle,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE),
+                                 XCB_ATOM_CARDINAL, 0, 1));
     } else if (e->atom == ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY)) {
-        xcb_discard_reply(xcb_conn, xcb_statusbar_cookie.sequence);
-        xcb_statusbar_cookie = xcb_get_property(xcb_conn, 0, window,
-                                    ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY),
-                                    XCB_ATOM_CARDINAL, 0, 4);
+        statusbarGeometry();
+        ADD_REQ(2, statusbarGeometry,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY),
+                                 XCB_ATOM_CARDINAL, 0, 4));
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         if (!wm_protocols_valid)
             // collect the old reply
             supportedProtocols();
         wm_protocols_valid = false;
-        xcb_wm_protocols_cookie = xcb_get_property(xcb_conn, 0, window,
-                                                   ATOM(WM_PROTOCOLS),
-                                                   XCB_ATOM_ATOM, 0, 100);
+        ADD_REQ(7, supportedProtocols,
+                xcb_get_property(xcb_conn, 0, window, ATOM(WM_PROTOCOLS),
+                                 XCB_ATOM_ATOM, 0, 100));
     } else if (e->atom == ATOM(_NET_WM_STATE)) {
         if (!net_wm_state_valid)
             // collect the old reply
             netWmState();
         net_wm_state_valid = false;
-        xcb_net_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
-                                                   ATOM(_NET_WM_STATE),
-                                                   XCB_ATOM_ATOM, 0, 100);
+        ADD_REQ(7, netWmState,
+                xcb_get_property(xcb_conn, 0, window, ATOM(_NET_WM_STATE),
+                                 XCB_ATOM_ATOM, 0, 100));
     } else if (e->atom == ATOM(WM_STATE)) {
         if (wm_state_query)
             // collect the old reply
             windowState();
-        xcb_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
-                                  ATOM(WM_STATE), ATOM(WM_STATE), 0, 1);
+        ADD_REQ(10, windowState,
+                xcb_get_property(xcb_conn, 0, window, ATOM(WM_STATE),
+                                 ATOM(WM_STATE), 0, 1));
         wm_state_query = true;
         return true;
     } else if (e->atom == ATOM(_MEEGO_STACKING_LAYER)) {
@@ -705,9 +771,10 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
             // collect the old reply
             meegoStackingLayer();
         meego_layer = -1;
-        xcb_meego_layer_cookie = xcb_get_property(xcb_conn, 0, window,
-                                                  ATOM(_MEEGO_STACKING_LAYER),
-                                                  XCB_ATOM_CARDINAL, 0, 1);
+        ADD_REQ(8, meegoStackingLayer,
+                xcb_get_property(xcb_conn, 0, window,
+                                 ATOM(_MEEGO_STACKING_LAYER),
+                                 XCB_ATOM_CARDINAL, 0, 1));
         if (window_state == NormalState) {
             // raise it so that it becomes on top of same-leveled windows
             MCompositeManager *m = (MCompositeManager*)qApp;
@@ -724,7 +791,9 @@ int MWindowPropertyCache::windowState()
 {
     if (wm_state_query) {
         xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, xcb_wm_state_cookie, 0);
+        xcb_get_property_cookie_t c;
+        GET_SEQUENCE(10, windowState);
+        r = xcb_get_property_reply(xcb_conn, c, 0);
         if (r && (unsigned)xcb_get_property_value_length(r) >= sizeof(CARD32))
             window_state = ((CARD32*)xcb_get_property_value(r))[0];
         else {
@@ -740,7 +809,9 @@ int MWindowPropertyCache::windowState()
 void MWindowPropertyCache::buttonGeometryHelper()
 {
     xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, xcb_decor_buttons_cookie, 0);
+    xcb_get_property_cookie_t c;
+    GET_SEQUENCE(13, buttonGeometryHelper);
+    r = xcb_get_property_reply(xcb_conn, c, 0);
     if (!r) {
         decor_buttons_valid = true;
         return;
@@ -786,32 +857,35 @@ const QRect &MWindowPropertyCache::closeButtonGeometry()
 
 unsigned MWindowPropertyCache::orientationAngle()
 {
+    xcb_get_property_cookie_t c;
     xcb_get_property_reply_t *r;
 
-    if (!xcb_orientation_angle_cookie.sequence)
+    GET_SEQUENCE(8, orientationAngle);
+    if (!c.sequence)
         return orientation_angle;
 
     orientation_angle = 0;
-    r = xcb_get_property_reply(xcb_conn, xcb_orientation_angle_cookie, 0);
+    r = xcb_get_property_reply(xcb_conn, c, 0);
     if (r != NULL) {
         if (xcb_get_property_value_length(r) == sizeof(CARD32))
             orientation_angle = *((CARD32*)xcb_get_property_value(r));
         free(r);
     }
-    xcb_orientation_angle_cookie.sequence = 0;
 
     return orientation_angle;
 }
 
 const QRect &MWindowPropertyCache::statusbarGeometry()
 {
-    if (!xcb_statusbar_cookie.sequence)
+    xcb_get_property_cookie_t c;
+    GET_SEQUENCE(2, statusbarGeometry);
+    if (!c.sequence)
         return statusbar_geom;
 
     xcb_get_property_reply_t *r;
     unsigned long x, y, w, h;
     int len;
-    r = xcb_get_property_reply(xcb_conn, xcb_statusbar_cookie, 0);
+    r = xcb_get_property_reply(xcb_conn, c, 0);
     if (!r)
         goto failure;
     len = xcb_get_property_value_length(r);
@@ -825,7 +899,6 @@ const QRect &MWindowPropertyCache::statusbarGeometry()
     h = ((CARD32*)xcb_get_property_value(r))[3];
     statusbar_geom.setRect(x, y, w, h);
     free(r);
-    xcb_statusbar_cookie.sequence = 0;
     return statusbar_geom;
 
 failure:
@@ -839,7 +912,9 @@ const QList<Atom>& MWindowPropertyCache::supportedProtocols()
         return wm_protocols;
 
     xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, xcb_wm_protocols_cookie, 0);
+    xcb_get_property_cookie_t c;
+    GET_SEQUENCE(7, supportedProtocols);
+    r = xcb_get_property_reply(xcb_conn, c, 0);
     if (!r) {
         wm_protocols_valid = true;
         wm_protocols.clear();
@@ -859,7 +934,9 @@ const QList<Atom> &MWindowPropertyCache::netWmState()
     if (!is_valid || net_wm_state_valid)
         return net_wm_state;
     xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, xcb_net_wm_state_cookie, 0);
+    xcb_get_property_cookie_t c;
+    GET_SEQUENCE(7, netWmState);
+    r = xcb_get_property_reply(xcb_conn, c, 0);
     if (!r) {
         net_wm_state_valid = true;
         net_wm_state.clear();
@@ -879,7 +956,9 @@ const QRectF &MWindowPropertyCache::iconGeometry()
     if (!is_valid || icon_geometry_valid)
         return icon_geometry;
     xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, xcb_icon_geom_cookie, 0);
+    xcb_get_property_cookie_t c;
+    GET_SEQUENCE(12, iconGeometry);
+    r = xcb_get_property_reply(xcb_conn, c, 0);
     int len;
     if (!r)
         goto empty_geom;
@@ -925,7 +1004,9 @@ int MWindowPropertyCache::globalAlpha()
     if (!is_valid || global_alpha != -1)
         return global_alpha;
     
-    global_alpha = alphaValue(xcb_global_alpha_cookie);
+    xcb_get_property_cookie_t c;
+    GET_SEQUENCE(10, globalAlpha);
+    global_alpha = alphaValue(c);
     return global_alpha;
 }
 
@@ -934,7 +1015,9 @@ int MWindowPropertyCache::videoGlobalAlpha()
     if (!is_valid || video_global_alpha != -1)
         return video_global_alpha;
     
-    video_global_alpha = alphaValue(xcb_video_global_alpha_cookie);
+    xcb_get_property_cookie_t c;
+    GET_SEQUENCE(10, videoGlobalAlpha);
+    video_global_alpha = alphaValue(c);
     return video_global_alpha;
 }
 
@@ -945,7 +1028,9 @@ MCompAtoms::Type MWindowPropertyCache::windowType()
 
     QVector<Atom> a(MAX_TYPES);
     xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, xcb_window_type_cookie, 0);
+    xcb_get_property_cookie_t c;
+    GET_SEQUENCE(14, windowType);
+    r = xcb_get_property_reply(xcb_conn, c, 0);
     if (r) {
         int len = xcb_get_property_value_length(r);
         if (len >= (int)sizeof(Atom)) {
@@ -986,6 +1071,48 @@ MCompAtoms::Type MWindowPropertyCache::windowType()
     else // fdo spec suggests unknown non-transients must be normal
         window_type = MCompAtoms::NORMAL;
     return window_type;
+}
+
+void MWindowPropertyCache::setRealGeometry(const QRect &rect)
+{
+    if (!is_valid)
+        return;
+    if (!xcb_real_geom)
+        realGeometry();
+    real_geom_valid = true;
+    real_geom = rect;
+
+    // shape needs to be refreshed in case it was the default value
+    // (i.e. the same as geometry), because there is no ShapeNotify
+    if ((shape_rects_valid && QRegion(real_geom) != shape_region)
+        || !shape_rects_valid)
+        shapeRefresh();
+}
+
+const QRect MWindowPropertyCache::realGeometry()
+{
+    if (is_valid && !xcb_real_geom) {
+        xcb_get_geometry_cookie_t c;
+        GET_SEQUENCE(1, realGeometry);
+        xcb_real_geom = xcb_get_geometry_reply(xcb_conn, c, 0);
+        if (xcb_real_geom && !real_geom_valid) {
+            real_geom = QRect(xcb_real_geom->x, xcb_real_geom->y,
+                              xcb_real_geom->width, xcb_real_geom->height);
+            real_geom_valid = true;
+        }
+    }
+    return real_geom;
+}
+
+void MWindowPropertyCache::shapeRefresh()
+{
+    if (!is_valid)
+        return;
+    if (!shape_rects_valid)
+        shapeRegion();
+    shape_rects_valid = false;
+    ADD_REQ(3, shapeRegion,
+            xcb_shape_get_rectangles(xcb_conn, window, ShapeBounding));
 }
 
 // MWindowDummyPropertyCache
