@@ -22,6 +22,7 @@
 
 #include <QRegion>
 #include <QX11Info>
+#include <QHash>
 #include <X11/Xutil.h>
 #include <X11/Xlib-xcb.h>
 #include <xcb/render.h>
@@ -61,43 +62,10 @@ public:
     }
 
     // this is called on ConfigureNotify
-    void setRealGeometry(const QRect &rect) {
-        if (!is_valid)
-            return;
-        if (!xcb_real_geom)
-            xcb_real_geom = xcb_get_geometry_reply(xcb_conn,
-                                                   xcb_real_geom_cookie, 0);
-        real_geom_valid = true;
-        real_geom = rect;
-
-        // shape needs to be refreshed in case it was the default value
-        // (i.e. the same as geometry), because there is no ShapeNotify
-        if ((shape_rects_valid && QRegion(real_geom) != shape_region)
-            || !shape_rects_valid)
-            shapeRefresh();
-    }
-    const QRect realGeometry() {
-        if (is_valid && !xcb_real_geom) {
-            xcb_real_geom = xcb_get_geometry_reply(xcb_conn,
-                                                   xcb_real_geom_cookie, 0);
-            if (xcb_real_geom && !real_geom_valid) {
-                real_geom = QRect(xcb_real_geom->x, xcb_real_geom->y,
-                                  xcb_real_geom->width, xcb_real_geom->height);
-                real_geom_valid = true;
-            }
-        }
-        return real_geom;
-    }
+    void setRealGeometry(const QRect &rect);
+    const QRect realGeometry();
     const QRegion &shapeRegion();
-    void shapeRefresh() {
-        if (!is_valid)
-            return;
-        if (!shape_rects_valid)
-            shapeRegion();
-        shape_rects_valid = false;
-        xcb_shape_rects_cookie = xcb_shape_get_rectangles(xcb_conn, window,
-                                                          ShapeBounding);
-    }
+    void shapeRefresh();
 
     Window winId() const { return window; }
     Window parentWindow() const { return parent_window; }
@@ -274,6 +242,12 @@ signals:
     void alwaysMappedChanged(MWindowPropertyCache *pc);
     void customRegionChanged(MWindowPropertyCache *pc);
 
+private slots:
+    /*!
+     * Reap all pending XCB replies
+     */
+    void collectReplies();
+
 private:
     void init();
     void init_invalid();
@@ -312,27 +286,34 @@ private:
     // geometry is requested only once in the beginning, after that, we
     // use ConfigureNotifys to update the size through setRealGeometry()
     xcb_get_geometry_reply_t *xcb_real_geom;
-    xcb_get_geometry_cookie_t xcb_real_geom_cookie;
-    xcb_get_property_cookie_t xcb_transient_for_cookie;
-    xcb_get_property_cookie_t xcb_meego_layer_cookie;
-    xcb_get_property_cookie_t xcb_is_decorator_cookie;
-    xcb_get_property_cookie_t xcb_window_type_cookie;
-    xcb_get_property_cookie_t xcb_decor_buttons_cookie;
-    xcb_get_property_cookie_t xcb_wm_protocols_cookie;
-    xcb_get_property_cookie_t xcb_wm_state_cookie;
-    xcb_get_property_cookie_t xcb_wm_hints_cookie;
-    xcb_get_property_cookie_t xcb_icon_geom_cookie;
-    xcb_get_property_cookie_t xcb_global_alpha_cookie;
-    xcb_get_property_cookie_t xcb_video_global_alpha_cookie;
-    xcb_get_property_cookie_t xcb_net_wm_state_cookie;
-    xcb_get_property_cookie_t xcb_always_mapped_cookie;
-    xcb_get_property_cookie_t xcb_cannot_minimize_cookie;
-    xcb_get_property_cookie_t xcb_custom_region_cookie;
-    xcb_get_property_cookie_t xcb_orientation_angle_cookie;
-    xcb_get_property_cookie_t xcb_statusbar_cookie;
-    xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
-    xcb_shape_get_rectangles_cookie_t xcb_shape_rects_cookie;
     QRegion shape_region;
+
+    typedef union {   // pointer to the function collecting the reply
+        const QRect (MWindowPropertyCache::*type1)();
+        const QRect &(MWindowPropertyCache::*type2)();
+        const QRegion &(MWindowPropertyCache::*type3)();
+        const QRegion &(MWindowPropertyCache::*type4)(bool);
+        Window (MWindowPropertyCache::*type5)();
+        const XWMHints &(MWindowPropertyCache::*type6)();
+        const QList<Atom>& (MWindowPropertyCache::*type7)();
+        unsigned int (MWindowPropertyCache::*type8)();
+        int (MWindowPropertyCache::*type9)(bool);
+        int (MWindowPropertyCache::*type10)();
+        bool (MWindowPropertyCache::*type11)();
+        const QRectF &(MWindowPropertyCache::*type12)();
+        void (MWindowPropertyCache::*type13)();
+        MCompAtoms::Type (MWindowPropertyCache::*type14)();
+    } colF;
+    void addReq(colF, int, unsigned int);
+    unsigned int getSequence(colF);
+    typedef struct {
+        int type; // tells which union member to use
+        unsigned int sequence;
+        colF f;
+    } xcbReq;
+    QHash<void*, xcbReq*> reqHash;
+    bool getSequence_no_remove;
+    QTimer *collect_timer;
 
     static xcb_connection_t *xcb_conn;
     Damage damage_object;
