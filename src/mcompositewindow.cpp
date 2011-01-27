@@ -109,7 +109,8 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         // never paint InputOnly windows
         window_visible = !is_app;
         setVisible(window_visible); // newly_mapped used here
-    }
+    } else
+        window_visible = false;
     origPosition = QPointF(pc->realGeometry().x(), pc->realGeometry().y());
 
     if (fadeRect.isEmpty()) {
