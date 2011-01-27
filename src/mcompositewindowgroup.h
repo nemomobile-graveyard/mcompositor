@@ -34,7 +34,7 @@ class MCompositeWindowGroup: public MCompositeWindow
     MCompositeWindowGroup(MTexturePixmapItem* mainWindow);
     virtual ~MCompositeWindowGroup();
     
-    void addChildWindow(MTexturePixmapItem* window);
+    bool addChildWindow(MTexturePixmapItem* window);
     void removeChildWindow(MTexturePixmapItem* window);
     GLuint texture();
     
