@@ -49,7 +49,7 @@ void MWindowPropertyCache::addReq(colF func, int type,
     item->type = type;
     item->sequence = sequence;
     item->f = func;
-    Q_ASSERT(!reqHash.contains(id)); // only one request at a time
+    Q_ASSERT(!reqHash.contains((void*)item->f.type1)); // only one request at a time
     reqHash[(void*)item->f.type1] = item;
 }
 
