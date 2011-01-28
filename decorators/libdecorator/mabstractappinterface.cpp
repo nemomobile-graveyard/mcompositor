@@ -97,8 +97,6 @@ MAbstractAppInterface::MAbstractAppInterface(QObject *parent)
     : QObject(parent),
       d_ptr(new MAbstractAppInterfacePrivate())
 {
-    Q_D(MAbstractAppInterface);
-
     qDBusRegisterMetaType<IPCAction>();
     qDBusRegisterMetaType<IPCActionList>();
 
