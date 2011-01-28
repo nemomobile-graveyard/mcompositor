@@ -2035,7 +2035,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
      * (incoming call), at the same time preserving their mapping order */
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
                     !cw->propertyCache()->isDecorator() &&
-        cw->iconifyState() == MCompositeWindow::NoIconifyState &&
+        cw->propertyCache()->windowState() == NormalState &&
         (cw->propertyCache()->windowTypeAtom()
                                   == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
          cw->propertyCache()->meegoStackingLayer() == 4
@@ -2044,7 +2044,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     // Meego layer 5
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
                    cw->propertyCache()->meegoStackingLayer() == 5
-                   && cw->iconifyState() == MCompositeWindow::NoIconifyState)
+                   && cw->propertyCache()->windowState() == NormalState)
     /* raise all non-transient notifications (transient ones were already
      * handled above) */
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
@@ -2053,7 +2053,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     // Meego layer 6
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
                    cw->propertyCache()->meegoStackingLayer() == 6
-                   && cw->iconifyState() == MCompositeWindow::NoIconifyState)
+                   && cw->propertyCache()->windowState() == NormalState)
 
     int top_decorated_i;
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
