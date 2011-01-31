@@ -153,6 +153,23 @@ MTexturePixmapItem::MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
     init();
 }
 
+static void freeEglImage(MTexturePixmapPrivate *d)
+{
+    if (d->egl_image != EGL_NO_IMAGE_KHR) {
+        /* Free EGLImage from the texture */
+        glBindTexture(GL_TEXTURE_2D, d->textureId);
+        /*
+         * Texture size 64x64 is minimum required by GL. But we can assume 0x0
+         * works with modern drivers/hw.
+         */
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
+        d->egl_image = EGL_NO_IMAGE_KHR;
+    }
+}
+
 void MTexturePixmapItem::saveBackingStore()
 {
     d->saveBackingStore();
@@ -160,12 +177,7 @@ void MTexturePixmapItem::saveBackingStore()
 
 void MTexturePixmapItem::rebindPixmap()
 {
-    if (!d->custom_tfp && d->egl_image != EGL_NO_IMAGE_KHR) {
-        eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
-        d->egl_image = EGL_NO_IMAGE_KHR;
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
-
+    freeEglImage(d);
     if (!d->windowp) {
         d->egl_image = EGL_NO_IMAGE_KHR;
         return;
@@ -184,11 +196,7 @@ void MTexturePixmapItem::enableDirectFbRendering()
 
     d->direct_fb_render = true;
 
-    if(!d->custom_tfp &&  d->egl_image != EGL_NO_IMAGE_KHR) {
-        glBindTexture(GL_TEXTURE_2D, 0);
-        eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
-        d->egl_image = EGL_NO_IMAGE_KHR;
-    }
+    freeEglImage(d);
     if (d->windowp) {
         XFreePixmap(QX11Info::display(), d->windowp);
         d->windowp = 0;
@@ -231,13 +239,7 @@ void MTexturePixmapItem::initCustomTfp()
 
 void MTexturePixmapItem::cleanup()
 {
-    EGLDisplay dpy = d->eglresource->dpy;
-
-    if (d->egl_image != EGL_NO_IMAGE_KHR) {
-        EGLImageKHR egl_image =  d->egl_image;
-        eglDestroyImageKHR(dpy, egl_image);
-        d->egl_image = EGL_NO_IMAGE_KHR;
-    }
+    freeEglImage(d);
     d->eglresource->texman->closeTexture(d->textureId);
 
     // Work-around for crashes on some versions of below Qt 4.6
