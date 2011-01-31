@@ -636,6 +636,7 @@ static pid_t rotate_screen(char *o, QString& stdOut)
 		string Screen.TopEdge left
 		*/
 		char *args[] = {(char*)"/usr/bin/context-provide",
+			        (char*)"--no-input",
 			        (char*)"org.freedesktop.ContextKit.Commander",
 				(char*)"string", (char*)"Screen.TopEdge",
 				NULL, NULL};
@@ -821,6 +822,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 	            if (fork())
 	                return true;
 		    char *args[] = {(char*)"/usr/bin/context-provide",
+			        (char*)"--no-input",
 			        (char*)"org.freedesktop.ContextKit.Commander",
 				(char*)"string", (char*)"Phone.Call",
 				(char*)"active", NULL};

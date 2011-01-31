@@ -53,12 +53,12 @@ time.sleep(1)
 
 # simulate a phone call
 fd = os.popen('windowctl P')
-time.sleep(15)
+time.sleep(1)
 
 # create a fullscreen application window
 fd = os.popen('windowctl fn')
 app_win = fd.readline().strip()
-time.sleep(2)
+time.sleep(1)
 
 fd = os.popen('windowstack m')
 s = fd.read(5000)
