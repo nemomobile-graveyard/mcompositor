@@ -91,7 +91,6 @@ MCompositeWindowGroup::MCompositeWindowGroup(MTexturePixmapItem* mainWindow)
     mainWindow->d->current_window_group = this;
     connect(mainWindow, SIGNAL(destroyed()), SLOT(deleteLater()));
     init();
-    updateWindowPixmap();
     setZValue(mainWindow->zValue());
     stackBefore(mainWindow);
 }
@@ -186,7 +185,8 @@ static bool behindCompare(MTexturePixmapItem* a, MTexturePixmapItem* b)
 /*!
   Adds the given \a window to this group except if it's already in the group.
   The window's transformations will remain unmodified.  Returns whether the
-  \a window has been added.
+  \a window has been added.  You're supposed to call updateWindowPixmap()
+  when you're finished adding children.
  */
 bool MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
 {
@@ -201,7 +201,7 @@ bool MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
     // for back to front rendering. Could use depth buffer attachment at some 
     // point so this might be unecessary
     qSort(d->item_list.begin(), d->item_list.end(), behindCompare);
-    updateWindowPixmap(); // FIXME: don't do this for each added child
+
     return true;
 }
 
@@ -253,7 +253,7 @@ void MCompositeWindowGroup::paint(QPainter* painter,
         return;
     }
 #endif
-    
+
     glBindTexture(GL_TEXTURE_2D, d->texture);    
     if (d->main_window->propertyCache()->hasAlpha() || 
         (opacity() < 1.0f && !dimmedEffect()) ) {
@@ -270,6 +270,8 @@ void MCompositeWindowGroup::windowRaised()
 {
 }
 
+// Renders @main_window and all children into an FBO.
+// Unredirects all involved windows.
 void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
                                                Time t)
 {
@@ -299,12 +301,15 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
     }
     bool orig_value = d->main_window->d->inverted_texture;
     d->main_window->d->inverted_texture = false;
+    // The redirection method is expected not to play with GL_FRAMEBUFFER.
+    d->main_window->enableRedirectedRendering();
     d->main_window->renderTexture(d->main_window->sceneTransform());
     d->main_window->d->inverted_texture = orig_value;
     for (int i = 0; i < d->item_list.size(); ++i) {
         MTexturePixmapItem* item = d->item_list[i];
         orig_value = item->d->inverted_texture;
         item->d->inverted_texture = false;
+        d->main_window->enableRedirectedRendering();
         item->renderTexture(item->sceneTransform());
         item->d->inverted_texture = orig_value;
     }
