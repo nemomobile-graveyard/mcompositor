@@ -31,6 +31,8 @@
 #include <X11/extensions/Xdamage.h>
 #include "mcompatoms_p.h"
 
+class MCSmartTimer;
+
 /*!
  * This is a class for caching window property values for a window.
  */
@@ -63,18 +65,10 @@ public:
 
     // this is called on ConfigureNotify
     void setRealGeometry(const QRect &rect);
-    const QRect realGeometry();
-    const QRegion &shapeRegion();
-    void shapeRefresh();
 
     Window winId() const { return window; }
     Window parentWindow() const { return parent_window; }
     void setParentWindow(Window w) { parent_window = w; }
-
-    /*!
-     * Returns value of TRANSIENT_FOR property.
-     */
-    Window transientFor();
 
     /*!
      * Returns true if we should give focus to this window.
@@ -87,30 +81,12 @@ public:
     XID windowGroup();
 
     /*!
-     * Returns list of WM_PROTOCOLS of the window.
-     */
-    const QList<Atom>& supportedProtocols();
-
-    /*!
-     * Returns list of _NET_WM_STATE of the window.
-     */
-    const QList<Atom>& netWmState();
-
-    /*!
      * Returns list of transients of the window.
      */
     const QList<Window>& transientWindows() const { return transients; }
 
     // used to set the atom list now, for immediate effect in e.g. stacking
-    void setNetWmState(const QList<Atom>& s) {
-        if (!is_valid)
-            return;
-        if (!net_wm_state_valid)
-            // receive the obsolete query
-            netWmState();
-        net_wm_state_valid = true;
-        net_wm_state = s;
-    }
+    void setNetWmState(const QList<Atom>& s);
 
     /*!
      * Returns true if this window has received MapRequest but not
@@ -137,11 +113,6 @@ public:
             attrs->map_state = XCB_MAP_STATE_UNMAPPED;
     }
 
-    /*!
-     * Returns the first cardinal of WM_STATE of this window
-     */
-    int windowState();
-
     void setWindowState(int state) { window_state = state; }
     
     /*!
@@ -159,63 +130,68 @@ public:
         return attrs->_class == XCB_WINDOW_CLASS_INPUT_ONLY;
     }
 
-    const XWMHints &getWMHints();
-
     const xcb_get_window_attributes_reply_t* windowAttributes() const {
             return attrs; };
-
-    const QRectF &iconGeometry();
 
     const QRect &homeButtonGeometry();
     const QRect &closeButtonGeometry();
 
-    /*!
-     * Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 6].
-     */
+public slots:
+    bool isDecorator();
+    MCompAtoms::Type windowType();
+
+    const XWMHints &getWMHints();
+    const QRect realGeometry();
+    const QRectF &iconGeometry();
+    const QRegion &shapeRegion();
+    void shapeRefresh();
+
+    bool hasAlpha();
+    int globalAlpha();
+    int videoGlobalAlpha();
+
+    //! Returns value of TRANSIENT_FOR property.
+    Window transientFor();
+
+    //! Returns the first cardinal of WM_STATE of this window
+    int windowState();
+
+    //! Returns list of _NET_WM_STATE of the window.
+    const QList<Atom>& netWmState();
+
+    //! Returns list of WM_PROTOCOLS of the window.
+    const QList<Atom>& supportedProtocols();
+
+    //! Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 6].
     unsigned int meegoStackingLayer();
 
-    /*!
-     * Returns value of _MEEGOTOUCH_ALWAYS_MAPPED.
-     */
-    int alwaysMapped();
-
-    /*!
-     * Returns value of _MEEGOTOUCH_CANNOT_MINIMIZE.
-     */
-    int cannotMinimize();
-
-    /*!
-     * Returns value of _MEEGOTOUCH_DESKTOP_VIEW (makes sense for desktop only).
-     */
-    int desktopView(bool request_only = false);
-
-    /*!
-     * Returns value of _MEEGOTOUCH_CUSTOM_REGION.
-     */
-    const QRegion &customRegion(bool request_only = false);
-
-    /*!
-     * Returns the value of _MEEGOTOUCH_ORIENTATION_ANGLE.
-     */
+    //! Returns the value of _MEEGOTOUCH_ORIENTATION_ANGLE.
     unsigned orientationAngle();
 
-    /*!
-     * Returns the value of _MEEGOTOUCH_MSTATUSBAR_GEOMETRY.
-     */
+    //! Returns the value of _MEEGOTOUCH_MSTATUSBAR_GEOMETRY.
     const QRect &statusbarGeometry();
 
+    //! Returns value of _MEEGOTOUCH_ALWAYS_MAPPED.
+    int alwaysMapped();
+
+    //! Returns value of _MEEGOTOUCH_CANNOT_MINIMIZE.
+    int cannotMinimize();
+
+    //! Returns value of _MEEGOTOUCH_CUSTOM_REGION.
+    const QRegion &customRegion();
+    void customRegion(bool request_only);
+
+    //! Returns value of _MEEGOTOUCH_DESKTOP_VIEW (makes sense for desktop only).
+    int desktopView();
+    void desktopView(bool request_only);
+
+public:
     /*!
      * Called on PropertyNotify for this window.
      * Returns true if we should re-check stacking order.
      */
     bool propertyEvent(XPropertyEvent *e);
 
-    MCompAtoms::Type windowType();
-
-    bool hasAlpha();
-    bool isDecorator();
-    int globalAlpha();
-    int videoGlobalAlpha();
     bool is_valid;
 
     static void set_xcb_connection(xcb_connection_t *c) {
@@ -243,77 +219,85 @@ signals:
     void customRegionChanged(MWindowPropertyCache *pc);
 
 private slots:
-    /*!
-     * Reap all pending XCB replies
-     */
-    void collectReplies();
+    void buttonGeometryHelper();
 
 private:
     void init();
     void init_invalid();
-    int alphaValue(xcb_get_property_cookie_t c);
-    void buttonGeometryHelper();
+    int alphaValue(const QLatin1String me);
 
     Atom window_type_atom;
     Window transient_for;
     QList<Window> transients;
     QList<Atom> wm_protocols;
-    bool wm_protocols_valid;
-    bool icon_geometry_valid;
-    bool decor_buttons_valid;
-    bool shape_rects_valid;
-    bool real_geom_valid;
-    bool net_wm_state_valid;
-    bool wm_state_query;
     QRectF icon_geometry;
-    int has_alpha;
+    bool has_alpha;
     int global_alpha;
     int video_global_alpha;
-    int is_decorator;
+    bool is_decorator;
     QList<Atom> net_wm_state;
+    // geometry is requested only once in the beginning, after that, we
+    // use ConfigureNotifys to update the size through setRealGeometry()
     QRect req_geom, real_geom, statusbar_geom;
     QRect home_button_geom, close_button_geom;
     XWMHints *wmhints;
     xcb_get_window_attributes_reply_t *attrs;
-    int meego_layer, window_state;
+    unsigned meego_layer;
+    int window_state;
     MCompAtoms::Type window_type;
     Window window, parent_window;
     int always_mapped, cannot_minimize, desktop_view;
     bool being_mapped, dont_iconify;
-    QRegion *custom_region;
-    bool custom_region_request_fired;
+    QRegion custom_region;
     unsigned orientation_angle;
-    // geometry is requested only once in the beginning, after that, we
-    // use ConfigureNotifys to update the size through setRealGeometry()
-    xcb_get_geometry_reply_t *xcb_real_geom;
     QRegion shape_region;
 
-    typedef union {   // pointer to the function collecting the reply
-        const QRect (MWindowPropertyCache::*type1)();
-        const QRect &(MWindowPropertyCache::*type2)();
-        const QRegion &(MWindowPropertyCache::*type3)();
-        const QRegion &(MWindowPropertyCache::*type4)(bool);
-        Window (MWindowPropertyCache::*type5)();
-        const XWMHints &(MWindowPropertyCache::*type6)();
-        const QList<Atom>& (MWindowPropertyCache::*type7)();
-        unsigned int (MWindowPropertyCache::*type8)();
-        int (MWindowPropertyCache::*type9)(bool);
-        int (MWindowPropertyCache::*type10)();
-        bool (MWindowPropertyCache::*type11)();
-        const QRectF &(MWindowPropertyCache::*type12)();
-        void (MWindowPropertyCache::*type13)();
-        MCompAtoms::Type (MWindowPropertyCache::*type14)();
-    } colF;
-    void addReq(colF, int, unsigned int);
-    unsigned int getSequence(colF);
-    typedef struct {
-        int type; // tells which union member to use
-        unsigned int sequence;
-        colF f;
-    } xcbReq;
-    QHash<void*, xcbReq*> reqHash;
-    bool getSequence_no_remove;
-    QTimer *collect_timer;
+    // @requests stores the state of the property requests, indexed by
+    // the SLOT() of the collector function (isDecorator(), customRegion(),
+    // etc).  If the collector is not in the hash then the property value
+    // has not requested yet.  If the value is non-zero a request is ongoing.
+    // Otherwise if the value is zero the property value is considered up
+    // to date.
+    //
+    // When the object is initialized we request the values of some
+    // properties.  When a property value we're interested in changes
+    // we cancel any ongoing requests about that property and make a
+    // new one.  On the destruction of the object we cancel all requests.
+    //
+    // When a collector function is called and it doesn't find itself in
+    // the @requests table it makes a requesgts and waits for the reply.
+    // If it see that a request has been ongoing it just waits for the
+    // reply.  Otherwise, if it finds that the property value is known
+    // and has not been changed it simply returns it.  If the property
+    // cache object is not valid then it just returns the default value
+    // set by init().
+    //
+    // When a request is made @collect_timer is restarted, and we collect
+    // the reply unconditionally when it expires.
+    MCSmartTimer *collect_timer;
+    QHash<const QLatin1String, unsigned> requests;
+    bool isUpdate(const QLatin1String collector);
+    bool requestPending(const QLatin1String collector);
+    void addRequest(const QLatin1String collector, unsigned cookie);
+    void requestReplied(const QLatin1String collector);
+    void cancelRequest(const QLatin1String collector);
+    unsigned requestProperty(Atom prop, Atom type, unsigned n = 1);
+
+    // Overloads to make the routines above callable with other types.
+    bool isUpdate(const char *collector)
+        { return isUpdate(QLatin1String(collector)); }
+    bool requestPending(const char *collector)
+        { return requestPending(QLatin1String(collector)); }
+    void addRequest(const char *collector, unsigned cookie)
+        { addRequest(QLatin1String(collector), cookie); }
+    void requestReplied(const char *collector)
+        { requestReplied(QLatin1String(collector)); }
+    void cancelRequest(const char *collector)
+        { cancelRequest(QLatin1String(collector)); }
+    unsigned requestProperty(MCompAtoms::Atoms prop, Atom type,
+                             unsigned n = 1)
+        { return requestProperty(MCompAtoms::instance()->getAtom(prop),
+                                 type, n); }
 
     static xcb_connection_t *xcb_conn;
     Damage damage_object;
