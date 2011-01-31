@@ -19,7 +19,7 @@
 #ifndef MDECORATORWINDOW_H
 #define MDECORATORWINDOW_H
 
-#include <MWindow>
+#include <MApplicationWindow>
 #include <MHomeButtonPanel>
 #include <MEscapeButtonPanel>
 #include <MNavigationBar>
@@ -38,8 +38,11 @@
 
 class MSceneManager;
 class MDecorator;
+class MAction;
+class MApplicationMenu;
+class MDecoratorAppInterface;
 
-class MDecoratorWindow : public MWindow
+class MDecoratorWindow : public MApplicationWindow
 {
     Q_OBJECT
 
@@ -60,6 +63,7 @@ public:
     void setInputRegion();
     void managedWindowChanged(Qt::HANDLE);
     void showQueryDialog(bool visible);
+    void addActions(QList<MAction*> actions);
 
 protected:
     virtual void closeEvent(QCloseEvent * event );
@@ -69,6 +73,8 @@ private slots:
     void screenRotated(const M::Orientation &orientation);
     void yesButtonClicked();
     void noButtonClicked();
+    void menuAppearing();
+    void menuDisappeared();
 
 signals:
 
@@ -76,6 +82,7 @@ signals:
     void escapeClicked();
 
 private:
+    void setWindowVisibility(Window window, bool visible);
     void setSceneSize();
     void setMDecoratorWindowProperty();
 
@@ -89,7 +96,10 @@ private:
     bool only_statusbar, requested_only_statusbar;
     Atom onlyStatusbarAtom, managedWindowAtom;
     MDecorator *d;
+    MDecoratorAppInterface *app;
     MLocale locale;
+    bool menuVisible;
+
 
     Q_DISABLE_COPY(MDecoratorWindow);
 };

@@ -3,7 +3,7 @@ TEMPLATE = app
 DEPENDPATH += .
 INCLUDEPATH += . ../libdecorator
 CONFIG += meegotouch release
-QT += opengl
+QT += opengl dbus
 
 LIBS += ../libdecorator/libdecorator.so
 

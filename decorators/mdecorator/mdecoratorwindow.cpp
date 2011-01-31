@@ -21,14 +21,22 @@
 
 #include <MSceneManager>
 #include <MScene>
+#include <MApplicationMenu>
+#include <MApplicationPage>
 #include <MLabel>
 #include <QGraphicsLinearLayout>
+#include <mbutton.h>
+#include <mwidgetaction.h>
+#include <mcomponentdata.h>
+#include "mondisplaychangeevent.h"
 
 #include <QApplication>
 #include <QDesktopWidget>
 #include <QX11Info>
 #include <QGLFormat>
 #include <QGLWidget>
+#include <QLabel>
+#include <QWindowStateChangeEvent>
 
 #include "mdecoratorwindow.h"
 
@@ -40,6 +48,7 @@
 #include <X11/extensions/shape.h>
 
 #include <mabstractdecorator.h>
+#include <mabstractappinterface.h>
 #include <mdesktopentry.h>
 #include <mbuttonmodel.h>
 
@@ -99,6 +108,129 @@ private:
     MDecoratorWindow *decorwindow;
 };
 
+class MDecoratorAppInterface : public MAbstractAppInterface
+{
+    Q_OBJECT
+
+public:
+    MDecoratorAppInterface(MDecoratorWindow *p)
+        : MAbstractAppInterface(p)
+        , decorwindow(p)
+    {
+    }
+
+    void setManagedWindow(WId window)
+    {
+        currentWindow = window;
+    }
+
+    virtual void actionsChanged(QList<IPCAction> newMenu, WId window)
+    {
+        if (window != currentWindow)
+            return;
+
+        //qCritical()<<__PRETTY_FUNCTION__<<"new Actions:"<<newMenu.count();
+        QList<MAction*> menu;
+        actionHash.clear();
+
+        foreach (IPCAction act, newMenu) {
+            MAction* mact = createMAction(act);
+            menu.append(mact);
+        }
+        decorwindow->addActions(menu);
+    }
+
+public slots:
+    void actionTriggered(bool val)
+    {
+        qCritical()<<"triggered";
+        if (!sender() || !qobject_cast<MAction*>(sender()))
+            return;
+
+        MAction* act = static_cast<MAction*>(sender());
+        if (actionHash.contains(act))
+            emit triggered(actionHash.value(act).id().toString(), val);
+    }
+
+    void actionToggled(bool val)
+    {
+        qCritical()<<"toggled";
+        if (!sender() || !qobject_cast<MAction*>(sender()))
+            return;
+
+        MAction* act = static_cast<MAction*>(sender());
+        if (actionHash.contains(act))
+            emit toggled(actionHash.value(act).id().toString(), val);
+    }
+
+private:
+
+    MAction* createMAction(const IPCAction& act)
+    {
+        //Normal MActions doesn't support custom QIcons, therefore we use MButtons and MWidgetAction
+        //qCritical()<<"creating Action: checkable"<<act.isCheckable()<<"checked"<<act.isChecked();
+
+        MAction* mact;
+        if (act.type() == IPCAction::MenuAction) {
+            mact = new MAction(decorwindow);
+            mact->setText(act.text());
+            mact->setCheckable(act.isCheckable());
+            mact->setChecked(act.isChecked());
+            mact->setIcon(act.icon());
+            mact->setLocation(MAction::ApplicationMenuLocation);
+        } else {
+            mact = new MWidgetAction(decorwindow);
+            MButton* mbut = new MButton;
+            mbut->setMinimumSize(0, 0);
+            mbut->setObjectName("toolbaractioncommand");
+            mbut->setIcon(act.icon());
+            if (act.icon().isNull())
+                mbut->setText(act.text());
+            static_cast<MWidgetAction*>(mact)->setWidget(mbut);
+            mact->setText(act.text());
+            mact->setCheckable(act.isCheckable());
+            mact->setChecked(act.isChecked());
+            mact->setLocation(MAction::ToolBarLocation);
+
+            updateViewAndStyling(mbut, false);
+
+            if (act.isCheckable())
+                connect(mbut, SIGNAL(toggled(bool)), mact, SIGNAL(toggled(bool)));
+            else
+                connect(mbut, SIGNAL(clicked(bool)), mact, SIGNAL(triggered(bool)));
+        }
+        connect(mact, SIGNAL(triggered(bool)), SLOT(actionTriggered(bool)));
+        connect(mact, SIGNAL(toggled(bool)), SLOT(actionToggled(bool)));
+
+        actionHash[mact] = act;
+        return mact;
+    }
+
+    //This method is copied from libmeegotouch (MApplicationMenuView), but slightly changed
+    void updateViewAndStyling(MButton *button, bool buttonGroup) const
+    {
+        QString toolBarButtonDefaultViewType = buttonGroup ? "toolbartab" : "toolbar";
+
+        if (button && button->icon().isNull()) {
+            // Only label -> could use different styling
+            button->setTextVisible(true); //In this case we will show label (as it is all we have)
+            if (button->viewType() != toolBarButtonDefaultViewType)
+                button->setViewType(toolBarButtonDefaultViewType);
+            button->setStyleName("ToolBarLabelOnlyButton");
+        } else {
+            if (button->viewType() != toolBarButtonDefaultViewType)
+                button->setViewType(toolBarButtonDefaultViewType);
+            button->setStyleName("ToolBarIconButton");
+            button->setTextVisible(true);
+        }
+    }
+
+    QHash<MAction*, IPCAction> actionHash;
+
+    MDecoratorWindow *decorwindow;
+    WId currentWindow;
+};
+
 #if 0
 static QRect windowRectFromGraphicsItem(const QGraphicsView &view,
                                         const QGraphicsItem &item)
@@ -112,9 +244,14 @@ static QRect windowRectFromGraphicsItem(const QGraphicsView &view,
 #endif
 
 MDecoratorWindow::MDecoratorWindow(QWidget *parent)
-    : MWindow(parent),
+    : MApplicationWindow(parent),
+      homeButtonPanel(0),
+      escapeButtonPanel(0),
+      navigationBar(0),
+      statusBar(0),
       messageBox(0),
-      managed_window(0)
+      managed_window(0),
+      menuVisible(false)
 {
     locale.addTranslationPath(TRANSLATION_INSTALLDIR);
     locale.installTrCatalog("recovery");
@@ -125,25 +262,51 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     managedWindowAtom = XInternAtom(QX11Info::display(),
                                     "_MDECORATOR_MANAGED_WINDOW", False);
 
-    statusBar = new MStatusBar();
-    navigationBar = new MNavigationBar();
-    QVariant hasclose = navigationBar->property("hasCloseButton");
-    if (hasclose.isValid() && hasclose.toBool()) {
-        escapeButtonPanel = new MEscapeButtonPanel();
-        connect(escapeButtonPanel, SIGNAL(buttonClicked()), this,
-                SIGNAL(escapeClicked()));
-    } else // The current theme doesn't want an escape button.
-        escapeButtonPanel = NULL;
+    foreach (QGraphicsItem* item, items()) {
+        if (!homeButtonPanel) {
+            homeButtonPanel = dynamic_cast<MHomeButtonPanel*>(item);
+            if (homeButtonPanel)
+                continue;
+        }
+        if (!escapeButtonPanel) {
+            escapeButtonPanel = dynamic_cast<MEscapeButtonPanel*>(item);
+            if (escapeButtonPanel)
+                continue;
+        }
+        if (!navigationBar) {
+            navigationBar = dynamic_cast<MNavigationBar*>(item);
+            if (navigationBar)
+                continue;
+        }
+        if (!statusBar) {
+            statusBar = dynamic_cast<MStatusBar*>(item);
+            if (statusBar)
+                continue;
+        }
+    }
+
+
+    if (!homeButtonPanel || !navigationBar || !statusBar) {
+        qFatal("Meego elements not found");
+    }
 
     homeButtonPanel = new MHomeButtonPanel();
     connect(homeButtonPanel, SIGNAL(buttonClicked()), this,
             SIGNAL(homeClicked()));
+    if (escapeButtonPanel)
+        connect(escapeButtonPanel, SIGNAL(buttonClicked()), this,
+                SIGNAL(escapeClicked()));
 
-    sceneManager()->appearSceneWindowNow(statusBar);
+    connect(navigationBar, SIGNAL(viewmenuTriggered()), SLOT(menuAppearing()));
+
+    /*sceneManager()->appearSceneWindowNow(statusBar);
+    sceneManager()->appearSceneWindowNow(menu);*/
     setOnlyStatusbar(false);
     requested_only_statusbar = false;
 
     d = new MDecorator(this);
+    app = new MDecoratorAppInterface(this);
+
     connect(this, SIGNAL(homeClicked()), d, SLOT(minimize()));
     connect(this, SIGNAL(escapeClicked()), d, SLOT(close()));
     connect(sceneManager(),
@@ -174,6 +337,8 @@ void MDecoratorWindow::noButtonClicked()
 
 void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w)
 {
+    app->setManagedWindow(w);
+    app->actionsChanged(QList<IPCAction>(), w);
     if (w != managed_window && messageBox)
         showQueryDialog(false);
     managed_window = w;
@@ -219,8 +384,32 @@ bool MDecoratorWindow::x11Event(XEvent *e)
         if (data)
             XFree(data);
         return true;
+    } else if (e->type == VisibilityNotify) {
+        XVisibilityEvent *xevent = (XVisibilityEvent *) e;
+
+        switch (xevent->state) {
+        case VisibilityFullyObscured:
+            setWindowVisibility(xevent->window, false);
+            break;
+        case VisibilityUnobscured:
+        case VisibilityPartiallyObscured:
+            setWindowVisibility(xevent->window, true);
+            break;
+        default:
+            break;
+        }
     }
     return false;
+}
+
+void MDecoratorWindow::setWindowVisibility(Window window, bool visible)
+{
+    Q_FOREACH(MWindow * win, MComponentData::instance()->windows()) {
+        if (win && win->effectiveWinId() == window) {
+            MOnDisplayChangeEvent ev(visible, QRectF(QPointF(0, 0), win->visibleSceneSize()));
+            QApplication::instance()->sendEvent(win, &ev);
+        }
+    }
 }
 
 void MDecoratorWindow::showQueryDialog(bool visible)
@@ -314,9 +503,8 @@ void MDecoratorWindow::setInputRegion()
     static QRegion prev_region;
     QRegion region;
     const QRegion fs(QApplication::desktop()->screenGeometry());
-
     // region := decoration region
-    if (messageBox) {
+    if (messageBox || menuVisible) {
         // Occupy all space.
         region = fs;
     } else {
@@ -412,5 +600,66 @@ void MDecoratorWindow::closeEvent(QCloseEvent * event )
     // never close the decorator!
     return event->ignore();
 }
+
+void MDecoratorWindow::addActions(QList<MAction*> new_actions)
+{
+    //qCritical()<<__PRETTY_FUNCTION__;
+
+    setUpdatesEnabled(false);
+
+    navigationBar->setArrowIconVisible(false);
+
+    QList<QAction*> oldactions = actions();
+
+    //qCritical()<<"deleting Actions";
+    foreach (QAction* act, oldactions)
+        removeAction(act);
+
+    //qCritical()<<"inserting Actions";
+    foreach (MAction* act, new_actions) {
+        //the signals have to be disabled because LMT using setChecked on the action and that would lead to an trigger/toggle signal
+        act->blockSignals(true);
+        if (act->location() == MAction::ApplicationMenuLocation)
+            navigationBar->setArrowIconVisible(true);
+        this->addAction(act);
+        act->blockSignals(false);
+    }
+
+
+
+    setUpdatesEnabled(true);
+}
+
+void MDecoratorWindow::menuAppearing()
+{
+    //qCritical()<<__PRETTY_FUNCTION__;
+    if (menuVisible)
+        return;
+    menuVisible=true;
+    foreach (QGraphicsItem* item, items()) {
+        MApplicationMenu *menu = dynamic_cast<MApplicationMenu*>(item);
+        if (menu) {
+            connect(menu, SIGNAL(disappeared()), SLOT(menuDisappeared()));
+            connect(this, SIGNAL(displayExited()), menu, SLOT(disappear()));
+        }
+    }
+
+    QPixmap pix = QPixmap::grabWindow(winId());
+    setBackgroundBrush(pix);
+
+    setInputRegion();
+}
+
+void MDecoratorWindow::menuDisappeared()
+{
+    //qCritical()<<__PRETTY_FUNCTION__;
+    if (!menuVisible)
+        return;
+    menuVisible=false;
+    setInputRegion();
+    setBackgroundBrush(QBrush(Qt::NoBrush));
+}
+
+
 
 #include "mdecoratorwindow.moc"

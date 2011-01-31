@@ -2035,7 +2035,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
      * (incoming call), at the same time preserving their mapping order */
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
                     !cw->propertyCache()->isDecorator() &&
-        cw->iconifyState() == MCompositeWindow::NoIconifyState &&
+        cw->propertyCache()->windowState() == NormalState &&
         (cw->propertyCache()->windowTypeAtom()
                                   == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
          cw->propertyCache()->meegoStackingLayer() == 4
@@ -2044,7 +2044,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     // Meego layer 5
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
                    cw->propertyCache()->meegoStackingLayer() == 5
-                   && cw->iconifyState() == MCompositeWindow::NoIconifyState)
+                   && cw->propertyCache()->windowState() == NormalState)
     /* raise all non-transient notifications (transient ones were already
      * handled above) */
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
@@ -2053,7 +2053,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     // Meego layer 6
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
                    cw->propertyCache()->meegoStackingLayer() == 6
-                   && cw->iconifyState() == MCompositeWindow::NoIconifyState)
+                   && cw->propertyCache()->windowState() == NormalState)
 
     int top_decorated_i;
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
@@ -2179,6 +2179,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                  pc = cw->propertyCache();
              if (cw && cw->isMapped() && !pc->hasAlpha() &&
                  !pc->isDecorator() && !cw->hasTransitioningWindow() &&
+                 // allow input windows to composite their app, see NB#223280
+                 pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
                  /* FIXME: decorated window is assumed to be fullscreen */
                  (cw->needDecoration() ||
                   fs_r.subtracted(pc->shapeRegion()).isEmpty())) {
@@ -3645,14 +3647,15 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
 
 void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
 {
-    for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
-            it != windows.end(); ++it) {
-        MCompositeWindow *tp = it.value();
+    // redirect from bottom to top
+    for (int i = 0; i < stacking_list.size(); ++i) {
+        Window w = stacking_list.at(i);
+        MCompositeWindow *tp = COMPOSITE_WINDOW(w);
         if (tp->isValid() && tp->isDirectRendered() && tp->propertyCache()
             && (tp->propertyCache()->isMapped()
                 || tp->propertyCache()->beingMapped()))
             ((MTexturePixmapItem *)tp)->enableRedirectedRendering();
-        setWindowDebugProperties(it.key());
+        setWindowDebugProperties(w);
     }
     compositing = true;
     // no delay: application does not need to redraw when maximizing it
