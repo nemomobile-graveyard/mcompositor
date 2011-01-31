@@ -32,7 +32,7 @@ Description: commandline tools for testing mcompositor
 
 Package: mcompositor-functional-tests
 Architecture: any
-Depends: mcompositor, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils, x11-utils, mcompositor-utils
+Depends: mcompositor, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils (>= 0.5.26), x11-utils, mcompositor-utils
 XB-Maemo-CI-Packages: mcompositor
 XB-Maemo-CI-Stage: fast
 Description: mcompositor functional testcases
