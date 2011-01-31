@@ -3645,14 +3645,15 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
 
 void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
 {
-    for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
-            it != windows.end(); ++it) {
-        MCompositeWindow *tp = it.value();
+    // redirect from bottom to top
+    for (int i = 0; i < stacking_list.size(); ++i) {
+        Window w = stacking_list.at(i);
+        MCompositeWindow *tp = COMPOSITE_WINDOW(w);
         if (tp->isValid() && tp->isDirectRendered() && tp->propertyCache()
             && (tp->propertyCache()->isMapped()
                 || tp->propertyCache()->beingMapped()))
             ((MTexturePixmapItem *)tp)->enableRedirectedRendering();
-        setWindowDebugProperties(it.key());
+        setWindowDebugProperties(w);
     }
     compositing = true;
     // no delay: application does not need to redraw when maximizing it
