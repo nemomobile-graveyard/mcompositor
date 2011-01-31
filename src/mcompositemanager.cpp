@@ -2179,6 +2179,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                  pc = cw->propertyCache();
              if (cw && cw->isMapped() && !pc->hasAlpha() &&
                  !pc->isDecorator() && !cw->hasTransitioningWindow() &&
+                 // allow input windows to composite their app, see NB#223280
+                 pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
                  /* FIXME: decorated window is assumed to be fullscreen */
                  (cw->needDecoration() ||
                   fs_r.subtracted(pc->shapeRegion()).isEmpty())) {
