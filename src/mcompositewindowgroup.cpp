@@ -309,7 +309,7 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
         MTexturePixmapItem* item = d->item_list[i];
         orig_value = item->d->inverted_texture;
         item->d->inverted_texture = false;
-        d->main_window->enableRedirectedRendering();
+        item->enableRedirectedRendering();
         item->renderTexture(item->sceneTransform());
         item->d->inverted_texture = orig_value;
     }
