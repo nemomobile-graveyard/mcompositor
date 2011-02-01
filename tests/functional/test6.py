@@ -18,7 +18,7 @@ if os.system('mcompositor-test-init.py'):
 def rotate_screen(top_edge):
   print 'rotate_screen:', top_edge
   os.popen("windowctl R %s" % top_edge)
-  time.sleep(5)
+  time.sleep(1)
 
 def print_stack_array(a):
   i = 0
