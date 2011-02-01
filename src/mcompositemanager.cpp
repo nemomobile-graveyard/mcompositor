@@ -3723,18 +3723,22 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
 
 void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
 {
-    if (!is_hung || !MDecoratorFrame::instance()->decoratorItem())
+    MDecoratorFrame *deco = MDecoratorFrame::instance();
+    if (!mayShowApplicationHungDialog || !deco->decoratorItem())
         return;
-
-    enableCompositing(true);
+    if (!is_hung) {
+        deco->showQueryDialog(false);
+        return;
+    }
 
     // own the window so we could kill it if we want to.
-    MDecoratorFrame::instance()->setManagedWindow(w, true);
-    MDecoratorFrame::instance()->setOnlyStatusbar(false);
-    MDecoratorFrame::instance()->setAutoRotation(true);
-    MDecoratorFrame::instance()->showQueryDialog(true);
+    enableCompositing(true);
+    deco->setManagedWindow(w, true);
+    deco->setOnlyStatusbar(false);
+    deco->setAutoRotation(true);
+    deco->showQueryDialog(true);
     dirtyStacking(false);
-    MDecoratorFrame::instance()->raise();
+    deco->raise();
 
     // We need to activate the window as well with instructions to decorate
     // the hung window. Above call just seems to mark the window as needing
@@ -4266,6 +4270,8 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     d = new MCompositeManagerPrivate(this);
     MRmiServer *s = new MRmiServer(".mcompositor", this);
     s->exportObject(this);
+
+    d->mayShowApplicationHungDialog = !arguments().contains("-nohung");
 
 #ifdef WINDOW_DEBUG
     signal(SIGUSR1, sigusr1_handler);
