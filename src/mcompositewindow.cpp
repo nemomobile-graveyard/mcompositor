@@ -89,15 +89,11 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     damage_timer->setInterval(500);
     connect(damage_timer, SIGNAL(timeout()), SLOT(damageTimeout()));
     
-    MCompAtoms* atoms = MCompAtoms::instance(); 
-    if (pc->windowType() == MCompAtoms::NORMAL)
+    if (pc->windowType() == MCompAtoms::NORMAL
+        || pc->windowTypeAtoms().isEmpty())
         pc->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
     else
-        pc->setWindowTypeAtom(atoms->getType(window));
-
-    // needed before calling isAppWindow()
-    QVector<Atom> states = atoms->getAtomArray(window, ATOM(_NET_WM_STATE));
-    pc->setNetWmState(states.toList());
+        pc->setWindowTypeAtom(pc->windowTypeAtoms()[0]);
 
     // Newly-mapped non-decorated application windows are not initially 
     // visible to prevent flickering when animation is started.

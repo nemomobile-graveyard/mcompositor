@@ -870,7 +870,6 @@ MCompAtoms::Type MWindowPropertyCache::windowType()
     if (!is_valid || !requests[me])
         return window_type;
 
-    QVector<Atom> a(MAX_TYPES);
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
@@ -880,37 +879,41 @@ MCompAtoms::Type MWindowPropertyCache::windowType()
         if (len >= (int)sizeof(Atom)) {
             if (len >= int(MAX_TYPES*sizeof(Atom)))
                 len = MAX_TYPES*sizeof(Atom);
-            memcpy(a.data(), xcb_get_property_value(r), len);
-            a.resize(len / sizeof(Atom));
+            type_atoms.resize(len / sizeof(Atom));
+            memcpy(type_atoms.data(), xcb_get_property_value(r), len);
         } else {
             free(r);
             window_type = MCompAtoms::NORMAL;
+            type_atoms.resize(1);
+            type_atoms[0] = ATOM(_NET_WM_WINDOW_TYPE_NORMAL);
             return window_type;
         }
         free(r);
     } else {
         window_type = MCompAtoms::NORMAL;
+        type_atoms.resize(1);
+        type_atoms[0] = ATOM(_NET_WM_WINDOW_TYPE_NORMAL);
         return window_type;
     }
 
-    if (a[0] == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+    if (type_atoms[0] == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         window_type = MCompAtoms::DESKTOP;
-    else if (a[0] == ATOM(_NET_WM_WINDOW_TYPE_NORMAL))
+    else if (type_atoms[0] == ATOM(_NET_WM_WINDOW_TYPE_NORMAL))
         window_type = MCompAtoms::NORMAL;
-    else if (a[0] == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)) {
-        if (a.contains(ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE)))
+    else if (type_atoms[0] == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)) {
+        if (type_atoms.contains(ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE)))
             window_type = MCompAtoms::NO_DECOR_DIALOG;
         else
             window_type = MCompAtoms::DIALOG;
     }
-    else if (a[0] == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
+    else if (type_atoms[0] == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
         window_type = MCompAtoms::DOCK;
-    else if (a[0] == ATOM(_NET_WM_WINDOW_TYPE_INPUT))
+    else if (type_atoms[0] == ATOM(_NET_WM_WINDOW_TYPE_INPUT))
         window_type = MCompAtoms::INPUT;
-    else if (a[0] == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
+    else if (type_atoms[0] == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
         window_type = MCompAtoms::NOTIFICATION;
-    else if (a[0] == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
-             a[0] == ATOM(_NET_WM_WINDOW_TYPE_MENU))
+    else if (type_atoms[0] == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
+             type_atoms[0] == ATOM(_NET_WM_WINDOW_TYPE_MENU))
         window_type = MCompAtoms::FRAMELESS;
     else if (transientFor())
         window_type = MCompAtoms::UNKNOWN;

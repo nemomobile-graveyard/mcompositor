@@ -349,14 +349,6 @@ int MCompAtoms::cardValueProperty(Window w, Atom property)
     return 0;
 }
 
-Atom MCompAtoms::getType(Window w)
-{
-    Atom t = getAtom(w, _NET_WM_WINDOW_TYPE);
-    if (t)
-        return t;
-    return atoms[_NET_WM_WINDOW_TYPE_NORMAL];
-}
-
 Atom MCompAtoms::getAtom(Window w, Atoms atomtype)
 {
     Atom actual;
@@ -2378,10 +2370,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         enableCompositing(true);
 
     if (item && pc) {
-        if (wtype == MCompAtoms::NORMAL)
+        if (wtype == MCompAtoms::NORMAL || pc->windowTypeAtoms().isEmpty())
             pc->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
         else
-            pc->setWindowTypeAtom(atom->getType(win));
+            pc->setWindowTypeAtom(pc->windowTypeAtoms()[0]);
 #ifdef WINDOW_DEBUG
         if (debug_mode)
             qDebug() << "Composition overhead (existing pixmap):"

@@ -132,7 +132,6 @@ public:
     int globalAlphaFromWindow(Window w);
 
     Atom getAtom(const unsigned int name);
-    Atom getType(Window w);
 
     static Atom atoms[ATOMS_TOTAL];
     int cardValueProperty(Window w, Atom property);

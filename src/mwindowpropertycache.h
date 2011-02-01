@@ -23,6 +23,7 @@
 #include <QRegion>
 #include <QX11Info>
 #include <QHash>
+#include <QVector>
 #include <X11/Xutil.h>
 #include <X11/Xlib-xcb.h>
 #include <xcb/render.h>
@@ -210,6 +211,7 @@ public:
             damage_object = XDamageCreate(QX11Info::display(), window,
                                           XDamageReportNonEmpty); 
     }
+    const QVector<Atom> &windowTypeAtoms() const { return type_atoms; }
 
 signals:
     void iconGeometryUpdated();
@@ -276,6 +278,7 @@ private:
     // the reply unconditionally when it expires.
     MCSmartTimer *collect_timer;
     QHash<const QLatin1String, unsigned> requests;
+    QVector<Atom> type_atoms;
     bool isUpdate(const QLatin1String collector);
     bool requestPending(const QLatin1String collector);
     void addRequest(const QLatin1String collector, unsigned cookie);
