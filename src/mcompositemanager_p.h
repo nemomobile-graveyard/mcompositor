@@ -165,6 +165,10 @@ public:
     // Used by the destructor.
     bool prepared;
 
+    // Tells whether invocation of "Application hung, close it?" dialogs
+    // was disabled by a command line switch.
+    bool mayShowApplicationHungDialog;
+
     xcb_connection_t *xcb_conn;
 
     // mechanism for lazy stacking
