@@ -231,7 +231,7 @@ private:
     QList<Window> transients;
     QList<Atom> wm_protocols;
     QRectF icon_geometry;
-    bool has_alpha;
+    signed char has_alpha;
     int global_alpha;
     int video_global_alpha;
     bool is_decorator;
@@ -279,7 +279,7 @@ private:
     bool isUpdate(const QLatin1String collector);
     bool requestPending(const QLatin1String collector);
     void addRequest(const QLatin1String collector, unsigned cookie);
-    void requestReplied(const QLatin1String collector);
+    void replyCollected(const QLatin1String collector);
     void cancelRequest(const QLatin1String collector);
     unsigned requestProperty(Atom prop, Atom type, unsigned n = 1);
 
@@ -290,8 +290,8 @@ private:
         { return requestPending(QLatin1String(collector)); }
     void addRequest(const char *collector, unsigned cookie)
         { addRequest(QLatin1String(collector), cookie); }
-    void requestReplied(const char *collector)
-        { requestReplied(QLatin1String(collector)); }
+    void replyCollected(const char *collector)
+        { replyCollected(QLatin1String(collector)); }
     void cancelRequest(const char *collector)
         { cancelRequest(QLatin1String(collector)); }
     unsigned requestProperty(MCompAtoms::Atoms prop, Atom type,
@@ -300,6 +300,8 @@ private:
                                  type, n); }
 
     static xcb_connection_t *xcb_conn;
+    static xcb_render_query_pict_formats_reply_t *pict_formats_reply;
+    static xcb_render_query_pict_formats_cookie_t pict_formats_cookie;
     Damage damage_object;
 };
 
