@@ -99,16 +99,22 @@ void XServerPinger::die(int)
 static void altmain() __attribute__((constructor));
 static void altmain()
 {
+    // Gain access to argv.
+    extern char **environ;
+    char **argv = environ -2;
+
     // Don't run again if the parent restarted.
     if (getenv("XSERVERPINGER"))
         return;
-    putenv("XSERVERPINGER=1");
+    putenv((char *)"XSERVERPINGER=1");
 
     // Start a new process and let our parent (the real mcompositor) go.
     if (fork())
         return;
 
-    // Die with the parent.
+    // Distinguish ourselves from the real mcompositor and die with it.
+    strcpy(argv[0], "xserverping");
+    prctl(PR_SET_NAME, "xserverping");
     prctl(PR_SET_PDEATHSIG, SIGTERM);
 
     int meh = 0;
