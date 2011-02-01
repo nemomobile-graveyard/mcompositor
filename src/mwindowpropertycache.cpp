@@ -47,6 +47,9 @@ public:
     }
 };
 
+xcb_render_query_pict_formats_reply_t *MWindowPropertyCache::pict_formats_reply = 0;
+xcb_render_query_pict_formats_cookie_t MWindowPropertyCache::pict_formats_cookie = {0};
+
 // Returns whether the property of @collector does not need to be refreshed:
 // if it has been requested and it has been replied.
 bool MWindowPropertyCache::isUpdate(const QLatin1String collector)
@@ -77,7 +80,7 @@ void MWindowPropertyCache::addRequest(const QLatin1String collector,
 }
 
 // Makes @collector's property considered isUpdate().
-void MWindowPropertyCache::requestReplied(const QLatin1String collector)
+void MWindowPropertyCache::replyCollected(const QLatin1String collector)
 {
     requests[collector] = 0;
     collect_timer->disconnect(collector.latin1());
@@ -89,7 +92,7 @@ void MWindowPropertyCache::cancelRequest(const QLatin1String collector)
 {
     if (requestPending(collector)) {
         xcb_discard_reply(xcb_conn, requests[collector]);
-        requestReplied(collector);
+        replyCollected(collector);
     } else
         requests[collector] = 0;
 }
@@ -108,7 +111,7 @@ xcb_connection_t *MWindowPropertyCache::xcb_conn;
 void MWindowPropertyCache::init()
 {
     transient_for = None,
-    has_alpha = false;
+    has_alpha = -1;
     global_alpha = 255;
     video_global_alpha = -1;
     is_decorator = false;
@@ -186,9 +189,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     addRequest(SLOT(windowType()),
                requestProperty(MCompAtoms::_NET_WM_WINDOW_TYPE,
                                XCB_ATOM_ATOM, MAX_TYPES));
-    // FIXME: pict formats do not seem window-specific -- get them only once
-    addRequest(SLOT(hasAlpha()),
-               xcb_render_query_pict_formats(xcb_conn).sequence);
+    if (!pict_formats_reply && !pict_formats_cookie.sequence)
+        pict_formats_cookie = xcb_render_query_pict_formats(xcb_conn);
     addRequest(SLOT(buttonGeometryHelper()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_DECORATOR_BUTTONS,
                                XCB_ATOM_CARDINAL, 8));
@@ -279,16 +281,17 @@ MWindowPropertyCache::~MWindowPropertyCache()
 bool MWindowPropertyCache::hasAlpha()
 {
     QLatin1String me(SLOT(hasAlpha()));
-    if (!is_valid || !requests[me])
-        return has_alpha;
+    if (!is_valid || has_alpha != -1)
+        return has_alpha == 1 ? true : false;
 
     // the following code is replacing a XRenderFindVisualFormat() call...
-    xcb_render_query_pict_formats_cookie_t c = { requests[me] };
-    xcb_render_query_pict_formats_reply_t *pict_formats_reply;
-    pict_formats_reply = xcb_render_query_pict_formats_reply(xcb_conn, c, 0);
-    requestReplied(me);
     if (!pict_formats_reply) {
-        qWarning("%s: querying alpha for 0x%lx has failed", __func__, window);
+        pict_formats_reply = xcb_render_query_pict_formats_reply(xcb_conn,
+                                                   pict_formats_cookie, 0);
+        pict_formats_cookie.sequence = 0;
+    }
+    if (!pict_formats_reply) {
+        qWarning("%s: querying pict formats has failed", __func__);
         return false;
     }
 
@@ -315,7 +318,7 @@ bool MWindowPropertyCache::hasAlpha()
                                                       pict_formats_reply);
     for (; pictform_i.rem; xcb_render_pictforminfo_next(&pictform_i)) {
         if (pictform_i.data->id == format) {
-            has_alpha = pictform_i.data->direct.alpha_mask != 0;
+            has_alpha = pictform_i.data->direct.alpha_mask != 0 ? 1 : 0;
             break;
         }
     }
@@ -338,7 +341,7 @@ const QRegion &MWindowPropertyCache::shapeRegion()
     xcb_shape_get_rectangles_cookie_t c = { requests[me] };
     xcb_shape_get_rectangles_reply_t *r;
     r = xcb_shape_get_rectangles_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     if (!r) {
         shape_region = QRegion(realGeometry());
         return shape_region;
@@ -367,7 +370,7 @@ const QRegion &MWindowPropertyCache::customRegion()
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     custom_region = QRegion(0, 0, 0, 0);
     if (r) {
         int len = xcb_get_property_value_length(r);
@@ -387,6 +390,7 @@ const QRegion &MWindowPropertyCache::customRegion()
 
 void MWindowPropertyCache::customRegion(bool request_only)
 {
+    Q_UNUSED(request_only);
     QLatin1String me(SLOT(customRegion()));
     Q_ASSERT(request_only);
     addRequest(me, requestProperty(MCompAtoms::_MEEGOTOUCH_CUSTOM_REGION,
@@ -400,7 +404,7 @@ Window MWindowPropertyCache::transientFor()
         xcb_get_property_cookie_t c = { requests[me] };
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        requestReplied(me);
+        replyCollected(me);
         transient_for = None;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(Window))
@@ -430,7 +434,7 @@ int MWindowPropertyCache::cannotMinimize()
         xcb_get_property_cookie_t c = { requests[me] };
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        requestReplied(me);
+        replyCollected(me);
         cannot_minimize = 0;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
@@ -448,7 +452,7 @@ int MWindowPropertyCache::alwaysMapped()
         xcb_get_property_cookie_t c = { requests[me] };
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        requestReplied(me);
+        replyCollected(me);
         always_mapped = 0;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
@@ -471,7 +475,7 @@ int MWindowPropertyCache::desktopView()
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     desktop_view = -1;
     if (r) {
         if (xcb_get_property_value_length(r) == sizeof(CARD32))
@@ -487,6 +491,7 @@ int MWindowPropertyCache::desktopView()
 
 void MWindowPropertyCache::desktopView(bool request_only)
 {
+    Q_UNUSED(request_only);
     QLatin1String me(SLOT(desktopView()));
     Q_ASSERT(request_only);
     addRequest(me, requestProperty(MCompAtoms::_MEEGOTOUCH_DESKTOP_VIEW,
@@ -500,7 +505,7 @@ bool MWindowPropertyCache::isDecorator()
         xcb_get_property_cookie_t c = { requests[me] };
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        requestReplied(me);
+        replyCollected(me);
         is_decorator = false;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
@@ -518,7 +523,7 @@ unsigned int MWindowPropertyCache::meegoStackingLayer()
         xcb_get_property_cookie_t c = { requests[me] };
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        requestReplied(me);
+        replyCollected(me);
         meego_layer = 0;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32)) {
@@ -573,7 +578,7 @@ const XWMHints &MWindowPropertyCache::getWMHints()
         xcb_get_property_cookie_t c = { requests[me] };
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        requestReplied(me);
+        replyCollected(me);
         if (r && xcb_get_property_value_length(r) >= int(sizeof(XWMHints)))
             memcpy(wmhints, xcb_get_property_value(r), sizeof(XWMHints));
         else
@@ -668,7 +673,7 @@ int MWindowPropertyCache::windowState()
         xcb_get_property_cookie_t c = { requests[me] };
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        requestReplied(me);
+        replyCollected(me);
         if (r && xcb_get_property_value_length(r) >= int(sizeof(CARD32)))
             window_state = ((CARD32*)xcb_get_property_value(r))[0];
         else {
@@ -689,7 +694,7 @@ void MWindowPropertyCache::buttonGeometryHelper()
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     if (!r)
         return;
     int len = xcb_get_property_value_length(r);
@@ -723,7 +728,7 @@ unsigned MWindowPropertyCache::orientationAngle()
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     orientation_angle = 0;
     if (r != NULL) {
         if (xcb_get_property_value_length(r) == sizeof(CARD32))
@@ -743,7 +748,7 @@ const QRect &MWindowPropertyCache::statusbarGeometry()
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     statusbar_geom.setRect(0, 0, 0, 0);
     if (r && xcb_get_property_value_length(r) == int(4*sizeof(CARD32))) {
         CARD32* coords = (CARD32 *)xcb_get_property_value(r);
@@ -763,7 +768,7 @@ const QList<Atom>& MWindowPropertyCache::supportedProtocols()
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     wm_protocols.clear();
     if (!r)
         return wm_protocols;
@@ -784,7 +789,7 @@ const QList<Atom> &MWindowPropertyCache::netWmState()
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     net_wm_state.clear();
     if (!r)
         return net_wm_state;
@@ -812,7 +817,7 @@ const QRectF &MWindowPropertyCache::iconGeometry()
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     if (r && xcb_get_property_value_length(r) >= int(4*sizeof(CARD32))) {
         CARD32* coords = (CARD32*)xcb_get_property_value(r);
         icon_geometry.setRect(coords[0], coords[1], coords[2], coords[3]);
@@ -827,7 +832,7 @@ int MWindowPropertyCache::alphaValue(const QLatin1String me)
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     if (!r) 
         return 255;
     
@@ -868,7 +873,7 @@ MCompAtoms::Type MWindowPropertyCache::windowType()
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    requestReplied(me);
+    replyCollected(me);
     if (r) {
         int len = xcb_get_property_value_length(r);
         if (len >= (int)sizeof(Atom)) {
@@ -935,7 +940,7 @@ const QRect MWindowPropertyCache::realGeometry()
         xcb_get_geometry_cookie_t c = { requests[me] };
         xcb_get_geometry_reply_t *xcb_real_geom;
         xcb_real_geom = xcb_get_geometry_reply(xcb_conn, c, 0);
-        requestReplied(me);
+        replyCollected(me);
         if (xcb_real_geom)
             // We can set @real_geom because setRealGeom() would have
             // cancelRequest()ed us if it was set explicitly.
