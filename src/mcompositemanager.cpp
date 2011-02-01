@@ -1140,6 +1140,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
             setWindowDebugProperties(top);
         }
+        MCompositeWindow *top_cw = cw;
         for (int i = win_i + 1; i < stacking_list.size(); ++i) {
             Window w = stacking_list.at(i);
             if ((cw = COMPOSITE_WINDOW(w)) && cw->isMapped() &&
@@ -1152,6 +1153,17 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
                 }
             }
         }
+        // allow input method window to composite its client window
+        Window parent;
+        MCompositeWindow *p_cw;
+        if (top_cw->propertyCache()->windowTypeAtom() ==
+                                       ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
+            (parent = getLastVisibleParent(top_cw->propertyCache())) &&
+            (p_cw = COMPOSITE_WINDOW(parent)))
+            if (((MTexturePixmapItem*)p_cw)->isDirectRendered()) {
+                ((MTexturePixmapItem*)p_cw)->enableRedirectedRendering();
+                setWindowDebugProperties(parent);
+            }
 #ifndef GLES2_VERSION
         if (compositing) {
             showOverlayWindow(false);
