@@ -280,19 +280,20 @@ MWindowPropertyCache::~MWindowPropertyCache()
 
 bool MWindowPropertyCache::hasAlpha()
 {
-    QLatin1String me(SLOT(hasAlpha()));
     if (!is_valid || has_alpha != -1)
         return has_alpha == 1 ? true : false;
+    has_alpha = 0;
 
     // the following code is replacing a XRenderFindVisualFormat() call...
-    if (!pict_formats_reply) {
+    if (pict_formats_cookie.sequence) {
+        Q_ASSERT(!pict_formats_reply);
         pict_formats_reply = xcb_render_query_pict_formats_reply(xcb_conn,
                                                    pict_formats_cookie, 0);
         pict_formats_cookie.sequence = 0;
-    }
-    if (!pict_formats_reply) {
-        qWarning("%s: querying pict formats has failed", __func__);
-        return false;
+        if (!pict_formats_reply) {
+            qWarning("%s: querying pict formats has failed", __func__);
+            return false;
+        }
     }
 
     xcb_render_pictformat_t format = 0;
