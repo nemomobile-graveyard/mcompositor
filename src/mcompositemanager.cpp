@@ -2370,6 +2370,9 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         enableCompositing(true);
 
     if (item && pc) {
+        // reset item for the case previous animation did not end cleanly
+        item->setUntransformed();
+        item->setPos(0, 0);
         if (wtype == MCompAtoms::NORMAL || pc->windowTypeAtoms().isEmpty())
             pc->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
         else
