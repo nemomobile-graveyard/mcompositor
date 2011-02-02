@@ -1,0 +1,10 @@
+CaseName="jammed_apps_are_decorated"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that jammed apps are decorated.
+
+- Test steps
+	- show an application window that does not respond to pings
+	- wait for few seconds to make compositor notice it jammed
+- Post-conditions
+	- the decorator is on top of it\n"
