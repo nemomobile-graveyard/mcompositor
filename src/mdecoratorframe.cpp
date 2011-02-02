@@ -67,24 +67,18 @@ Qt::HANDLE MDecoratorFrame::winId() const
     return decorator_window;
 }
 
-void MDecoratorFrame::lower()
+void MDecoratorFrame::hide()
 {
     if (decorator_item)
         decorator_item->setVisible(false);
 }
 
-void MDecoratorFrame::raise()
+void MDecoratorFrame::show()
 {
     if (decorator_item)
         decorator_item->setVisible(true);
 }
 
-void MDecoratorFrame::updateManagedWindowGeometry()
-{
-    if (client && client->needDecoration())
-        setDecoratorAvailableRect(available_rect);
-}
-    
 void MDecoratorFrame::sendManagedWindowId()
 {
     qulonglong winid = client ? client->window() : 0;
@@ -161,13 +155,14 @@ void MDecoratorFrame::visualizeDecorator(bool visible)
 
 void MDecoratorFrame::setDecoratorAvailableRect(const QRect& r)
 {    
+    // always store the available rect info from remote decorator
+    available_rect = r;
+
     if (!client || no_resize || !decorator_item
         || !decorator_item->propertyCache())
         return;
     
     Display* dpy = QX11Info::display();
-    
-    available_rect = r;    
 
     if (client->propertyCache()->realGeometry() != available_rect) {
       // resize app window to occupy the free area

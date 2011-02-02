@@ -465,7 +465,7 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             && win->needDecoration()) {
             MDecoratorFrame::instance()->setManagedWindow(win);
             MDecoratorFrame::instance()->setOnlyStatusbar(false);
-            MDecoratorFrame::instance()->raise();
+            MDecoratorFrame::instance()->show();
         }
         if (win && win->propertyCache()->isMapped())
             priv->dirtyStacking(false);
@@ -491,7 +491,7 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             win->setDecorated(false);
         if (!priv->device_state->ongoingCall()
             && MDecoratorFrame::instance()->managedWindow() == window) {
-            MDecoratorFrame::instance()->lower();
+            MDecoratorFrame::instance()->hide();
             MDecoratorFrame::instance()->setManagedWindow(0);
         }
         if (win && win->propertyCache()->isMapped())
@@ -1206,7 +1206,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
             // decorate next window in the stack if any
             MCompositeWindow *cw = getHighestDecorated();
             if (!cw) {
-                MDecoratorFrame::instance()->lower();
+                MDecoratorFrame::instance()->hide();
                 MDecoratorFrame::instance()->setManagedWindow(0);
                 positionWindow(MDecoratorFrame::instance()->winId(), false);
             } else {
@@ -1284,8 +1284,7 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                     MDecoratorFrame::instance()->setManagedWindow(item);
                     MDecoratorFrame::instance()->setOnlyStatusbar(false);
                 }
-                MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
-                MDecoratorFrame::instance()->raise();
+                MDecoratorFrame::instance()->show();
                 item->update();
                 dirtyStacking(check_visibility);
                 check_visibility = false;
@@ -1294,7 +1293,7 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
         } else {
             // FIXME: seems that this branch is never executed?
             if (e->window == MDecoratorFrame::instance()->managedWindow())
-                MDecoratorFrame::instance()->lower();
+                MDecoratorFrame::instance()->hide();
             // item->setIconified(true);
             // ensure ZValue is set only after the animation is done
             item->requestZValue(0);
@@ -1544,7 +1543,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         if (MDecoratorFrame::instance()->decoratorItem()) {
             // initially visualize decorator item so selective compositing
             // checks won't disable compositing
-            MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
+            MDecoratorFrame::instance()->show();
         } else {
 #if 0 /* FIXME/TODO: this does NOT work when mdecorator starts after the first
          decorated window is shown. See NB#196194 */
@@ -2083,7 +2082,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 // decor requires compositing
                 enableCompositing(true);
             deco->decoratorItem()->updateWindowPixmap();
-            deco->decoratorItem()->setVisible(true);
+            deco->show();
             glwidget->update();
         }
     } else if ((!highest_d || top_decorated_i < 0) && deco->decoratorItem()) {
@@ -2434,8 +2433,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             connect(item, SIGNAL(visualized(bool)),
                     MDecoratorFrame::instance(),
                     SLOT(visualizeDecorator(bool)));
-            MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
-            MDecoratorFrame::instance()->raise();
+            MDecoratorFrame::instance()->show();
             MDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue() + 1);
         }
         setWindowDebugProperties(win);
@@ -2551,7 +2549,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                 Window managed = MDecoratorFrame::instance()->managedWindow();
                 if (was_hung && ping_source->window() == managed
                     && !ping_source->needDecoration()) {
-                    MDecoratorFrame::instance()->lower();
+                    MDecoratorFrame::instance()->hide();
                     MDecoratorFrame::instance()->setManagedWindow(0);
                     MDecoratorFrame::instance()->setAutoRotation(false);
                     if(!ping_source->propertyCache()->hasAlpha())
@@ -2681,7 +2679,7 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
     if ((!delete_sent || window->status() == MCompositeWindow::Hung)) {
         kill_window(window->window());
         if (MDecoratorFrame::instance()->managedWindow() == window->window())
-            MDecoratorFrame::instance()->lower();
+            MDecoratorFrame::instance()->hide();
     }
     /* DO NOT deleteLater() this window yet because
        a) it can remove a mapped window from stacking_list
@@ -3481,7 +3479,6 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     // could be restarted at any point
     if (pc->isDecorator() && !MDecoratorFrame::instance()->decoratorItem()) {
         // texture was already updated above
-        item->setVisible(false);
         MDecoratorFrame::instance()->setDecoratorItem(item);
     } else if (!device_state->displayOff())
         item->setVisible(true);
@@ -3711,7 +3708,7 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
 #endif
 
     if (MDecoratorFrame::instance()->decoratorItem())
-        MDecoratorFrame::instance()->lower();
+        MDecoratorFrame::instance()->hide();
 
     compositing = false;
 }
@@ -3733,7 +3730,7 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
     deco->setAutoRotation(true);
     deco->showQueryDialog(true);
     dirtyStacking(false);
-    deco->raise();
+    deco->show();
 
     // We need to activate the window as well with instructions to decorate
     // the hung window. Above call just seems to mark the window as needing
