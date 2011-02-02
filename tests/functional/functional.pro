@@ -1,5 +1,4 @@
 # Definitions
-TD=/usr/share/test-definition/testdefinition
 SUITENAME=mcompositor-functional-tests
 
 # Stupid qmake wants to link everything.
@@ -18,11 +17,10 @@ INSTALLS += scripts
 
 # Simple and easy way to build tests.xml.
 metadata.target = tests.xml
-metadata.depends = $${scripts.files} setandsuite.testdata
+metadata.depends = setandsuite.testdata \$(patsubst %,%.testdata,\$(wildcard $${scripts.files}))
 metadata.input = $${metadata.depends}
 metadata.output = $${metadata.target}
-metadata.commands = ./createTestXml $${scripts.path} $${metadata.input};
-metadata.commands += xmllint --noout --schema $$TD-syntax.xsd --schema $$TD-tm_terms.xsd $${metadata.output};
+metadata.commands = ./createTestXml $${metadata.output} $${scripts.path} $${metadata.input}
 QMAKE_EXTRA_COMPILERS += metadata
 QMAKE_EXTRA_TARGETS += metadata
 PRE_TARGETDEPS += $${metadata.output}

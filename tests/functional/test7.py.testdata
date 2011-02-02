@@ -1,14 +1,14 @@
 CaseName="verify_notifications_stacking"
 CaseRequirement="NONE"
 CaseTimeout="360"
-CaseDescription="Check that TYPE_NOTIFICATION window is stacked above applications,\n
-dialogs and input windows.\n
-\n
-- Test steps\n
-\t- create and show notification window\n
-\t- create and show application window\n
-\t- create and show dialog window\n
-\t- create and show TYPE_INPUT window\n
-- Post-conditions\n
-\t- Notification window is stacked above application, dialog and input\n
-\t  window\n"
+CaseDescription="Check that TYPE_NOTIFICATION window is stacked above applications,
+dialogs and input windows.
+
+- Test steps
+	- create and show notification window
+	- create and show application window
+	- create and show dialog window
+	- create and show TYPE_INPUT window
+- Post-conditions
+	- Notification window is stacked above application, dialog and input
+	  window\n"

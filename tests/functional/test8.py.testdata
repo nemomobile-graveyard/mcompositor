@@ -1,22 +1,22 @@
 CaseName="verify_transient_dialog_functionality"
 CaseRequirement="NONE"
 CaseTimeout="360"
-CaseDescription="Check that a transient dialog is raised with the application it is\n
-transient for.\n
-\n
-- Test steps\n
-\t- show an application window\n
-\t- create and show a dialog window that is transient for the application\n
-\t- iconify the application window\n
-\t- activate the application window\n
-\t- check that the transient is above the application window\n
-\t- iconify the application window\n
-\t- activate the transient window\n
-\t- check that the transient is above the application window\n
-\t- create and show a dialog window that is transient for the previous dialog\n
-\t- iconify the application window\n
-\t- activate the application window\n
-\t- check that both transients are above the application window and in order\n
-\t- swap the transiencies of the dialogs\n
-- Post-conditions\n
-\t- check that both transients are above the application window and in order\n"
+CaseDescription="Check that a transient dialog is raised with the application it is
+transient for.
+
+- Test steps
+	- show an application window
+	- create and show a dialog window that is transient for the application
+	- iconify the application window
+	- activate the application window
+	- check that the transient is above the application window
+	- iconify the application window
+	- activate the transient window
+	- check that the transient is above the application window
+	- create and show a dialog window that is transient for the previous dialog
+	- iconify the application window
+	- activate the application window
+	- check that both transients are above the application window and in order
+	- swap the transiencies of the dialogs
+- Post-conditions
+	- check that both transients are above the application window and in order\n"
