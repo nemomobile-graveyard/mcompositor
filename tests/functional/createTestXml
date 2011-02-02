@@ -1,85 +1,59 @@
 #!/bin/sh
 
-INSTALL_PATH=$1
-shift 
-TESTCASES=""
+xml="$1"; shift;
+dst="$1"; shift;
+std="$1"; shift;
 
-. setandsuite.testdata
+source "./$std";
 
-# remove old version
-if [ -e tests.xml ]; then
-    rm tests.xml
-fi
+# We'll build up a blocks that are not necessery to the tests.xml to work
+# but sometimes very hand to have them around.
+presteps="";
+poststeps="";
+[ "$SetPreSteps" = "" ] \
+	|| presteps="\t\t\t<pre_steps>\n\t\t\t\t<step>$SetPreSteps</step>\n\t\t\t</pre_steps>";
+[ "$SetPostSteps" = "" ] \
+	|| poststeps="\t\t\t<post_steps>\n\t\t\t\t<step>$SetPostSteps</step>\n\t\t\t</post_steps>";
 
-. setandsuite.testdata
-
-
-#####################################################
-# We'll build up a blocks that are not necessery to 
-# the tests.xml to work but sometimes very hand to 
-# have them around ..
-#
-# SetPreSteps parser 
-#
-if [ -n "${SetPreSteps+x}" ]; then
-    PRESTEPS="\t\t\t<pre_steps>\n\t\t\t\t<step>$SetPreSteps</step>\n\t\t\t</pre_steps>"        
-else
-    PRESTEPS=""
-fi
-
-#
-# SetPostSteps parser 
-#
-
-if [ -n "${SetPostSteps+x}" ]; then
-    POSTSTEPS="\t\t\t<post_steps>\n\t\t\t\t<step>$SetPostSteps</step>\n\t\t\t</post_steps>"        
-else
-    POSTSTEPS=""
-fi
-
-#
-# SetLogFiles parser
-#
-
-if [ -n "${SetLogFiles+x}" ]; then
-    LOGFILES="\t\t\t<get>\n"
-    for LOGFILE in ${SetLogFiles}; do 
-        LOGFILES="${LOGFILES}\t\t\t\t<file>$LOGFILE</file>\n"
+logfiles="";
+if [ "$SetLogFiles" != "" ];
+then
+    logfiles="\t\t\t<get>\n";
+    for logfile in $SetLogFiles;
+    do 
+        logfiles="$logfiles\t\t\t\t<file>$logfile</file>\n";
     done
-    LOGFILES="${LOGFILES}\t\t\t</get>"        
-else
-    LOGFILES=""
+    logfiles="$logfiles\t\t\t</get>";
 fi
 
-# 
-# and then we iterate the testcases and build up
-# xml block for each of them ..
-#
+# Iterate the testcases and build up xml block for each of them.
+testcases="";
+for testdatafile;
+do
+	casefile="${testdatafile%.testdata}";
+	CaseInsignificant="";
+	CaseName="";
+	CaseDescription="";
+	CaseRequirement="";
+	CaseTimeout="";
+	CaseInsignificant="";
+	source "$testdatafile";
 
-for CASEFILE in $*; do
-    BNAME=${CASEFILE}.testdata
-    if [ -e $BNAME ]; then
-        . ./$BNAME
-        if [ x$CaseInsignificant != x ]; then
-            TESTCASE_TEMPLATE="\t\t\t<case name=\"$CaseName\" description=\"$CaseDescription\" requirement=\"$CaseRequirement\" timeout=\"$CaseTimeout\" insignificant=\"$CaseInsignificant\">\n\t\t\t\t<step expected_result=\"0\">$INSTALL_PATH/$CASEFILE</step>\n\t\t\t</case>\n"
-        else
-            TESTCASE_TEMPLATE="\t\t\t<case name=\"$CaseName\" description=\"$CaseDescription\" requirement=\"$CaseRequirement\" timeout=\"$CaseTimeout\">\n\t\t\t\t<step expected_result=\"0\">$INSTALL_PATH/$CASEFILE</step>\n\t\t\t</case>\n"
-        fi
-      unset CaseInsignificant
-      TESTCASES="${TESTCASES}${TESTCASE_TEMPLATE}"
-    fi
+	testcases="$testcases\t\t\t<case name=\"$CaseName\" description=\"$CaseDescription\" requirement=\"$CaseRequirement\" timeout=\"$CaseTimeout\"";
+	[ "$CaseInsignificant" = "" ] \
+		|| testcases="$testcases insignificant=\"$CaseInsignificant\"";
+	testcases="$testcases>\n\t\t\t\t<step expected_result=\"0\">$dst/$casefile</step>\n\t\t\t</case>\n";
 done
 
-#
-# And create the actual whole xml template 
-#
+# Create the actual whole xml template.
+testsuite_template="<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<testdefinition version=\"0.1\">\n\t<suite name=\"$SuiteName\" domain=\"$SuiteDomain\" type=\"$SuiteType\" level=\"$SuiteLevel\">\n\t\t<set name=\"$SetName\" description=\"$SetDescription\" feature=\"$SetFeature\" timeout=\"$SetTimeout\">\n$presteps\n$testcases\n\t\t\t<environments>\n\t\t\t\t<scratchbox>$SetScratchbox</scratchbox>\n\t\t\t\t<hardware>$SetHardware</hardware>\n\t\t\t</environments>\n$logfiles\n$poststeps\n\t\t</set>\n\t</suite>\n</testdefinition>\n";
 
-TESTSUITE_TEMPLATE="<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<testdefinition version=\"0.1\">\n\t<suite name=\"${SuiteName}\" domain=\"$SuiteDomain\" type=\"$SuiteType\" level=\"$SuiteLevel\">\n\t\t<set name=\"$SetName\" description=\"$SetDescription\" feature=\"$SetFeature\" timeout=\"$SetTimeout\">\n$PRESTEPS\n$TESTCASES\n\t\t\t<environments>\n\t\t\t\t<scratchbox>$SetScratchbox</scratchbox>\n\t\t\t\t<hardware>$SetHardware</hardware>\n\t\t\t</environments>\n$LOGFILES\n$POSTSTEPS\n\t\t</set>\n\t</suite>\n</testdefinition>\n"
-
-#
-# And output it !
-#
-
-echo -e $TESTSUITE_TEMPLATE > tests.xml
+# Output it.
+echo -e "$testsuite_template" > "$xml";
+if type -p xmllint > /dev/null;
+then
+	td="/usr/share/test-definition/testdefinition";
+	exec xmllint --noout --schema "$td-syntax.xsd" --schema "$td-tm_terms.xsd" "$xml";
+fi
 
 exit 0

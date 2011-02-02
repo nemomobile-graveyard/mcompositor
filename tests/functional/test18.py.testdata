@@ -1,18 +1,18 @@
 CaseName="verify_stacking_of_sibling_transient_dialogs"
 CaseRequirement="NONE"
 CaseTimeout="360"
-CaseDescription="Check that two transient dialogs on the same level maintain their order.\n
-(Written for NB#177840)\n
-\n
-- Test steps\n
-\t- show an application window\n
-\t- create and show a window that is transient for the application\n
-\t- create and show a window that is transient for the application\n
-\t- check that the transients have the right order\n
-\t- iconify the application window\n
-\t- activate the application window\n
-\t- the transients have raised and maintained their mutual order\n
-\t- iconify the application window\n
-\t- activate the topmost transient window\n
-- Post-conditions\n
-\t- the transients have raised and maintained their mutual order\n"
+CaseDescription="Check that two transient dialogs on the same level maintain their order.
+(Written for NB#177840)
+
+- Test steps
+	- show an application window
+	- create and show a window that is transient for the application
+	- create and show a window that is transient for the application
+	- check that the transients have the right order
+	- iconify the application window
+	- activate the application window
+	- the transients have raised and maintained their mutual order
+	- iconify the application window
+	- activate the topmost transient window
+- Post-conditions
+	- the transients have raised and maintained their mutual order\n"
