@@ -82,9 +82,13 @@ void XServerPinger::tick()
 void XServerPinger::die(int)
 {
     const char *wmcheck = "_NET_SUPPORTING_WM_CHECK";
+    const xcb_setup_t *setup;
+
+    if (!(setup = xcb_get_setup(xcb)))
+        QCoreApplication::quit();
 
     xcb_delete_property(xcb,
-                        xcb_setup_roots_iterator(xcb_get_setup(xcb)).data->root,
+                        xcb_setup_roots_iterator(setup).data->root,
                         xcb_intern_atom_reply(xcb,
                                               xcb_intern_atom(xcb,
                                                               False,
