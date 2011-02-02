@@ -30,7 +30,7 @@ fi
 testcases="";
 for testdatafile;
 do
-	casefile="${testdatafile%.testdata}";
+	casefile="${testdatafile%.testdata}.py";
 	CaseInsignificant="";
 	CaseName="";
 	CaseDescription="";
