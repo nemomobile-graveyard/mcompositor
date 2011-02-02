@@ -34,6 +34,7 @@ fd = os.popen('windowctl fn')
 app_win = fd.readline().strip()
 time.sleep(1)
 
+ret = 0
 fd = os.popen('windowstack m')
 s = fd.read(5000)
 for l in s.splitlines():
