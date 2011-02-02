@@ -54,20 +54,14 @@ public:
     Qt::HANDLE winId() const;
 
     /*!
-     * Lowers the decorator window.
+     * Hides the decorator QGraphicsItem.
      */
-    void lower();
+    void hide();
 
     /*!
-     * Raises the decorator window.
+     * Shows the decorator QGraphicsItem.
      */
-    void raise();
-
-    /*!
-     * Possibly resizes and moves the managed window to match the decorator
-     * and to fit to the screen.
-     */
-    void updateManagedWindowGeometry();
+    void show();
 
     /*!
      * Sets the managed window.
