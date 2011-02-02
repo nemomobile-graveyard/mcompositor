@@ -17,9 +17,9 @@ INSTALLS += scripts
 
 # Simple and easy way to build tests.xml.
 metadata.target = tests.xml
-metadata.depends = setandsuite.testdata \$(patsubst %,%.testdata,\$(wildcard $${scripts.files}))
-metadata.input = $${metadata.depends}
+metadata.input = setandsuite.testdata \$(patsubst %.py,%.testdata,\$(wildcard $${scripts.files}))
 metadata.output = $${metadata.target}
+metadata.depends = createTestXml $${metadata.input}
 metadata.commands = ./createTestXml $${metadata.output} $${scripts.path} $${metadata.input}
 QMAKE_EXTRA_COMPILERS += metadata
 QMAKE_EXTRA_TARGETS += metadata
