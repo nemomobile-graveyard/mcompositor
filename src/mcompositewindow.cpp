@@ -37,17 +37,6 @@ static QRectF fadeRect = QRectF();
 static QElapsedTimer etimer;
 static bool etimer_started = false;
 
-static void send_obscure_event(bool obscured, Window window)
-{
-    XVisibilityEvent c;
-    c.type       = VisibilityNotify;
-    c.send_event = True;
-    c.window     = window;
-    c.state      = obscured ? VisibilityFullyObscured : VisibilityUnobscured;
-    XSendEvent(QX11Info::display(), window, true, VisibilityChangeMask, 
-               (XEvent *)&c);
-}
-
 MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
                                    MWindowPropertyCache *mpc, 
                                    QGraphicsItem *p)
@@ -270,17 +259,16 @@ void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
         return;
     window_obscured = new_value;
 
-    if (!no_notify)
-        send_obscure_event(obscured, window());
-}
-
-void MCompositeWindow::forceWindowObscured(bool obscured)
-{
-    if (!obscured && ((MCompositeManager *) qApp)->displayOff())
-        return;
-    
-    window_obscured = obscured ? 1 : 0;
-    send_obscure_event(obscured, window());
+    if (!no_notify) {
+        XVisibilityEvent c;
+        c.type       = VisibilityNotify;
+        c.send_event = True;
+        c.window     = window();
+        c.state      = obscured ? VisibilityFullyObscured :
+                                  VisibilityUnobscured;
+        XSendEvent(QX11Info::display(), window(), true,
+                   VisibilityChangeMask, (XEvent *)&c);
+    }
 }
 
 /*
