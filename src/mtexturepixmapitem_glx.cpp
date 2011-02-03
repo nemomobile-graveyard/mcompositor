@@ -319,19 +319,11 @@ void MTexturePixmapItem::paint(QPainter *painter,
     Q_UNUSED(option)
     Q_UNUSED(widget)
 
-#if QT_VERSION < 0x040600
-    if (painter->paintEngine()->type()  != QPaintEngine::OpenGL)
+    if (painter->paintEngine()->type() != QPaintEngine::OpenGL2 &&
+        painter->paintEngine()->type() != QPaintEngine::OpenGL)
         return;
-#else
-    if (painter->paintEngine()->type()  != QPaintEngine::OpenGL2 &&
-        painter->paintEngine()->type()  != QPaintEngine::OpenGL) {
-        return;
-    }
-#endif
 
-#if (QT_VERSION >= 0x040600)
     painter->beginNativePainting();
-#endif
 
     glEnable(GL_TEXTURE_2D);
     if (propertyCache()->hasAlpha() || (opacity() < 1.0f && !dimmedEffect()) ) {
@@ -380,10 +372,7 @@ void MTexturePixmapItem::paint(QPainter *painter,
 
     glDisable(GL_BLEND);
 
-#if (QT_VERSION >= 0x040600)
     painter->endNativePainting();
-#endif
-
 }
 
 void MTexturePixmapItem::resize(int w, int h)
