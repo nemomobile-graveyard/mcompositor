@@ -37,6 +37,7 @@
 #include <QGLWidget>
 #include <QLabel>
 #include <QWindowStateChangeEvent>
+#include <QSettings>
 
 #include "mdecoratorwindow.h"
 
@@ -51,6 +52,7 @@
 #include <mabstractappinterface.h>
 #include <mdesktopentry.h>
 #include <mbuttonmodel.h>
+#include <mdeviceprofile.h>
 
 class MDecorator: public MAbstractDecorator
 {
@@ -249,6 +251,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
       escapeButtonPanel(0),
       navigationBar(0),
       statusBar(0),
+      statusBarHeight(0),
       messageBox(0),
       managed_window(0),
       menuVisible(false)
@@ -280,15 +283,24 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
         }
         if (!statusBar) {
             statusBar = dynamic_cast<MStatusBar*>(item);
-            if (statusBar)
+            if (statusBar) {
+                // We can't believe statusBar.geometry() because it
+                // includes some unwanted margins.  Get straight the
+                // constant if available.
+                MDeviceProfile *dev = MDeviceProfile::instance();
+                QSettings ini("/usr/share/themes/base/meegotouch/constants.ini",
+                              QSettings::IniFormat);
+                QString mm = ini.value("Sizes/HEIGHT_STATUSBAR").toString();
+                if (mm.endsWith("mm"))
+                    statusBarHeight = dev->mmToPixels(atoi(mm.toLatin1().constData()));
                 continue;
+            }
         }
     }
 
 
-    if (!homeButtonPanel || !navigationBar || !statusBar) {
+    if (!homeButtonPanel || !navigationBar || !statusBar)
         qFatal("Meego elements not found");
-    }
 
     homeButtonPanel = new MHomeButtonPanel();
     connect(homeButtonPanel, SIGNAL(buttonClicked()), this,
@@ -509,7 +521,10 @@ void MDecoratorWindow::setInputRegion()
         region = fs;
     } else {
         // Decoration includes the status bar, and possibly other elements.
-        region = statusBar->geometry().toRect();
+        QRect sbrect = statusBar->geometry().toRect();
+        if (statusBarHeight)
+            sbrect.setHeight(statusBarHeight);
+        region = sbrect;
         if (!only_statusbar) {
             region += navigationBar->geometry().toRect();
             region += homeButtonPanel->geometry().toRect();
