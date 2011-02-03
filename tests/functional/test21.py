@@ -8,6 +8,7 @@
 #  * show an application window transient to the first transient
 #  * show an application window transient to the second transient
 #  * show an application window
+#  * show a system-modal dialog
 #  * set the first non-transient application window to Meego level 1
 #  * set the second non-transient application window to Meego level 1
 #  * check correct stacking
@@ -37,6 +38,9 @@ time.sleep(1)
 # create application window
 fd = os.popen('windowctl kn')
 app2 = fd.readline().strip()
+# create system-modal dialog
+fd = os.popen('windowctl mdk')
+dialog = fd.readline().strip()
 time.sleep(1)
 
 # set the non-transient application windows to Meego level 1
@@ -44,7 +48,7 @@ os.popen('windowctl E %s 1' % app1)
 os.popen('windowctl E %s 1' % app2)
 time.sleep(1)
 
-ret = app2_found = trans1_found = trans2_found = trans3_found = 0
+ret = app1_found = app2_found = trans1_found = trans2_found = trans3_found = 0
 fd = os.popen('windowstack m')
 s = fd.read(5000)
 for l in s.splitlines():
@@ -64,6 +68,10 @@ for l in s.splitlines():
   elif re.search("%s " % app1, l.strip()) and app2_found and trans1_found \
        and trans2_found and trans3_found:
     print app1, 'found'
+    app1_found = 1
+  elif re.search("%s " % dialog, l.strip()) and app2_found and trans1_found \
+       and trans2_found and trans3_found and app1_found:
+    print dialog, 'found'
     break
   elif (not re.search(" no-TYPE ", l.strip())) and \
        (not re.search(" NOTIFICATION ", l.strip())):
@@ -76,7 +84,7 @@ for l in s.splitlines():
 os.popen('windowctl E %s 2' % app1)
 time.sleep(1)
 
-app2_found = trans1_found = trans2_found = trans3_found = 0
+app1_found = app2_found = trans1_found = trans2_found = trans3_found = 0
 fd = os.popen('windowstack m')
 s = fd.read(5000)
 for l in s.splitlines():
@@ -92,9 +100,14 @@ for l in s.splitlines():
   elif re.search("%s " % app1, l.strip()) and trans1_found \
        and trans2_found and trans3_found:
     print app1, 'found'
-    break
-  elif re.search("%s " % app2, l.strip()):
+    app1_found = 1
+  elif re.search("%s " % app2, l.strip()) and app1_found:
     print app2, 'found'
+    app2_found = 1
+  elif re.search("%s " % dialog, l.strip()) and app2_found and trans1_found \
+       and trans2_found and trans3_found and app1_found:
+    print dialog, 'found'
+    break
   elif (not re.search(" no-TYPE ", l.strip())) and \
        (not re.search(" NOTIFICATION ", l.strip())):
     print 'FAIL: stacking order is wrong'

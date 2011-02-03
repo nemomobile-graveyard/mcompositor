@@ -2024,16 +2024,16 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         // no dock => decorator starts from (0,0)
         XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
     }
-    /* Meego layers 1-3: lock screen, ongoing call etc. */
-    for (unsigned int level = 1; level < 4; ++level)
-         RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
-                        cw->propertyCache()->windowState() == NormalState
-                        && cw->propertyCache()->meegoStackingLayer() == level)
     /* raise all system-modal dialogs */
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache())
                     && MODAL_WINDOW(cw) &&
                     cw->propertyCache()->windowTypeAtom()
                                         == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
+    /* Meego layers 1-3: lock screen, ongoing call etc. */
+    for (unsigned int level = 1; level < 4; ++level)
+         RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
+                        cw->propertyCache()->windowState() == NormalState
+                        && cw->propertyCache()->meegoStackingLayer() == level)
     /* raise all keep-above flagged, input methods and Meego layer 4
      * (incoming call), at the same time preserving their mapping order */
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
@@ -3232,7 +3232,7 @@ static Atom isSpecial(MCompositeWindow *cw, int layer, Atom type)
          cw->propertyCache()->netWmState().indexOf(ATOM(_NET_WM_STATE_ABOVE)) != -1))
         // @cw is maybe input or keep-above window
         type = ATOM(_NET_WM_WINDOW_TYPE_INPUT);
-    else if (layer < 4 && MODAL_WINDOW(cw) &&
+    else if (layer == 0 && MODAL_WINDOW(cw) &&
              type == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
         /* @cw is maybe a system-modal dialog */;
     else
