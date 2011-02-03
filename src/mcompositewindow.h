@@ -108,6 +108,13 @@ public:
     void setWindowObscured(bool obscured, bool no_notify = false);
 
     /*!
+     * Sets whether or not this window is obscured even if it is already 
+     * previously obscured or unobscured and always generates a VisibilityNotify
+     * for the window.
+     */
+    void forceWindowObscured(bool obscured);
+
+    /*!
      * Returns whether this item is iconified or not
      */
     bool isIconified() const;
