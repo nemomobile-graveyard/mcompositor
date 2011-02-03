@@ -945,11 +945,13 @@ const QRect MWindowPropertyCache::realGeometry()
         xcb_get_geometry_reply_t *xcb_real_geom;
         xcb_real_geom = xcb_get_geometry_reply(xcb_conn, c, 0);
         replyCollected(me);
-        if (xcb_real_geom)
+        if (xcb_real_geom) {
             // We can set @real_geom because setRealGeom() would have
             // cancelRequest()ed us if it was set explicitly.
             real_geom = QRect(xcb_real_geom->x, xcb_real_geom->y,
                               xcb_real_geom->width, xcb_real_geom->height);
+            free(xcb_real_geom);
+        }
     }
     return real_geom;
 }
