@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
     
     // Don't load any Qt plugins
     QCoreApplication::setLibraryPaths(QStringList());
+    QApplication::setDesktopSettingsAware(false);
     MCompositeManager app(argc, argv);
 
     QGraphicsScene *scene = app.scene();
