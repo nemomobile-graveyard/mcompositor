@@ -2219,7 +2219,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                     ((MTexturePixmapItem *)cw)->enableRedirectedRendering();
                     setWindowDebugProperties(cw->window());
                 }
-                cw->setWindowObscured(true);
+                cw->forceWindowObscured(true);
                 if (cw->window() != duihome)
                     cw->setVisible(false);
             }
