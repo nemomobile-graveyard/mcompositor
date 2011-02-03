@@ -53,9 +53,7 @@ public:
                          Damage damage_obj = 0);
     virtual ~MWindowPropertyCache();
 
-    Atom windowTypeAtom() const { return window_type_atom; }
-
-    void setWindowTypeAtom(Atom atom) { window_type_atom = atom; }
+    MCompAtoms::Type windowType();
 
     void setRequestedGeometry(const QRect &rect) {
         req_geom = rect;
@@ -139,7 +137,7 @@ public:
 
 public slots:
     bool isDecorator();
-    MCompAtoms::Type windowType();
+    Atom windowTypeAtom();
 
     const XWMHints &getWMHints();
     const QRect realGeometry();
@@ -211,7 +209,6 @@ public:
             damage_object = XDamageCreate(QX11Info::display(), window,
                                           XDamageReportNonEmpty); 
     }
-    const QVector<Atom> &windowTypeAtoms() const { return type_atoms; }
 
 signals:
     void iconGeometryUpdated();
@@ -228,7 +225,6 @@ private:
     void init_invalid();
     int alphaValue(const QLatin1String me);
 
-    Atom window_type_atom;
     Window transient_for;
     QList<Window> transients;
     QList<Atom> wm_protocols;
@@ -246,6 +242,7 @@ private:
     xcb_get_window_attributes_reply_t *attrs;
     unsigned meego_layer;
     int window_state;
+    QVector<Atom> type_atoms;
     MCompAtoms::Type window_type;
     Window window, parent_window;
     int always_mapped, cannot_minimize, desktop_view;
@@ -278,7 +275,6 @@ private:
     // the reply unconditionally when it expires.
     MCSmartTimer *collect_timer;
     QHash<const QLatin1String, unsigned> requests;
-    QVector<Atom> type_atoms;
     bool isUpdate(const QLatin1String collector);
     bool requestPending(const QLatin1String collector);
     void addRequest(const QLatin1String collector, unsigned cookie);

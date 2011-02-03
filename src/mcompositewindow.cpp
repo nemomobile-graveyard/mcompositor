@@ -88,12 +88,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     damage_timer->setSingleShot(true);
     damage_timer->setInterval(500);
     connect(damage_timer, SIGNAL(timeout()), SLOT(damageTimeout()));
-    
-    if (pc->windowType() == MCompAtoms::NORMAL
-        || pc->windowTypeAtoms().isEmpty())
-        pc->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
-    else
-        pc->setWindowTypeAtom(pc->windowTypeAtoms()[0]);
 
     // Newly-mapped non-decorated application windows are not initially 
     // visible to prevent flickering when animation is started.

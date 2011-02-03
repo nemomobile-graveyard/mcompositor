@@ -2370,10 +2370,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         // reset item for the case previous animation did not end cleanly
         item->setUntransformed();
         item->setPos(pc->realGeometry().x(), pc->realGeometry().y());
-        if (wtype == MCompAtoms::NORMAL || pc->windowTypeAtoms().isEmpty())
-            pc->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
-        else
-            pc->setWindowTypeAtom(pc->windowTypeAtoms()[0]);
 #ifdef WINDOW_DEBUG
         if (debug_mode)
             qDebug() << "Composition overhead (existing pixmap):"
