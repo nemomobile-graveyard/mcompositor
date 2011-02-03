@@ -242,11 +242,6 @@ void MTexturePixmapItem::cleanup()
     freeEglImage(d);
     d->eglresource->texman->closeTexture(d->textureId);
 
-    // Work-around for crashes on some versions of below Qt 4.6
-#if (QT_VERSION < 0x040600)
-    eglMakeCurrent(d->eglresource->dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-#endif
-
     if (d->windowp) {
         XFreePixmap(QX11Info::display(), d->windowp);
         d->windowp = 0;
@@ -333,14 +328,8 @@ void MTexturePixmapItem::paint(QPainter *painter,
         return;
     }
 
-#if QT_VERSION < 0x040600
-    if (painter->paintEngine()->type()  != QPaintEngine::OpenGL)
+    if (painter->paintEngine()->type() != QPaintEngine::OpenGL2)
         return;
-#else
-    if (painter->paintEngine()->type()  != QPaintEngine::OpenGL2) {
-        return;
-    }
-#endif
     QGLWidget *gl = (QGLWidget *) painter->device();
     if (!d->ctx)
         d->ctx = const_cast<QGLContext *>(gl->context());
