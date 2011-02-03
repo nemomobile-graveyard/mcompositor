@@ -245,14 +245,8 @@ void MCompositeWindowGroup::paint(QPainter* painter,
     Q_UNUSED(options)
     Q_UNUSED(widget)
 
-#if QT_VERSION < 0x040600
-    if (painter->paintEngine()->type() != QPaintEngine::OpenGL)
+    if (painter->paintEngine()->type() != QPaintEngine::OpenGL2)
         return;
-#else
-    if (painter->paintEngine()->type() != QPaintEngine::OpenGL2) {
-        return;
-    }
-#endif
 
     glBindTexture(GL_TEXTURE_2D, d->texture);    
     if (d->main_window->propertyCache()->hasAlpha() || 

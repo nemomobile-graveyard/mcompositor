@@ -1300,9 +1300,7 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
 
             MCompositeWindow *desktop = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
             if (desktop)
-#if (QT_VERSION >= 0x040600)
                 item->stackBefore(desktop);
-#endif
         }
         if (check_visibility)
             dirtyStacking(true);
