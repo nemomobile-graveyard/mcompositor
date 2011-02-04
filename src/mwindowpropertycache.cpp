@@ -619,6 +619,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     } else if (e->atom == ATOM(_NET_WM_WINDOW_TYPE)) {
         addRequest(SLOT(windowTypeAtom()),
                    requestProperty(e->atom, XCB_ATOM_ATOM, MAX_TYPES));
+        window_type = MCompAtoms::INVALID;
     } else if (e->atom == ATOM(_NET_WM_ICON_GEOMETRY)) {
         addRequest(SLOT(iconGeometry()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL, 4));
