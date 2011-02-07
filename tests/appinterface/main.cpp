@@ -1,7 +1,6 @@
 #include <QtGui>
 #include <QDBusConnection>
-#include <mabstractappinterface.h>
-#include <mdecoratordbusinterface.h>
+#include <mdecorator_dbus_interface.h>
 
 class MainWindow : public QMainWindow
 {
@@ -16,7 +15,7 @@ public:
         , addToolBarAction(new QPushButton("add ToolBar Action"))
         , removeMenuAction(new QPushButton("remove Menu Action"))
         , removeToolBarAction(new QPushButton("remove ToolBar Action"))
-        , interface(new MDecoratorDBusInterface("com.nokia.MDecorator", "/MDecorator", QDBusConnection::sessionBus(),this))
+        , interface(new MDecoratorInterface("com.nokia.MDecorator", "/MDecorator", QDBusConnection::sessionBus(),this))
         , isStyled(false)
     {
         setCentralWidget(new QWidget());
@@ -37,8 +36,8 @@ public:
         if(style()->inherits("QtMaemo6Style")) {
             isStyled = true;
         } else {
-            qDBusRegisterMetaType<IPCAction>();
-            qDBusRegisterMetaType<IPCActionList>();
+            qDBusRegisterMetaType<MDecoratorIPCAction>();
+            qDBusRegisterMetaType<MDecoratorIPCActionList>();
             connect(interface, SIGNAL(triggered(QString,bool)), SLOT(onTriggeredDBus(QString,bool)));
             connect(interface, SIGNAL(toggled(QString,bool)), SLOT(onToggledDBus(QString,bool)));
         }
@@ -97,15 +96,15 @@ public slots:
 
     void updateDecorator()
     {
-        QList<IPCAction> list;
+        QList<MDecoratorIPCAction> list;
         foreach(QAction*act ,menuBar()->actions())
         {
-            IPCAction iact(*act, IPCAction::MenuAction);
+            MDecoratorIPCAction iact(*act, MDecoratorIPCAction::MenuAction);
             list.append(iact);
         }
         foreach(QAction*act ,toolBar->actions())
         {
-            IPCAction iact(*act, IPCAction::ToolBarAction);
+            MDecoratorIPCAction iact(*act, MDecoratorIPCAction::ToolBarAction);
             list.append(iact);
         }
         interface->setActions(list, winId());
@@ -143,11 +142,9 @@ private:
     QPushButton* removeMenuAction;
     QPushButton* removeToolBarAction;
     QToolBar* toolBar;
-    MDecoratorDBusInterface* interface;
+    MDecoratorInterface* interface;
     bool isStyled;
 };
-
-#include <main.moc>
 
 int main (int argc, char** argv)
 {
@@ -158,3 +155,5 @@ int main (int argc, char** argv)
 
     return app.exec();
 }
+
+#include "main.moc"
