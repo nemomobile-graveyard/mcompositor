@@ -1150,8 +1150,8 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         MCompositeWindow *p_cw;
         if (top_cw->propertyCache()->windowTypeAtom() ==
                                        ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
-            (parent = getLastVisibleParent(top_cw->propertyCache())) &&
-            (p_cw = COMPOSITE_WINDOW(parent)))
+            (parent = top_cw->propertyCache()->transientFor()) &&
+            (p_cw = COMPOSITE_WINDOW(parent)) && p_cw->isMapped())
             if (((MTexturePixmapItem*)p_cw)->isDirectRendered()) {
                 ((MTexturePixmapItem*)p_cw)->enableRedirectedRendering();
                 setWindowDebugProperties(parent);
