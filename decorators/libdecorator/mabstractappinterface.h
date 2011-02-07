@@ -30,8 +30,8 @@ class MRmiClient;
 class QRect;
 class QMenu;
 
-/*! The IPCAction class is used to send a QAction over IPC*/
-class IPCAction
+/*! The MDecoratorIPCAction class is used to send a QAction over IPC*/
+class MDecoratorIPCAction
 {
 public:
     /*! defines the location of the action*/
@@ -40,14 +40,14 @@ public:
         ToolBarAction
     };
 
-    IPCAction()
+    MDecoratorIPCAction()
         : m_checkable(false)
         , m_checked(false)
         , m_type(MenuAction)
     {
     }
 
-    IPCAction(const QAction& act, IPCAction::ActionType type)
+    MDecoratorIPCAction(const QAction& act, MDecoratorIPCAction::ActionType type)
         : m_text(act.text())
         , m_checkable(act.isCheckable())
         , m_checked(act.isChecked())
@@ -68,13 +68,13 @@ public:
 
     bool isChecked() const {return m_checked;  }
 
-    IPCAction::ActionType type() const {return m_type; }
+    MDecoratorIPCAction::ActionType type() const {return m_type; }
 
     QIcon icon() const {return m_icon; }
 
     //friend to access the member variables directly because we don't have setter
-    friend QDBusArgument &operator<<(QDBusArgument &argument, const IPCAction &action);
-    friend const QDBusArgument &operator>>(const QDBusArgument &argument, IPCAction &action);
+    friend QDBusArgument &operator<<(QDBusArgument &argument, const MDecoratorIPCAction &action);
+    friend const QDBusArgument &operator>>(const QDBusArgument &argument, MDecoratorIPCAction &action);
 
 private:
 
@@ -86,49 +86,12 @@ private:
     QIcon m_icon;
 };
 
-typedef QList<IPCAction> IPCActionList;
+typedef QList<MDecoratorIPCAction> MDecoratorIPCActionList;
 
-QDBusArgument &operator<<(QDBusArgument &argument, const IPCAction &action);
-const QDBusArgument &operator>>(const QDBusArgument &argument, IPCAction &action);
+QDBusArgument &operator<<(QDBusArgument &argument, const MDecoratorIPCAction &action);
+const QDBusArgument &operator>>(const QDBusArgument &argument, MDecoratorIPCAction &action);
 
-Q_DECLARE_METATYPE(IPCAction);
-Q_DECLARE_METATYPE(IPCActionList);
-/*!
- * MAbstractAppInterface is the base class for Application Interface
-
-   It is used to communicate to the current decorated Application.
- */
-class MAbstractAppInterface: public QObject
-{
-    Q_OBJECT
-public:
-    /*!
-     * Initializes MAbstractAppInterface and listens for Messages from the Application
-     */
-    MAbstractAppInterface(QObject *parent = 0);
-    virtual ~MAbstractAppInterface() = 0;
-
-signals:
-    /*! Sends the triggered signal for the given Action to the current decorated Application*/
-    void triggered(QString id, bool val);
-    /*! Sends the toggled signal for the given Action to the current decorated Application*/
-    void toggled(QString id, bool val);
-
-public slots:
-
-    /*! set the List of Actions in the Menu/ToolBar of the decorator. The window is used
-        to check for the current decorated window */
-    void setActions(IPCActionList ,uint window);
-
-protected:
-
-    virtual void actionsChanged(QList<IPCAction>, WId window) = 0;
-
-private:
-
-    Q_DECLARE_PRIVATE(MAbstractAppInterface)
-
-    MAbstractAppInterfacePrivate * const d_ptr;
-};
+Q_DECLARE_METATYPE(MDecoratorIPCAction);
+Q_DECLARE_METATYPE(MDecoratorIPCActionList);
 
 #endif // MABSTRACTAPPINTERFACE_H

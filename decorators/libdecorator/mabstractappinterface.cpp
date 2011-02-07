@@ -20,7 +20,8 @@
 #include <QtDebug>
 
 #include "mabstractappinterface.h"
-#include "mdecoratordbusadaptor.h"
+#include "mdecorator_dbus_adaptor.h"
+#include "mabstractdecorator.h"
 #include <mrmiserver.h>
 #include <mrmiclient.h>
 #include <QX11Info>
@@ -32,7 +33,7 @@
 #include <QPixmap>
 
 
-QDBusArgument &operator<<(QDBusArgument &argument, const IPCAction &action)
+QDBusArgument &operator<<(QDBusArgument &argument, const MDecoratorIPCAction &action)
 {
     argument.beginStructure();
     argument << action.m_key.toString();
@@ -61,7 +62,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const IPCAction &action)
     argument.endStructure();
     return argument;
 }
-const QDBusArgument &operator>>(const QDBusArgument &argument, IPCAction &action)
+const QDBusArgument &operator>>(const QDBusArgument &argument, MDecoratorIPCAction &action)
 {
     argument.beginStructure();
     int type;
@@ -80,7 +81,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, IPCAction &action
             qCritical() << "MDecorator: Icon loading failed";
         action.m_icon = QIcon(QPixmap::fromImage(image));
     }
-    action.m_type = (IPCAction::ActionType)type;
+    action.m_type = (MDecoratorIPCAction::ActionType)type;
     argument.endStructure();
     return argument;
 }
@@ -89,7 +90,7 @@ class MAbstractAppInterfacePrivate
 {
 public:
 
-    MDecoratorDBusAdaptor* adaptor;
+    MDecoratorAdaptor* adaptor;
     MAbstractAppInterface* q_ptr;
 };
 
@@ -97,16 +98,10 @@ MAbstractAppInterface::MAbstractAppInterface(QObject *parent)
     : QObject(parent),
       d_ptr(new MAbstractAppInterfacePrivate())
 {
-    qDBusRegisterMetaType<IPCAction>();
-    qDBusRegisterMetaType<IPCActionList>();
+    qDBusRegisterMetaType<MDecoratorIPCAction>();
+    qDBusRegisterMetaType<MDecoratorIPCActionList>();
 
-    /*Generate an new Adaptor using the command:
-      qdbusxml2cpp inteface.xml -a mdecoratordbusadaptor -i mabstractappinterface.h -c MDecoratorDBusAdaptor
-
-      Generate an new Interface using the command:
-      qdbusxml2cpp inteface.xml -p mdecoratordbusinterface -c MDecoratorDBusInterface -i mabstractappinterface.h
-    */
-    d_ptr->adaptor = new MDecoratorDBusAdaptor(this);
+    d_ptr->adaptor = new MDecoratorAdaptor(this);
 
     QDBusConnection::sessionBus().registerService("com.nokia.MDecorator");
     QDBusConnection::sessionBus().registerObject("/MDecorator", this);
@@ -116,9 +111,8 @@ MAbstractAppInterface::~MAbstractAppInterface()
 {
 }
 
-void MAbstractAppInterface::setActions(IPCActionList menu ,uint window)
+void MAbstractAppInterface::setActions(MDecoratorIPCActionList menu ,uint window)
 {
-    //qCritical()<<__PRETTY_FUNCTION__;
     actionsChanged(menu, (WId)window);
 }
 

@@ -21,6 +21,7 @@
 #define MABSTRACTDECORATOR_H
 
 #include <QObject>
+#include "mabstractappinterface.h"
 
 class MAbstractDecoratorPrivate;
 class MRmiClient;
@@ -116,6 +117,44 @@ private:
     Q_DECLARE_PRIVATE(MAbstractDecorator)
         
     MAbstractDecoratorPrivate * const d_ptr;
+};
+
+/*!
+ * MAbstractAppInterface is the base class for Application Interface
+
+   It is used to communicate to the current decorated Application.
+ */
+class MAbstractAppInterface: public QObject
+{
+    Q_OBJECT
+public:
+    /*!
+     * Initializes MAbstractAppInterface and listens for Messages from the Application
+     */
+    MAbstractAppInterface(QObject *parent = 0);
+    virtual ~MAbstractAppInterface() = 0;
+
+signals:
+    /*! Sends the triggered signal for the given Action to the current decorated Application*/
+    void triggered(QString id, bool val);
+    /*! Sends the toggled signal for the given Action to the current decorated Application*/
+    void toggled(QString id, bool val);
+
+public slots:
+
+    /*! set the List of Actions in the Menu/ToolBar of the decorator. The window is used
+        to check for the current decorated window */
+    void setActions(MDecoratorIPCActionList ,uint window);
+
+protected:
+
+    virtual void actionsChanged(QList<MDecoratorIPCAction>, WId window) = 0;
+
+private:
+
+    Q_DECLARE_PRIVATE(MAbstractAppInterface)
+
+    MAbstractAppInterfacePrivate * const d_ptr;
 };
 
 #endif //MABSTRACTDECORATOR_H
