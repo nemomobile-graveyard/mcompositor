@@ -9,4 +9,5 @@ include($$[QT_INSTALL_DATA]/mkspecs/features/meegotouch_translations.prf)
 # Only depend on $$FILES, and do not regenerate recovery.ts all the times.
 FILES = $$SOURCEDIR/decorators/mdecorator/mdecoratorwindow.cpp
 updateeets.input = FILES
+updateeets.clean = nothing
 QMAKE_EXTRA_COMPILERS -= dummy
