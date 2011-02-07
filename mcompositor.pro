@@ -14,7 +14,7 @@ QMAKE_CLEAN += \
 	build-stamp \
 
 QMAKE_DISTCLEAN += \
-    configure-stamp \
+    configure-stamp \
     build-stamp \
 
 check.target = check
