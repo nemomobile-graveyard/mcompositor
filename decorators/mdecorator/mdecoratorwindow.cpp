@@ -126,16 +126,15 @@ public:
         currentWindow = window;
     }
 
-    virtual void actionsChanged(QList<IPCAction> newMenu, WId window)
+    virtual void actionsChanged(QList<MDecoratorIPCAction> newMenu, WId window)
     {
         if (window != currentWindow)
             return;
 
-        //qCritical()<<__PRETTY_FUNCTION__<<"new Actions:"<<newMenu.count();
         QList<MAction*> menu;
         actionHash.clear();
 
-        foreach (IPCAction act, newMenu) {
+        foreach (MDecoratorIPCAction act, newMenu) {
             MAction* mact = createMAction(act);
             menu.append(mact);
         }
@@ -145,7 +144,6 @@ public:
 public slots:
     void actionTriggered(bool val)
     {
-        qCritical()<<"triggered";
         if (!sender() || !qobject_cast<MAction*>(sender()))
             return;
 
@@ -156,7 +154,6 @@ public slots:
 
     void actionToggled(bool val)
     {
-        qCritical()<<"toggled";
         if (!sender() || !qobject_cast<MAction*>(sender()))
             return;
 
@@ -167,13 +164,12 @@ public slots:
 
 private:
 
-    MAction* createMAction(const IPCAction& act)
+    MAction* createMAction(const MDecoratorIPCAction& act)
     {
         //Normal MActions doesn't support custom QIcons, therefore we use MButtons and MWidgetAction
-        //qCritical()<<"creating Action: checkable"<<act.isCheckable()<<"checked"<<act.isChecked();
 
         MAction* mact;
-        if (act.type() == IPCAction::MenuAction) {
+        if (act.type() == MDecoratorIPCAction::MenuAction) {
             mact = new MAction(decorwindow);
             mact->setText(act.text());
             mact->setCheckable(act.isCheckable());
@@ -227,7 +223,7 @@ private:
         }
     }
 
-    QHash<MAction*, IPCAction> actionHash;
+    QHash<MAction*, MDecoratorIPCAction> actionHash;
 
     MDecoratorWindow *decorwindow;
     WId currentWindow;
@@ -350,7 +346,7 @@ void MDecoratorWindow::noButtonClicked()
 void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w)
 {
     app->setManagedWindow(w);
-    app->actionsChanged(QList<IPCAction>(), w);
+    app->actionsChanged(QList<MDecoratorIPCAction>(), w);
     if (w != managed_window && messageBox)
         showQueryDialog(false);
     managed_window = w;
@@ -618,19 +614,15 @@ void MDecoratorWindow::closeEvent(QCloseEvent * event )
 
 void MDecoratorWindow::addActions(QList<MAction*> new_actions)
 {
-    //qCritical()<<__PRETTY_FUNCTION__;
-
     setUpdatesEnabled(false);
 
     navigationBar->setArrowIconVisible(false);
 
     QList<QAction*> oldactions = actions();
 
-    //qCritical()<<"deleting Actions";
     foreach (QAction* act, oldactions)
         removeAction(act);
 
-    //qCritical()<<"inserting Actions";
     foreach (MAction* act, new_actions) {
         //the signals have to be disabled because LMT using setChecked on the action and that would lead to an trigger/toggle signal
         act->blockSignals(true);
@@ -647,7 +639,6 @@ void MDecoratorWindow::addActions(QList<MAction*> new_actions)
 
 void MDecoratorWindow::menuAppearing()
 {
-    //qCritical()<<__PRETTY_FUNCTION__;
     if (menuVisible)
         return;
     menuVisible=true;
@@ -667,7 +658,6 @@ void MDecoratorWindow::menuAppearing()
 
 void MDecoratorWindow::menuDisappeared()
 {
-    //qCritical()<<__PRETTY_FUNCTION__;
     if (!menuVisible)
         return;
     menuVisible=false;
