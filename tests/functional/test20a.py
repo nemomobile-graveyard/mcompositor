@@ -43,6 +43,9 @@ for l in s.splitlines():
     ret = 1
     break
 
+# cleanup
+os.popen('pkill windowctl')
+
 if os.system('/usr/bin/gconftool-2 --type bool --set /desktop/meego/notifications/previews_enabled true'):
   print 'cannot re-enable notifications'
 
