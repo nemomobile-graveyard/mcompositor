@@ -16,12 +16,12 @@
     <message id="qtn_comm_command_yes">
         <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="470"/>
         <source></source>
-        <translation type="unfinished"></translation>
+        <translation>Aje</translation>
     </message>
     <message id="qtn_comm_command_no">
         <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="472"/>
         <source></source>
-        <translation type="unfinished"></translation>
+        <translation>Oh, no!</translation>
     </message>
 </context>
 </TS>
