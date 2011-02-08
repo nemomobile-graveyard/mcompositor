@@ -27,7 +27,7 @@ mcompositor (0.8.4-1) unstable; urgency=low
   * clean up the mdecorator dbus interface
   * remove MWindowPropertyCache::window_type_atom
   * depend on Qt 4.7
-  * Fixes: NB#16540 Blank toolbar and extra space below status bar is shown
+  * Fixes: NB#216540 Blank toolbar and extra space below status bar is shown
   * split test20
   * functional tests structure cleanup
   * don't try to clear _NET_SUPPORTING_WM_CHECK if X is gone
