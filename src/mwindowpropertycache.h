@@ -112,7 +112,7 @@ public:
             attrs->map_state = XCB_MAP_STATE_UNMAPPED;
     }
 
-    void setWindowState(int state) { window_state = state; }
+    void setWindowState(int state);
     
     /*!
      * Returns whether override_redirect flag was in XWindowAttributes at
