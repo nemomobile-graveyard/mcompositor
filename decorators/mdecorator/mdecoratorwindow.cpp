@@ -429,6 +429,9 @@ void MDecoratorWindow::showQueryDialog(bool visible)
         XGetClassHint(QX11Info::display(), managed_window, &cls);
         if (cls.res_name) {
             name = QString(cls.res_name);
+            if (name.endsWith(".launch"))
+                // Remove the extension in order to find the .desktop file.
+                name.resize(name.length()-strlen(".launch"));
             MDesktopEntry de(QString("/usr/share/applications/")
                              + name + ".desktop");
             if (de.isValid() && !de.name().isEmpty())
