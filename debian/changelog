@@ -1,3 +1,9 @@
+mcompositor (0.8.5-1~unreleased) unstable; urgency=low
+
+  * :)
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 08 Feb 2011 11:31:02 +0200
+
 mcompositor (0.8.4-1) unstable; urgency=low
 
   * add mdecorator D-BUS interface
