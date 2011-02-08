@@ -34,8 +34,6 @@
 int MCompositeWindow::window_transitioning = 0;
 
 static QRectF fadeRect = QRectF();
-static QElapsedTimer etimer;
-static bool etimer_started = false;
 
 MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
                                    MWindowPropertyCache *mpc, 
@@ -61,10 +59,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       waiting_for_damage(0),
       win_id(window)
 {
-    if (!etimer_started) {
-        etimer.start();
-        etimer_started = true;
-    }
     thumb_mode = false;
     if (!mpc || (mpc && !mpc->is_valid)) {
         is_valid = false;
@@ -605,10 +599,9 @@ void MCompositeWindow::pingWindow()
         // don't send a new ping before the window responds, otherwise we may
         // queue up too many of them
         return;
-    // elapsed() returns milliseconds, divided by 100, it takes 429496729.5 s
-    // or 4294967295 / 10 / 3600 / 24 = 4971 days before it overflows
-    ulong t = etimer.elapsed() / 100;
-    sent_ping_timestamp = t;
+    // It takes 5*4294967295s or 248551.35 days before it overflows.
+    // Don't worry, you're not even remotely in danger on this platform.
+    ulong t = ++sent_ping_timestamp;
     Window w = window();
 
     XEvent ev;
