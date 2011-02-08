@@ -686,6 +686,15 @@ int MWindowPropertyCache::windowState()
     return window_state;
 }
 
+void MWindowPropertyCache::setWindowState(int state)
+{
+    // The window's type is about to change.  Change the the idea of the
+    // property cache about the window's type now to make windowState()
+    // non-blocking.
+    cancelRequest(SLOT(windowState()));
+    window_state = state;
+}
+
 void MWindowPropertyCache::buttonGeometryHelper()
 {
     QLatin1String me(SLOT(buttonGeometryHelper()));
