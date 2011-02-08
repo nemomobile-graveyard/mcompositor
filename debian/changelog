@@ -1,8 +1,38 @@
-mcompositor (0.8.4-1~unreleased) unstable; urgency=low
+mcompositor (0.8.4-1) unstable; urgency=low
 
-  * :)
+  * add mdecorator D-BUS interface
+  * Fixes: NB#225039 - All system modal dialogs should not be drawn on top of lock screen
+  * main(): skip desktop settings, we don't have such windows
+  * Don't leak in MWindowPropertyCache::realGeometry()
+  * Apply parts from MRQ 71 + MDecoratorFrame cleanups
+  * Fixes: NB#224356 - MCompositeWindow's window pinging is slow and unreliable
+  * Fixes: NB#223544 - Often Lock Screen UI is transparent
+  * Avoid 1-2 blocking X queries on mapping time
+  * Redirect the window that TYPE_INPUT window is transient for
+  * renamed requestReplied -> replyCollected, fixed the FIXME for pict formats
+  * Fixes: NB#223269 - EGLImages are held allocated longer than necessary
+  * Fixes: NB#223280 - mcompositor should assume the vkb window as non-obscuring for the application
+  * Fixes: NB#222844 - Compositor makes two windows direct at the same time
+  * Fixes: NB#216765 - In Enter passcode view, pressing Cancel button does not return
+  * MCompositeWindow::MCompositeWindow(): init window_visible for input-only wins
+  * Renew MWindowPropertyCache so that XCB's pending replies don't pile up.
+  * use counters instad of the monotonic clock for pinging
+  * search for .desktop files without a .launch
+  * clean up the mdecorator dbus interface
+  * remove MWindowPropertyCache::window_type_atom
+  * depend on Qt 4.7
+  * Fixes: NB#16540 Blank toolbar and extra space below status bar is shown
+  * split test20
+  * functional tests structure cleanup
+  * don't try to clear _NET_SUPPORTING_WM_CHECK if X is gone
+  * make the xserverpinger process appear as xserverping in ps
+  * make test6.py a little faster
+  * Fixes: NB#219175 - "Application not responding" dialog blocks QEmu runtime
+  * make MCompositeWindowGroup::updateWindowPixmap() explicit
+  * make test20 pass
+  * don't let the same window to be added to a group twice
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 25 Jan 2011 12:30:38 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 08 Feb 2011 11:29:38 +0200
 
 mcompositor (0.8.3-1) unstable; urgency=low
 
