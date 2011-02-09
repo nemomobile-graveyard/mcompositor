@@ -377,7 +377,7 @@ static void wait_for_mapnotify(Display *dpy, Window w)
 static void print_usage_and_exit(QString& stdOut)
 {
 #define PROG "windowctl"
-  stdOut = "Usage 1: " PROG " [afoemksIchpl(j[12])M](n|d|i|b) [transient for <XID>]\n"
+  stdOut = "Usage 1: " PROG " [afoemksIchplu(j[12])M](n|d|i|b) [transient for <XID>]\n"
 	 "a - ARGB (32-bit) window, otherwise 16-bit is used\n"
 	 "f - fullscreen window\n"
 	 "o - override-redirect window\n"
@@ -390,6 +390,7 @@ static void print_usage_and_exit(QString& stdOut)
          "h - set _MEEGOTOUCH_DECORATOR_BUTTONS for home and close buttons\n"
          "p - claim to support the _NET_WM_PING protocol (but don't)\n"
          "l - use InputOnly window class\n"
+	 "u - keep the window unmapped\n"
          "j1 - set _MEEGOTOUCH_ALWAYS_MAPPED property to 1\n"
          "j2 - set _MEEGOTOUCH_ALWAYS_MAPPED property to 2\n"
          "MTT - send _MEEGOTOUCH_TRANSITION messages when the window is ARGB\n"
@@ -664,7 +665,8 @@ static bool old_main(QStringList& args, QString& stdOut)
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
             shaped = 0, initial_iconic = 0, no_focus = 0, do_not_answer_ping = 0,
-            input_only = 0, always_mapped = -1, draw_mode = 0, send_mtt = 0;
+            input_only = 0, always_mapped = -1, draw_mode = 0, send_mtt = 0,
+            keep_unmapped = 0;
 	WindowType windowtype = TYPE_INVALID;
 
 	if (args.count() < 1 || args.count() > 6) {
@@ -737,6 +739,10 @@ static bool old_main(QStringList& args, QString& stdOut)
                 }
 		if (*p == 'l') {
                         input_only = 1;
+                        continue;
+                }
+		if (*p == 'u') {
+                        keep_unmapped = 1;
                         continue;
                 }
 		if (*p == 'd') {
@@ -999,7 +1005,8 @@ static bool old_main(QStringList& args, QString& stdOut)
         struct timeval map_time;
         gettimeofday(&map_time, NULL);
 
-        XMapWindow(dpy, w);  /* map the window */
+        if (!keep_unmapped)
+            XMapWindow(dpy, w);  /* map the window */
 mainloop:
         int damage_event, damage_error;
         XDamageQueryExtension(dpy, &damage_event, &damage_error);

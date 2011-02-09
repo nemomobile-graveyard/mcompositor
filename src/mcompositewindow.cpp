@@ -698,17 +698,20 @@ QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant 
 void MCompositeWindow::findBehindWindow()
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
-    int behind_i = indexInStack() - 1;
-    if (behind_i >= 0 && behind_i < p->d->stacking_list.size()) {
-        MCompositeWindow* w = MCompositeWindow::compositeWindow(p->d->stacking_list.at(behind_i));
+    for (int behind_i = indexInStack() - 1; behind_i >= 0; --behind_i) {
+        Window behind_w = p->d->stacking_list.at(behind_i);
+        MCompositeWindow* w = MCompositeWindow::compositeWindow(behind_w);
+        if (!w) continue;
         if (w->propertyCache()->windowState() == NormalState 
             && w->propertyCache()->isMapped()
             && !w->propertyCache()->isDecorator()) 
             behind_window = w;
-        else if (w->propertyCache()->isDecorator() && MDecoratorFrame::instance()->managedClient())
+        else if (w->propertyCache()->isDecorator() &&
+                 MDecoratorFrame::instance()->managedClient())
             behind_window = MDecoratorFrame::instance()->managedClient();
         else
             behind_window = MCompositeWindow::compositeWindow(p->d->stack[DESKTOP_LAYER]);
+        break;
     }
 }
 
@@ -725,20 +728,10 @@ bool MCompositeWindow::windowVisible() const
 
 bool MCompositeWindow::isAppWindow(bool include_transients)
 {
-    MCompositeManager *p = (MCompositeManager *) qApp;
-    
-    if (!include_transients && p->d->getLastVisibleParent(pc))
+    if (pc && pc->is_valid)
+        return pc->isAppWindow(include_transients);
+    else
         return false;
-    
-    if (pc && !pc->isOverrideRedirect() &&
-            (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
-             pc->windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
-             /* non-modal, non-transient dialogs behave like applications */
-             (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
-              (pc->netWmState().indexOf(ATOM(_NET_WM_STATE_MODAL)) == -1)))
-        && !pc->isDecorator())
-        return true;
-    return false;
 }
 
 QPainterPath MCompositeWindow::shape() const

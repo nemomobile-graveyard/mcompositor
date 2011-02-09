@@ -109,13 +109,6 @@ public:
     void loadPlugins(const QString &overridePluginPath,
                      const QString &regularPluginDir);
 
-    /*!
-     * Returns whether a Window is redirected or not
-     *
-     * \param w Window id of a window
-     */
-    bool isRedirected(Qt::HANDLE window);
-    
     /*
      * Returns the current state of windows whether it is being composited
      * or not
