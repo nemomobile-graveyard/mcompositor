@@ -1468,16 +1468,18 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     Display *dpy = QX11Info::display();
     Damage damage_obj = 0;
     // create the damage object before mapping to get 'em all
-    if (!device_state->displayOff() && !prop_caches.contains(e->window))
-        damage_obj = XDamageCreate(dpy, e->window, XDamageReportNonEmpty);
+    MWindowPropertyCache *pc = prop_caches.value(e->window, 0);
+    if (!device_state->displayOff()) {
+        if (pc)
+            pc->damageTracking(true);
+        else
+            damage_obj = XDamageCreate(dpy, e->window, XDamageReportNonEmpty);
+    }
     // map early to give the app a chance to start drawing
     XMapWindow(dpy, e->window);
     XFlush(dpy);
 
-    MWindowPropertyCache *pc;
-    if (prop_caches.contains(e->window))
-        pc = prop_caches.value(e->window);
-    else {
+    if (!pc) {
         pc = new MWindowPropertyCache(e->window, 0, 0, damage_obj);
         if (!pc->is_valid) {
             delete pc;
