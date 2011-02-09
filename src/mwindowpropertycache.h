@@ -95,6 +95,8 @@ public:
     void setBeingMapped(bool s) { being_mapped = s; }
     void setDontIconify(bool s) { dont_iconify = s; }
     bool dontIconify();
+    void setStackedUnmapped(bool s) { stacked_unmapped = s; }
+    bool stackedUnmapped() const { return stacked_unmapped; }
 
     bool isMapped() const {
         if (!is_valid || !attrs)
@@ -210,6 +212,11 @@ public:
                                           XDamageReportNonEmpty); 
     }
 
+    /*! 
+     * Returns whether this is an application window
+     */
+    bool isAppWindow(bool include_transients = false);
+
 signals:
     void iconGeometryUpdated();
     void meegoDecoratorButtonsChanged(Window w);
@@ -246,7 +253,7 @@ private:
     MCompAtoms::Type window_type;
     Window window, parent_window;
     int always_mapped, cannot_minimize, desktop_view;
-    bool being_mapped, dont_iconify;
+    bool being_mapped, dont_iconify, stacked_unmapped;
     QRegion custom_region;
     unsigned orientation_angle;
     QRegion shape_region;

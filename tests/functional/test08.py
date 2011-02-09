@@ -6,14 +6,19 @@
 #* Test steps
 #  * show an application window
 #  * create and show a dialog window that is transient for the application
+#  * check stacking order
 #  * iconify the application window
+#  * check stacking order
 #  * activate the application window
 #  * check that the transient is above the application window
 #  * iconify the application window
+#  * check stacking order
 #  * activate the transient window
 #  * check that the transient is above the application window
 #  * create and show a dialog window that is transient for the previous dialog
+#  * check stacking order
 #  * iconify the application window
+#  * check stacking order
 #  * activate the application window
 #  * check that both transients are above the application window and in order
 #  * swap the transiencies of the dialogs
@@ -37,114 +42,85 @@ if home_win == 0:
   print 'FAIL: desktop window not found'
   sys.exit(1)
 
+def check_order(list, test):
+  global ret
+  print 'Test:', test
+  fd = os.popen('windowstack m')
+  s = fd.read(10000)
+  i = 0
+  for l in s.splitlines():
+    if re.search('%s ' % list[i], l.strip()):
+      print list[i], 'found'
+      i += 1
+      if i >= len(list):
+        break
+      continue
+    else:
+      # no match, check that no other element matches either
+      for j in range(i, len(list)):
+        if re.search('%s ' % list[j], l.strip()):
+          print 'FAIL: stacking order is wrong in "%s" test' % test
+          print 'Failed stack:\n', s
+          ret = 1
+          return
+  if i < len(list):
+    print 'FAIL: windows missing from the stack in "%s" test' % test
+    print 'Failed stack:\n', s
+    ret = 1
+
 # create application and transient dialog windows
 fd = os.popen('windowctl kn')
-old_win = fd.readline().strip()
+app = fd.readline().strip()
 time.sleep(1)
-fd = os.popen("windowctl kd %s" % old_win)
-new_win = fd.readline().strip()
+fd = os.popen("windowctl kd %s" % app)
+dialog1 = fd.readline().strip()
 time.sleep(1)
 
+ret = 0
+check_order([dialog1, app, home_win], 'app and dialog appeared correctly')
+
 # iconify the application
-os.popen("windowctl O %s" % old_win)
+os.popen("windowctl O %s" % app)
 time.sleep(2)
+
+check_order([home_win, dialog1, app], 'app and dialog iconified correctly 1')
 
 # activate the application (this should raise the dialog too)
-os.popen("windowctl A %s" % old_win)
+os.popen("windowctl A %s" % app)
 time.sleep(1)
 
-ret = new_win_found = 0
-fd = os.popen('windowstack m')
-s = fd.read(5000)
-for l in s.splitlines():
-  if re.search("%s " % new_win, l.strip()):
-    print new_win, 'found'
-    new_win_found = 1
-  elif re.search("%s " % old_win, l.strip()) and new_win_found:
-    print old_win, 'found'
-    break
-  elif re.search("%s " % old_win, l.strip()):
-    print 'FAIL: app is stacked before dialog'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
-  elif re.search("%s " % home_win, l.strip()):
-    print 'FAIL: home is stacked before app'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
+check_order([dialog1, app, home_win], 'app and dialog raised correctly 1')
 
 # iconify the application
-os.popen("windowctl O %s" % old_win)
+os.popen("windowctl O %s" % app)
 time.sleep(2)
+
+check_order([home_win, dialog1, app], 'app and dialog iconified correctly 2')
 
 # activate the transient
-os.popen("windowctl A %s" % new_win)
+os.popen("windowctl A %s" % dialog1)
 time.sleep(1)
 
-new_win_found = 0
-fd = os.popen('windowstack m')
-s = fd.read(5000)
-for l in s.splitlines():
-  if re.search("%s " % new_win, l.strip()):
-    print new_win, 'found'
-    new_win_found = 1
-  elif re.search("%s " % old_win, l.strip()) and new_win_found:
-    print old_win, 'found'
-    break
-  elif re.search("%s " % old_win, l.strip()):
-    print 'FAIL: app is stacked before dialog'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
-  elif re.search("%s " % home_win, l.strip()):
-    print 'FAIL: home is stacked before app'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
+check_order([dialog1, app, home_win], 'app and dialog raised correctly 2')
 
 # create a dialog that is transient to the first dialog
-fd = os.popen("windowctl kd %s" % new_win)
-new_dialog = fd.readline().strip()
+fd = os.popen("windowctl kd %s" % dialog1)
+dialog2 = fd.readline().strip()
 time.sleep(1)
+
+check_order([dialog2, dialog1, app, home_win], 'dialog2 appeared correctly')
 
 # iconify the application
-os.popen("windowctl O %s" % old_win)
+os.popen("windowctl O %s" % app)
 time.sleep(2)
 
+check_order([home_win, dialog2, dialog1, app], 'app and both dialogs iconified')
+
 # activate the application (this should raise the dialogs too)
-os.popen("windowctl A %s" % old_win)
+os.popen("windowctl A %s" % app)
 time.sleep(1)
 
-new_dialog_found = new_win_found = 0
-fd = os.popen('windowstack m')
-s = fd.read(5000)
-for l in s.splitlines():
-  if re.search("%s " % new_dialog, l.strip()):
-    print new_dialog, 'found'
-    new_dialog_found = 1
-  elif re.search("%s " % new_win, l.strip()) and new_dialog_found:
-    print new_win, 'found'
-    new_win_found = 1
-  elif re.search("%s " % new_win, l.strip()):
-    print 'FAIL: old dialog is stacked before new dialog'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
-  elif re.search("%s " % home_win, l.strip()):
-    print 'FAIL: home is stacked before app'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
-  elif re.search("%s " % old_win, l.strip()) and new_dialog_found \
-       and new_win_found:
-    print old_win, 'found'
-    break
-  elif re.search("%s " % old_win, l.strip()):
-    print 'FAIL: app is stacked before a transient dialog'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
+check_order([dialog2, dialog1, app, home_win], 'app and both dialogs raised')
 
 # get the root window and the current stacking
 r = re.compile("Window id: (0x[0-9a-fA-F]*)")
@@ -155,8 +131,8 @@ stacking = filter(rnwmclist.match, os.popen("xprop -id %s -notype" % root))[0]
 
 # swap the transiencies of the dialogs
 # (this introduces a temporary transiency loop)
-os.popen("windowctl t %s %s" % (new_win, new_dialog))
-os.popen("windowctl t %s %s" % (new_dialog, old_win))
+os.popen("windowctl t %s %s" % (dialog1, dialog2))
+os.popen("windowctl t %s %s" % (dialog2, app))
 
 # wait until the wm has restacked
 prev_stacking = stacking
@@ -166,35 +142,7 @@ while stacking == prev_stacking:
 	stacking = filter(rnwmclist.match,
 		os.popen("xprop -id %s -notype" % root))[0]
 
-new_dialog_found = new_win_found = 0
-fd = os.popen('windowstack m')
-s = fd.read(5000)
-for l in s.splitlines():
-  if re.search("%s " % new_win, l.strip()):
-    print new_win, 'found'
-    new_win_found = 1
-  elif re.search("%s " % new_dialog, l.strip()) and new_win_found:
-    print new_dialog, 'found'
-    new_dialog_found = 1
-  elif re.search("%s " % new_dialog, l.strip()):
-    print 'FAIL: lower dialog is stacked before the upper dialog'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
-  elif re.search("%s " % home_win, l.strip()):
-    print 'FAIL: home is stacked before app'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
-  elif re.search("%s " % old_win, l.strip()) and new_dialog_found \
-       and new_win_found:
-    print old_win, 'found'
-    break
-  elif re.search("%s " % old_win, l.strip()):
-    print 'FAIL: app is stacked before a transient dialog'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
+check_order([dialog1, dialog2, app, home_win], 'dialogs swapped correctly')
 
 # cleanup
 os.popen('pkill windowctl')

@@ -74,9 +74,9 @@
 
 #define COMPOSITE_WINDOW(X) MCompositeWindow::compositeWindow(X)
 #define FULLSCREEN_WINDOW(X) \
-        ((X)->propertyCache()->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1)
+        ((X)->netWmState().contains(ATOM(_NET_WM_STATE_FULLSCREEN)))
 #define MODAL_WINDOW(X) \
-        ((X)->propertyCache()->netWmState().indexOf(ATOM(_NET_WM_STATE_MODAL)) != -1)
+        ((X)->netWmState().contains(ATOM(_NET_WM_STATE_MODAL)))
 
 Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
 Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
@@ -896,8 +896,6 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 
 void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 {
-    configure_reqs.remove(e->window);
-
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
         item->deleteLater();
@@ -918,6 +916,7 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
             delete prop_caches.value(e->window);
             prop_caches.remove(e->window);
         }
+        removeWindow(e->window);
     }
 }
 
@@ -968,6 +967,11 @@ Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
            break;
     }
     return last;
+}
+
+Window MCompositeManager::getLastVisibleParent(MWindowPropertyCache *pc) const
+{
+    return d->getLastVisibleParent(pc);
 }
 
 Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
@@ -1042,7 +1046,7 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated(int *index)
         if (cw && cw->isMapped() && (pc = cw->propertyCache()) &&
             !pc->isOverrideRedirect() &&
             (cw->needDecoration() || cw->status() == MCompositeWindow::Hung
-             || (FULLSCREEN_WINDOW(cw) &&
+             || (FULLSCREEN_WINDOW(cw->propertyCache()) &&
                  pc->windowTypeAtom() != ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE)
                  && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
                  && device_state->ongoingCall()))) {
@@ -1172,12 +1176,12 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     if (e->send_event == True || e->event != QX11Info::appRootWindow())
         // handle root's SubstructureNotifys (top-levels) only
         return;
-    configure_reqs.remove(e->window);
     MWindowPropertyCache *wpc = 0;
     if (prop_caches.contains(e->window)) {
         wpc = prop_caches.value(e->window);
         wpc->setBeingMapped(false);
         wpc->setIsMapped(false);
+        wpc->setStackedUnmapped(false);
         if (!wpc->isInputOnly()
             && wpc->parentWindow() != QX11Info::appRootWindow())
             XRemoveFromSaveSet(QX11Info::display(), e->window);
@@ -1213,7 +1217,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
                 if (cw->status() == MCompositeWindow::Hung) {
                     MDecoratorFrame::instance()->setManagedWindow(cw, true);
                     MDecoratorFrame::instance()->setOnlyStatusbar(false);
-                } else if (FULLSCREEN_WINDOW(cw) && device_state->ongoingCall()) {
+                } else if (FULLSCREEN_WINDOW(cw->propertyCache())
+                           && device_state->ongoingCall()) {
                     MDecoratorFrame::instance()->setManagedWindow(cw, true);
                     MDecoratorFrame::instance()->setOnlyStatusbar(true);
                 } else {
@@ -1250,17 +1255,19 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
         || e->window == close_button_win || e->window == home_button_win)
         return;
 
-    MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
-    if (item) {
+    MWindowPropertyCache *pc = prop_caches.value(e->window, 0);
+    if (pc && pc->is_valid) {
+        MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
         bool check_visibility = false;
-        QRect g = item->propertyCache()->realGeometry();
+        QRect g = pc->realGeometry();
         if (e->x != g.x() || e->y != g.y() || e->width != g.width() ||
             e->height != g.height()) {
             QRect r(e->x, e->y, e->width, e->height);
-            item->propertyCache()->setRealGeometry(r);
-            check_visibility = true;
+            pc->setRealGeometry(r);
+            if (pc->isMapped())
+                check_visibility = true;
         }
-        if (item->propertyCache()->windowState() != IconicState) {
+        if (item && pc->windowState() != IconicState) {
             item->setPos(e->x, e->y);
             item->resize(e->width, e->height);
         }
@@ -1271,11 +1278,11 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
         }
 
         Window above = e->above;
-        if (above != None) {
+        if (item && pc->isMapped() && above != None) {
             if (item->needDecoration() &&
                 MDecoratorFrame::instance()->decoratorItem() &&
                 MDecoratorFrame::instance()->managedWindow() == e->window) {
-                if (FULLSCREEN_WINDOW(item) &&
+                if (FULLSCREEN_WINDOW(item->propertyCache()) &&
                     item->status() != MCompositeWindow::Hung) {
                     // ongoing call case
                     MDecoratorFrame::instance()->setManagedWindow(item, true);
@@ -1290,7 +1297,7 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                 check_visibility = false;
             } else
                 dirtyStacking(check_visibility);
-        } else {
+        } else if (item) {
             // FIXME: seems that this branch is never executed?
             if (e->window == MDecoratorFrame::instance()->managedWindow())
                 MDecoratorFrame::instance()->hide();
@@ -1304,23 +1311,19 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
         }
         if (check_visibility)
             dirtyStacking(true);
-    } else if (prop_caches.contains(e->window)) {
-        MWindowPropertyCache *pc = prop_caches.value(e->window);
-        QRect r(e->x, e->y, e->width, e->height);
-        pc->setRealGeometry(r);
     }
 }
 
 // used to handle ConfigureRequest when we have the object for the window
-void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
+void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
                                                XConfigureRequestEvent *e)
 {
     if (e->value_mask & (CWX | CWY | CWWidth | CWHeight)) {
-        if (FULLSCREEN_WINDOW(cw))
+        if (FULLSCREEN_WINDOW(pc))
             // do not allow resizing of fullscreen window
             e->value_mask &= ~(CWX | CWY | CWWidth | CWHeight);
         else {
-            QRect r = cw->propertyCache()->requestedGeometry();
+            QRect r = pc->requestedGeometry();
             if (e->value_mask & CWX)
                 r.setX(e->x);
             if (e->value_mask & CWY)
@@ -1329,7 +1332,7 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
                 r.setWidth(e->width);
             if (e->value_mask & CWHeight)
                 r.setHeight(e->height);
-            cw->propertyCache()->setRequestedGeometry(r);
+            pc->setRequestedGeometry(r);
         }
     }
 
@@ -1340,7 +1343,7 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
             int above_i = stacking_list.indexOf(e->above);
             if (above_i >= 0) {
                 Window d = stack[DESKTOP_LAYER];
-                if (d && stacking_list.indexOf(d) > above_i)
+                if (d && pc->isMapped() && stacking_list.indexOf(d) > above_i)
                     // mark iconic if it goes under desktop
                     setWindowState(e->window, IconicState);
                 if (above_i > win_i) {
@@ -1353,7 +1356,7 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
                 dirtyStacking(false);
             }
         } else {
-            Window parent = transient_for(e->window);
+            Window parent = pc->transientFor();
             if (parent)
                 positionWindow(parent, true);
             else
@@ -1365,7 +1368,7 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
             int above_i = stacking_list.indexOf(e->above);
             if (above_i >= 0) {
                 Window d = stack[DESKTOP_LAYER];
-                if (d && stacking_list.indexOf(d) >= above_i)
+                if (d && pc->isMapped() && stacking_list.indexOf(d) >= above_i)
                     // mark iconic if it goes under desktop
                     setWindowState(e->window, IconicState);
                 if (above_i > win_i) {
@@ -1378,16 +1381,22 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
                 dirtyStacking(false);
             }
         } else {
-            Window parent = transient_for(e->window);
+            Window parent = pc->transientFor();
             if (parent) {
-                setWindowState(parent, IconicState);
+                MWindowPropertyCache *ppc = prop_caches.value(parent, 0);
+                if (ppc && ppc->isMapped())
+                    setWindowState(parent, IconicState);
                 positionWindow(parent, false);
             } else {
-                setWindowState(e->window, IconicState);
+                if (pc->isMapped())
+                    setWindowState(e->window, IconicState);
                 positionWindow(e->window, false);
             }
         }
     }
+    if ((e->value_mask & CWStackMode) && !pc->isMapped())
+        // prevent unnecessary stacking order changes at mapping time
+        pc->setStackedUnmapped(true);
 
     /* Resize and/or reposition the X window if requested. Stacking changes
      * were done above. */
@@ -1411,40 +1420,35 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
     if (e->parent != RootWindow(QX11Info::display(), 0))
         return;
 
-    MWindowPropertyCache *pc = 0;
-    if (prop_caches.contains(e->window))
-        pc = prop_caches.value(e->window);
+    MWindowPropertyCache *pc = prop_caches.value(e->window, 0);
 
     // sandbox these windows. we own them
-    if ((pc && pc->isDecorator()) || (!pc && atom->isDecorator(e->window)))
+    if ((pc && pc->isDecorator()) || (!pc && atom->isDecorator(e->window))
+        || (pc && !pc->is_valid))
         return;
 
     /*qDebug() << __func__ << "CONFIGURE REQUEST FOR:" << e->window
         << e->x << e->y << e->width << e->height << "above/mode:"
         << e->above << e->detail;*/
 
-    MCompositeWindow *i = COMPOSITE_WINDOW(e->window);
-    if (i && i->isMapped())
-        configureWindow(i, e);
-    else {
-        // resize/reposition before it is mapped
-        unsigned int value_mask = e->value_mask & ~(CWSibling | CWStackMode);
-        if (value_mask) {
-            XWindowChanges wc;
-            wc.border_width = e->border_width;
-            wc.x = e->x;
-            wc.y = e->y;
-            wc.width = e->width;
-            wc.height = e->height;
-            wc.sibling =  e->above;
-            wc.stack_mode = e->detail;
-            XConfigureWindow(QX11Info::display(), e->window, value_mask, &wc);
-            RECONFIG(e->window, value_mask, e->x, e->y, e->width, e->height);
+    if (!pc) {
+        // ConfigureRequest before the window is mapped for the first time
+        pc = new MWindowPropertyCache(e->window);
+        if (!pc->is_valid) {
+            delete pc;
+            return;
         }
-        // store configure request for handling it at window mapping time
-        configure_reqs[e->window].append(*e);
-        return;
+        prop_caches[e->window] = pc;
+        if (!stacking_list.contains(e->window)) {
+            // add it to stacking_list to allow configures before mapping
+            STACKING("adding 0x%lx to stack", e->window);
+            stacking_list.append(e->window);
+        }
     }
+    configureWindow(pc, e);
+    MCompositeWindow *i = COMPOSITE_WINDOW(e->window);
+    if (!i || !pc->isMapped())
+        return;
 
     MCompAtoms::Type wtype = i->propertyCache()->windowType();
     if ((e->detail == Above) && (e->above == None) &&
@@ -1470,6 +1474,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     // create the damage object before mapping to get 'em all
     if (!device_state->displayOff() && !prop_caches.contains(e->window))
         damage_obj = XDamageCreate(dpy, e->window, XDamageReportNonEmpty);
+    // TODO: damageTracking(true); missing here for existing caches...
     // map early to give the app a chance to start drawing
     XMapWindow(dpy, e->window);
     XFlush(dpy);
@@ -1486,6 +1491,11 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         prop_caches[e->window] = pc;
         // we know the parent due to SubstructureRedirectMask on root window
         pc->setParentWindow(RootWindow(dpy, 0));
+        if (!stacking_list.contains(e->window)) {
+            // add it to stacking_list to allow configures before MapNotify
+            STACKING("adding 0x%lx to stack", e->window);
+            stacking_list.append(e->window);
+        }
     }
 
     MCompAtoms::Type wtype = pc->windowType();
@@ -1512,7 +1522,8 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         if ((cw = getHighestDecorated())) {
             if (cw->status() == MCompositeWindow::Hung) {
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
-            } else if (FULLSCREEN_WINDOW(cw) && device_state->ongoingCall()) {
+            } else if (FULLSCREEN_WINDOW(cw->propertyCache())
+                       && device_state->ongoingCall()) {
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
                 MDecoratorFrame::instance()->setOnlyStatusbar(true);
             } else
@@ -1887,14 +1898,12 @@ void MCompositeManagerPrivate::setupButtonWindows(Window curr_app)
     }
 }
 
-void MCompositeManagerPrivate::setCurrentApp(Window w,
-                                             bool stacking_order_changed)
+void MCompositeManagerPrivate::setCurrentApp(Window w, bool restacked)
 {
     static Window prev = (Window)-1;
     if (prev == w) {
-        if (stacking_order_changed)
-            // signal listener could be interested in transients of
-            // the current application (could be also different signal?)
+        if (restacked)
+            // signal listener may need to restack its window
             emit currentAppChanged(current_app);
         return;
     }
@@ -1924,18 +1933,18 @@ static int xrestackwindows_error_handler(Display *dpy, XErrorEvent *err)
     for (int i = 0; i < last_i;) { \
         Window w = stacking_list.at(i); \
         if (w == first_moved) break; \
-        MCompositeWindow *cw = COMPOSITE_WINDOW(w); \
-        if (cw && cw->propertyCache() && cw->isMapped() && (X)) { \
-            MCompositeWindow *orig_cw = cw; \
+        MWindowPropertyCache *pc = prop_caches.value(w, 0); \
+        if (pc && (X)) { \
+            MWindowPropertyCache *orig_pc = pc; \
             /* find the next window to move */ \
             Window next = 0; \
             for (int next_i = i + 1; next_i <= last_i; ++next_i) { \
                 next = stacking_list.at(next_i); \
-                cw = COMPOSITE_WINDOW(next); \
-                if (cw && cw->propertyCache() && cw->isMapped() && (X)) \
+                pc = prop_caches.value(next, 0); \
+                if (pc && (X)) \
                     break; \
             } \
-	    raiseWithTransients(orig_cw->propertyCache(), i); \
+	    raiseWithTransients(orig_pc, i); \
             if (!first_moved) first_moved = w; \
             if (!next || (i = stacking_list.indexOf(next)) < 0) \
                 break; \
@@ -1977,7 +1986,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 aw = COMPOSITE_WINDOW(parent);
                 app_i = stacking_list.indexOf(active_app);
             }
-            fs_app = FULLSCREEN_WINDOW(aw);
+            fs_app = FULLSCREEN_WINDOW(aw->propertyCache());
         }
     }
 
@@ -1990,10 +1999,11 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	XID group;
 	if ((group = aw->propertyCache()->windowGroup())) {
 	    for (int i = 0; i < app_i; ) {
-            MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
-            if (cw->propertyCache()->windowState() == NormalState
-                && cw->isAppWindow()
-                && cw->propertyCache()->windowGroup() == group) {
+            MWindowPropertyCache *pc = prop_caches.value(
+                                                   stacking_list.at(i), 0);
+            if (pc && pc->windowState() != IconicState
+                && pc->isAppWindow()
+                && pc->windowGroup() == group) {
                 STACKING_MOVE(i, last_i);
                 safe_move(stacking_list, i, last_i);
 	             /* active_app was moved, update the index */
@@ -2005,63 +2015,57 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 
 	/* raise with transients recursively */
         raiseWithTransients(aw->propertyCache(), app_i);
-    } else if (duihome) {
-        //qDebug() << "raising home window" << duihome;
-        STACKING_MOVE(stacking_list.indexOf(duihome), last_i);
-        safe_move(stacking_list, stacking_list.indexOf(duihome), last_i);
     }
 
     /* raise docks if either the desktop is up or the application is
      * non-fullscreen */
     if (desktop_up || !active_app || app_i < 0 || !aw || !fs_app)
-        RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
-                cw->propertyCache()->windowTypeAtom()
-                                        == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
+        RAISE_MATCHING(!getLastVisibleParent(pc) &&
+                       pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
     else if (active_app && aw && deco->decoratorItem() &&
              deco->managedWindow() == active_app) {
         // no dock => decorator starts from (0,0)
-        XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
+        MWindowPropertyCache *pc = deco->decoratorItem()->propertyCache();
+        if (pc->realGeometry().x() != 0 || pc->realGeometry().y() != 0)
+            XMoveWindow(QX11Info::display(), pc->winId(), 0, 0);
     }
     /* raise all system-modal dialogs */
-    RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache())
-                    && MODAL_WINDOW(cw) &&
-                    cw->propertyCache()->windowTypeAtom()
-                                        == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
+    RAISE_MATCHING(!getLastVisibleParent(pc)
+                    && MODAL_WINDOW(pc) &&
+                    pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
     /* Meego layers 1-3: lock screen, ongoing call etc. */
     for (unsigned int level = 1; level < 4; ++level)
-         RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
-                        cw->propertyCache()->windowState() == NormalState
-                        && cw->propertyCache()->meegoStackingLayer() == level)
+         RAISE_MATCHING(!getLastVisibleParent(pc) &&
+                        pc->windowState() != IconicState
+                        && pc->meegoStackingLayer() == level)
     /* raise all keep-above flagged, input methods and Meego layer 4
      * (incoming call), at the same time preserving their mapping order */
-    RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
-                    !cw->propertyCache()->isDecorator() &&
-        cw->propertyCache()->windowState() == NormalState &&
-        (cw->propertyCache()->windowTypeAtom()
-                                  == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
-         cw->propertyCache()->meegoStackingLayer() == 4
-         || cw->propertyCache()->isOverrideRedirect() ||
-         cw->propertyCache()->netWmState().indexOf(ATOM(_NET_WM_STATE_ABOVE)) != -1))
+    RAISE_MATCHING(!getLastVisibleParent(pc) &&
+                   !pc->isDecorator() &&
+                   pc->windowState() != IconicState &&
+        (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
+         pc->meegoStackingLayer() == 4
+         || pc->isOverrideRedirect() ||
+         pc->netWmState().contains(ATOM(_NET_WM_STATE_ABOVE))))
     // Meego layer 5
-    RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
-                   cw->propertyCache()->meegoStackingLayer() == 5
-                   && cw->propertyCache()->windowState() == NormalState)
+    RAISE_MATCHING(!getLastVisibleParent(pc) &&
+                   pc->meegoStackingLayer() == 5
+                   && pc->windowState() != IconicState)
     /* raise all non-transient notifications (transient ones were already
      * handled above) */
-    RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
-                   cw->propertyCache()->windowTypeAtom()
-                           == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
+    RAISE_MATCHING(!getLastVisibleParent(pc) &&
+                   pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
     // Meego layer 6
-    RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
-                   cw->propertyCache()->meegoStackingLayer() == 6
-                   && cw->propertyCache()->windowState() == NormalState)
+    RAISE_MATCHING(!getLastVisibleParent(pc) &&
+                   pc->meegoStackingLayer() == 6
+                   && pc->windowState() != IconicState)
 
     int top_decorated_i;
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
     /* raise/lower decorator */
     if (highest_d && top_decorated_i >= 0 && deco->decoratorItem()
         && deco->managedWindow() == highest_d->window()
-        && (!FULLSCREEN_WINDOW(highest_d)
+        && (!FULLSCREEN_WINDOW(highest_d->propertyCache())
             || highest_d->status() == MCompositeWindow::Hung
             || device_state->ongoingCall())) {
         // TODO: would be more robust to set decorator's managed window here
@@ -2094,9 +2098,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     }
 
     // properties and focus are updated only if there was a change in the
-    // order of mapped windows or mappedness FIXME: would make sense to
-    // stack unmapped windows to the bottom of the stack to avoid them
-    // "flashing" before we had the chance to stack them
+    // order of mapped windows or mappedness
     QList<Window> only_mapped;
     for (int i = 0; i <= last_i; ++i) {
          MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
@@ -2104,7 +2106,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
              !witem->isNewlyMapped() && !witem->isClosing())
              only_mapped.append(stacking_list.at(i));
     }
-    static QList<Window> prev_only_mapped;
+    static QList<Window> prev_stacked_mapped, prev_stacked;
 
     // fix Z-values always to make sure we do it after an animation
     for (int i = 0; i <= last_i; ++i) {
@@ -2115,7 +2117,9 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
          if (witem)
              witem->requestZValue(i);
     }
-    bool order_changed = prev_only_mapped != only_mapped;
+    bool mapped_order_changed = prev_stacked_mapped != only_mapped;
+    bool order_changed = prev_stacked != stacking_list;
+    bool restacked = false;
     if (xrestackwindows_error || order_changed) {
         QList<Window> reverse;
         for (int i = last_i; i >= 0; --i)
@@ -2137,8 +2141,13 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         if (xrestackwindows_error) {
             STACKING("XRestackWindows() failed, retry later");
             dirtyStacking(false);
+        } else {
+            prev_stacked_mapped = only_mapped;
+            prev_stacked = stacking_list;
+            restacked = true;
         }
-
+    }
+    if (mapped_order_changed) {
         // decorator and OR windows are not included to the property
         QList<Window> no_decors = only_mapped;
         for (int i = 0; i <= last_i; ++i) {
@@ -2154,14 +2163,13 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                         XA_WINDOW, 32, PropModeReplace,
                         (unsigned char *)no_decors.toVector().data(),
                         no_decors.size());
-        prev_only_mapped = only_mapped;
     }
-    if (order_changed || changed_properties) {
+    if (mapped_order_changed || changed_properties) {
         if (!device_state->displayOff())
             pingTopmost();
         checkInputFocus(timestamp);
     }
-    if (order_changed || force_visibility_check) {
+    if (mapped_order_changed || force_visibility_check) {
         static int xres = ScreenOfDisplay(QX11Info::display(),
                                    DefaultScreen(QX11Info::display()))->width;
         static int yres = ScreenOfDisplay(QX11Info::display(),
@@ -2248,7 +2256,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             break;
         }
     }
-    setCurrentApp(set_as_current_app, order_changed || changed_properties);
+    setCurrentApp(set_as_current_app, restacked || changed_properties);
     changed_properties = false;
 }
 
@@ -2442,17 +2450,21 @@ stack_and_return:
     }
 
     bool stacked = false;
-    if (configure_reqs.contains(win)) {
-        foreach (XConfigureRequestEvent crq, configure_reqs.value(win)) {
-            configureWindow(item, &crq);
-            if (crq.value_mask & CWStackMode)
-                stacked = true;
-        }
-        configure_reqs.remove(win);
+    const XWMHints &h = pc->getWMHints();
+    if (pc->stackedUnmapped()) {
+        stacked = true;
+        Window d = stack[DESKTOP_LAYER];
+        if (d && stacking_list.indexOf(d) > stacking_list.indexOf(win))
+            setWindowState(win, IconicState);
+    } else if (pc->alwaysMapped() > 0 ||
+               ((h.flags & StateHint) && h.initial_state == IconicState)) {
+        setWindowState(win, IconicState);
+        positionWindow(win, false);
+        stacked = true;
     }
 
     /* do this after bindWindow() so that the window is in stacking_list */
-    if (pc->windowState() == NormalState &&
+    if (pc->windowState() != IconicState &&
         (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win, true)))
         activateWindow(win, CurrentTime, false, stacked);
     else {
@@ -2549,7 +2561,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                     if(!ping_source->propertyCache()->hasAlpha())
                         disableCompositing(FORCED);
                 } else if (was_hung && ping_source->window() == managed
-                           && FULLSCREEN_WINDOW(ping_source)) {
+                           && FULLSCREEN_WINDOW(ping_source->propertyCache())) {
                     // ongoing call decorator
                     MDecoratorFrame::instance()->setAutoRotation(false);
                     MDecoratorFrame::instance()->setOnlyStatusbar(true);
@@ -2574,16 +2586,19 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
     // Handle iconify requests
     if (event->message_type == ATOM(WM_CHANGE_STATE))
         if (event->data.l[0] == IconicState && event->format == 32) {
-
             MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
             MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
             if (d_item && i && i->status() != MCompositeWindow::Minimizing) {
                 d_item->setZValue(i->zValue() - 1);
 
                 Window lower, topmost = getTopmostApp();
-                if (i->window() != topmost) {
+                MWindowPropertyCache *top_pc = prop_caches.value(topmost, 0);
+                if (i->window() != topmost &&
+                    i->window() != getLastVisibleParent(top_pc)) {
                     /* Request from a background app.  Don't do anything,
                      * just make sure the states are not screwed. */
+                    // FIXME: this breaks if WM_CHANGE_STATE comes for a non-app
+                    // and there is no topmost app
                     i->stopPing();
                     setWindowState(i->window(), IconicState);
                     return;
@@ -2682,6 +2697,22 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
        d) we get UnmapNotify/DestroyNotify anyway when it _really_ closes */
 }
 
+// set all mapped transients of pc to either Normal or Iconic
+void MCompositeManagerPrivate::setWindowStateForTransients(
+                                        MWindowPropertyCache *pc, int state)
+{
+    Q_ASSERT(state == NormalState || state == IconicState);
+    for (int i = 0; i < pc->transientWindows().size(); ++i) {
+        MWindowPropertyCache *p = prop_caches.value(
+                                       pc->transientWindows().at(i), 0);
+        if (p && p->isMapped()) {
+            setWindowState(p->winId(), state);
+            if (!p->transientWindows().isEmpty())
+                setWindowStateForTransients(p, state);
+        }
+    }
+}
+
 // window iconified or unmapping animation ended
 void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
 {
@@ -2698,6 +2729,8 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
     if (window->isMapped()) {
         // set for roughSort()
         setWindowState(window->window(), IconicState);
+        MWindowPropertyCache *pc = window->propertyCache();
+        setWindowStateForTransients(pc, IconicState);
         roughSort();
     }
     // checkStacking() will redirect windows for the switcher
@@ -2708,11 +2741,10 @@ void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
 {
     Window last = getLastVisibleParent(window->propertyCache());
     MCompositeWindow *to_stack;
-    if (last)
-        to_stack = COMPOSITE_WINDOW(last);
-    else
+    if (!last || !(to_stack = COMPOSITE_WINDOW(last)))
         to_stack = window;
     setWindowState(to_stack->window(), NormalState);
+    setWindowStateForTransients(to_stack->propertyCache(), NormalState);
 
     // FIXME: call these for the whole transiency chain
     window->setNewlyMapped(false);
@@ -2747,9 +2779,8 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
                                               bool disableCompositing,
                                               bool stacked)
 {
-    MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-    if (!cw || !cw->isMapped()) return;
-    MWindowPropertyCache *pc = cw->propertyCache();
+    MWindowPropertyCache *pc = prop_caches.value(w, 0);
+    if (!pc) return;
 
     if (pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP) &&
         pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK) &&
@@ -2757,14 +2788,16 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         if (!stacked) {
             // if this is a transient window, raise the "parent" instead
             Window last = getLastVisibleParent(pc);
-            MCompositeWindow *to_stack = cw;
-            if (last) to_stack = COMPOSITE_WINDOW(last);
+            MWindowPropertyCache *to_stack = pc;
+            if (last) to_stack = prop_caches.value(last, 0);
             // move it to the correct position in the stack
-            positionWindow(to_stack->window(), true);
+            positionWindow(to_stack->winId(), true);
         }
+        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         // possibly set decorator
-        if (cw == getHighestDecorated() || cw->status() == MCompositeWindow::Hung) {
-            if (FULLSCREEN_WINDOW(cw)) {
+        if (cw && pc->isMapped() && (cw == getHighestDecorated() ||
+                                     cw->status() == MCompositeWindow::Hung)) {
+            if (FULLSCREEN_WINDOW(cw->propertyCache())) {
                 // fullscreen window has decorator above it during ongoing call
                 // and when it's jammed
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
@@ -2787,7 +2820,7 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
     } else if (w == stack[DESKTOP_LAYER]) {
         if (!stacked)
             positionWindow(w, true);
-    } else
+    } else if (pc->isMapped())
         checkInputFocus(timestamp);
 
     /* do this after possibly reordering the window stack */
@@ -2833,7 +2866,7 @@ void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
     if (ongoing_call) {
         // if we have fullscreen app on top, set it decorated without resizing
         MCompositeWindow *cw = getHighestDecorated();
-        if (cw && FULLSCREEN_WINDOW(cw)) {
+        if (cw && FULLSCREEN_WINDOW(cw->propertyCache())) {
             cw->setDecorated(true);
             MDecoratorFrame::instance()->setManagedWindow(cw, true);
             MDecoratorFrame::instance()->setOnlyStatusbar(true);
@@ -2844,7 +2877,7 @@ void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
             MCompositeWindow *i = it.value();
-            if (FULLSCREEN_WINDOW(i) && i->needDecoration())
+            if (FULLSCREEN_WINDOW(i->propertyCache()) && i->needDecoration())
                 i->setDecorated(false);
         }
         MDecoratorFrame::instance()->setOnlyStatusbar(false);
@@ -3162,11 +3195,6 @@ void MCompositeManagerPrivate::redirectWindows()
         enableCompositing(true);
 }
 
-bool MCompositeManagerPrivate::isRedirected(Window w)
-{
-    return (COMPOSITE_WINDOW(w) != 0);
-}
-
 void MCompositeManagerPrivate::removeWindow(Window w)
 {
     // Item is already removed from scene when it is deleted
@@ -3191,7 +3219,8 @@ void MCompositeManagerPrivate::removeWindow(Window w)
 // Unused decorators should be below anything else.
 // The decorated window should be below the decorator.
 // Otherwise we don't know.
-static MCompositeWindow *compareDecorator(bool *cmpp, MCompositeWindow *win)
+static MWindowPropertyCache *compareDecorator(bool *cmpp,
+                                              MWindowPropertyCache *win)
 {
     MDecoratorFrame *deco = MDecoratorFrame::instance();
     if (deco) {
@@ -3199,12 +3228,14 @@ static MCompositeWindow *compareDecorator(bool *cmpp, MCompositeWindow *win)
         if (!man)
             // the decorator is unused
             *cmpp = true;
-        else if (man == win)
+        else if (man->propertyCache() == win)
             // @win is the decorator's managed window, keep them together
             *cmpp = false;
-        else
+        else {
+            *cmpp = true; // silence gcc warning
             // Order the decorator like its managed window.
-            return man;
+            return man->propertyCache();
+        }
     } else
         // the decorator is so unused that we don't even know about it
         *cmpp = true;
@@ -3212,30 +3243,31 @@ static MCompositeWindow *compareDecorator(bool *cmpp, MCompositeWindow *win)
     return NULL;
 }
 
-// Returns whether @cw in @layer of @type is special with regards to stacking.
+// Returns whether @pc in @layer of @type is special with regards to stacking.
 // Returns None for non-special cases, or NOTIFICATION, INPUT or DIALOG.
-// The returned Atom doesn't mean that @cw has that window type; it merely
+// The returned Atom doesn't mean that @pc has that window type; it merely
 // indicates that it should be stacked like that.
-static Atom isSpecial(MCompositeWindow *cw, int layer, Atom type)
+static Atom isSpecial(MWindowPropertyCache *pc, int layer, Atom type)
 {
     if (layer < 6 && type == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
-        /* @cw is maybe a notification */;
+        /* @pc is maybe a notification */;
     else if (layer < 5 &&
         (type == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
-         cw->propertyCache()->isOverrideRedirect() ||
-         cw->propertyCache()->netWmState().indexOf(ATOM(_NET_WM_STATE_ABOVE)) != -1))
-        // @cw is maybe input or keep-above window
+         pc->isOverrideRedirect() ||
+         pc->netWmState().contains(ATOM(_NET_WM_STATE_ABOVE))))
+        // @pc is maybe input or keep-above window
         type = ATOM(_NET_WM_WINDOW_TYPE_INPUT);
-    else if (layer == 0 && MODAL_WINDOW(cw) &&
+    else if (layer == 0 && MODAL_WINDOW(pc) &&
              type == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
-        /* @cw is maybe a system-modal dialog */;
+        /* @pc is maybe a system-modal dialog */;
     else
         // Nothing special.
         return None;
 
-    // @cw deserves special handling only if it doesn't have
+    // @pc deserves special handling only if it doesn't have
     // a lastVisibleParent().
-    return cw->lastVisibleParent() ? None : type;
+    MCompositeManager *cmgr = (MCompositeManager*)qApp;
+    return cmgr->getLastVisibleParent(pc) ? None : type;
 }
 
 // Internal qStableSort() comparator.  The desired rough order of
@@ -3265,29 +3297,25 @@ static bool compareWindows(Window w_a, Window w_b)
     if (w_a == w_b)
         return false;
 
+    MCompositeManager *cmgr = (MCompositeManager*)qApp;
     // If we don't know about either of the windows let them in peace
     // -- don't reason about what we don't know.
-    MCompositeWindow *cw_a = MCompositeWindow::compositeWindow(w_a);
-    MCompositeWindow *cw_b = MCompositeWindow::compositeWindow(w_b);
-    if (!cw_a || !cw_b)
+    MWindowPropertyCache *pc_a = cmgr->propCaches().value(w_a, 0);
+    MWindowPropertyCache *pc_b = cmgr->propCaches().value(w_b, 0);
+    if (!pc_a || !pc_b)
         return false;
-
-    // Valid MCompositeWindow:s must have a MWindowPropertyCache.
-    MWindowPropertyCache *pc_a = cw_a->propertyCache();
-    MWindowPropertyCache *pc_b = cw_b->propertyCache();
-    Q_ASSERT(pc_a != NULL && pc_b != NULL);
 
     // Mind decorators.  Lone decorators should go below everything else,
     // otherwise it's sorted above its managed window.
     if (pc_a->isDecorator()) {
         bool cmp;
-        if (!(cw_a = compareDecorator(&cmp, cw_b)))
-            // @cw_a is a lone decorator or @cw_b happens to be
+        if (!(pc_a = compareDecorator(&cmp, pc_b)))
+            // @pc_a is a lone decorator or @pc_b happens to be
             // its managed window.
             return  cmp;
     } else if (pc_b->isDecorator()) {
         bool cmp;
-        if (!(cw_b = compareDecorator(&cmp, cw_a)))
+        if (!(pc_b = compareDecorator(&cmp, pc_a)))
             // Likewise.
             return !cmp;
     }
@@ -3301,13 +3329,13 @@ static bool compareWindows(Window w_a, Window w_b)
             // ... otherwise we don't care.
             return false;
     } else if (pc_b->windowState() != NormalState) {
-        // @cw_a is NormalState, @cw_b is not.
+        // @pc_a is NormalState, @pc_b is not.
         return false;
     }
 
-    // Both @cw_a and @cw_b are in NormalState.
-    // Sort the desktop below all NormalState:s.
-    // (Quiz: why do we check @cw_b before @cw_a?
+    // Both @pc_a and @pc_b are in NormalState.
+    // Sort the desktop below all NormalState windows.
+    // (Quiz: why do we check @pc_b before @pc_a?
     //  Answer: to be consistent even if both windows are desktops.)
     type_b = pc_b->windowTypeAtom();
     if (type_b == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
@@ -3320,10 +3348,10 @@ static bool compareWindows(Window w_a, Window w_b)
     layer = pc_a->meegoStackingLayer();
     int rel = layer - pc_b->meegoStackingLayer();
     if (rel < 0)
-        // @cw_a has lower stacking layer
+        // @pc_a has lower stacking layer
         return true;
     else if (rel > 0)
-        // @cw_a has greater stacking layer
+        // @pc_a has greater stacking layer
         return false;
     // They're in the same layer.
 
@@ -3331,8 +3359,8 @@ static bool compareWindows(Window w_a, Window w_b)
     // We can skip it altogether if the windows' layer is too high,
     // because for them isSpecial() will always be false.
     if (layer < 6) {
-        type_a = isSpecial(cw_a, layer, type_a);
-        type_b = isSpecial(cw_b, layer, type_b);
+        type_a = isSpecial(pc_a, layer, type_a);
+        type_b = isSpecial(pc_b, layer, type_b);
         // type_a, type_b == None || dialog || input || notification
 
         // Skip to the next test if the windows are equally special
@@ -3362,17 +3390,17 @@ static bool compareWindows(Window w_a, Window w_b)
     // Order transient windows below what they are transient for.
     // Since the sorting algorithm can infer that if trfor(@a) == @b
     // and trfor(@b) == @c then @a is transient for @c it is not
-    // necessary for us to check if @cw_a is a grandparent of @cw_b
-    // or vica versa.  However, we *do* have to mind circular
-    // transiency between @cw_a and @cw_b otherwise we would
-    // return true for both compareWindows(@cw_a, @cw_b) and
-    // compareWindows(cw_b, @cw_a), which would make the sorting
+    // necessary for us to check if @pc_a is a grandparent of @pc_b
+    // or vice versa.  However, we *do* have to mind circular
+    // transiency between @pc_a and @pc_b otherwise we would
+    // return true for both compareWindows(@w_a, @w_b) and
+    // compareWindows(@w_b, @w_a), which would make the sorting
     // undeterministic.
     if (pc_b->transientFor() == w_a && pc_a->transientFor() != w_b)
-      // @cw_b is transient for @cw_a, so it must be above it.
+      // @pc_b is transient for @pc_a, so it must be above it.
       return true;
 
-    // Either @cw_a is transient for @cw_b or they are transient
+    // Either @pc_a is transient for @pc_b or they are transient
     // for each other, or they are not in direct relationship,
     // or they are not in any relationship at all.
     return false;
@@ -3420,7 +3448,11 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     windows[window] = item;
 
     const XWMHints &h = pc->getWMHints();
-    if ((h.flags & StateHint) && (h.initial_state == IconicState)) {
+    if (pc->stackedUnmapped()) {
+        Window d = stack[DESKTOP_LAYER];
+        if (d && stacking_list.indexOf(d) > stacking_list.indexOf(window))
+            setWindowState(window, IconicState);
+    } else if ((h.flags & StateHint) && (h.initial_state == IconicState)) {
         setWindowState(window, IconicState);
         item->setZValue(-1);
     } else {
@@ -3451,7 +3483,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     if (i == -1) {
         STACKING("adding 0x%lx to stack", window);
         stacking_list.append(window);
-    } else {
+    } else if (!pc->stackedUnmapped()) {
         STACKING_MOVE(i, stacking_list.size()-1);
         safe_move(stacking_list, i, stacking_list.size() - 1);
     }
@@ -3551,11 +3583,14 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
         return;
 
     if (on_top) {
+        MWindowPropertyCache *pc = prop_caches.value(w, 0);
         //qDebug() << __func__ << "to top:" << w;
-        setWindowState(w, NormalState);
-        if (w == stack[DESKTOP_LAYER])
-            // iconify apps for roughSort()
-            iconifyApps();
+        if (pc && pc->isMapped()) {
+            setWindowState(w, NormalState);
+            if (w == stack[DESKTOP_LAYER])
+                // iconify apps for roughSort()
+                iconifyApps();
+        }
         STACKING_MOVE(wp, stacking_list.size()-1);
         safe_move(stacking_list, wp, stacking_list.size() - 1);
         // needed so that checkStacking() finds the current application
@@ -3649,7 +3684,7 @@ void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
     for (int i = 0; i < stacking_list.size(); ++i) {
         Window w = stacking_list.at(i);
         MCompositeWindow *tp = COMPOSITE_WINDOW(w);
-        if (tp->isValid() && tp->isDirectRendered() && tp->propertyCache()
+        if (tp && tp->isValid() && tp->isDirectRendered() && tp->propertyCache()
             && (tp->propertyCache()->isMapped()
                 || tp->propertyCache()->beingMapped()))
             ((MTexturePixmapItem *)tp)->enableRedirectedRendering();
@@ -3994,61 +4029,6 @@ void MCompositeManager::dumpState(const char *heading)
       line += QString().sprintf(" 0x%lx", pcit.key());
     qDebug() << line.toLatin1().constData();
 
-    // Pending XConfigureRequestEvent:s.
-    if (!d->configure_reqs.isEmpty()) {
-        // Print each as "0x123456: 10x20+30+40 [XYWH] Above 0xABCDE"
-        QHash<Window, QList<XConfigureRequestEvent> >::const_iterator it;
-        QList<XConfigureRequestEvent>::const_iterator ot;
-
-        qDebug("configure_reqs:");
-        for (it = d->configure_reqs.constBegin();
-             it != d->configure_reqs.constEnd(); ++it) {
-            for (ot = it->constBegin(); ot != it->constEnd(); ++ot) {
-                const XConfigureRequestEvent *ev = &(*ot);
-
-                // The requested geometry
-                line = QString().sprintf("  0x%lx: %dx%d%+d%+d", it.key(),
-                                         ev->width, ev->height,
-                                         ev->x, ev->y);
-
-                // What is to be changed
-                if (ev->value_mask & (CWX|CWY|CWWidth|CWHeight)) {
-                    line += " [";
-                    if (ev->value_mask & CWX)
-                        line += 'X';
-                    if (ev->value_mask & CWY)
-                        line += 'Y';
-                    if (ev->value_mask & CWWidth)
-                        line += 'W';
-                    if (ev->value_mask & CWHeight)
-                        line += 'H';
-                    line += ']';
-                }
-
-                // Print the new stack mode and possibly the new sibling.
-                if (ev->value_mask & CWStackMode) {
-                    line += " stacking: ";
-                    if (ev->detail == Above)
-                      line += "above";
-                    else if (ev->detail == Below)
-                      line += "below";
-                    else if (ev->detail == TopIf)
-                      line += "topif";
-                    else if (ev->detail == BottomIf)
-                      line += "bottomif";
-                    else if (ev->detail == Opposite)
-                      line += "opposite";
-                    else
-                      line += QString().sprintf("%d", ev->detail);
-
-                    if (ev->value_mask & CWSibling)
-                      line += QString().sprintf(" 0x%lx", ev->above);
-                }
-            }
-        }
-    } else
-        qDebug("configure_reqs: <None>");
-
     // Dump the scene items from top to bottom.
     qDebug("scene:");
     foreach (const QGraphicsItem *gi, d->watch->items()) {
@@ -4331,11 +4311,6 @@ void MCompositeManager::setSurfaceWindow(Qt::HANDLE window)
 void MCompositeManager::redirectWindows()
 {
     d->redirectWindows();
-}
-
-bool MCompositeManager::isRedirected(Qt::HANDLE w)
-{
-    return d->isRedirected(w);
 }
 
 void MCompositeManager::enableCompositing(bool forced)

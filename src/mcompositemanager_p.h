@@ -104,7 +104,7 @@ public:
     void checkStacking(bool force_visibility_check,
                        Time timestamp = CurrentTime);
     void checkInputFocus(Time timestamp = CurrentTime);
-    void configureWindow(MCompositeWindow *cw, XConfigureRequestEvent *e);
+    void configureWindow(MWindowPropertyCache *pc, XConfigureRequestEvent *e);
 
     Window getTopmostApp(int *index_in_stacking_list = 0,
                          Window ignore_window = 0,
@@ -113,16 +113,16 @@ public:
 
     bool possiblyUnredirectTopmostWindow();
     bool haveMappedWindow() const;
-    bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
     bool processX11EventFilters(XEvent *event, bool after);
     void removeWindow(Window w);
     bool needDecoration(Window w, MWindowPropertyCache *pc = 0);
     bool skipStartupAnim(MWindowPropertyCache *pc);
     MCompositeWindow *getHighestDecorated(int *index = 0);
+    void setWindowStateForTransients(MWindowPropertyCache *pc, int state);
     
     void roughSort();
-    void setCurrentApp(Window w, bool stacking_order_changed);
+    void setCurrentApp(Window w, bool restacked);
     bool raiseWithTransients(MWindowPropertyCache *pc,
                            int parent_idx, QList<int> *anewpos = NULL);
     MCompositeScene *watch;
@@ -149,7 +149,6 @@ public:
         bool mapped;
     };
     QHash<Window, FrameData> framed_windows;
-    QHash<Window, QList<XConfigureRequestEvent> > configure_reqs;
     QHash<Window, MWindowPropertyCache*> prop_caches;
     QMultiHash<int, MCompositeManagerExtension* > m_extensions;
 
