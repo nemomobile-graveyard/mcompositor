@@ -1,0 +1,28 @@
+CaseName="verify_configuring_unmapped_windows"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check configuring unmapped windows are supported.
+
+- Test steps
+	- create an unmapped application window 1
+        - check that window 1 is at the top
+        - configure window 1 to bottom
+        - check that window 1 is at the bottom
+        - map window 1
+        - check that window 1 is at the bottom
+        - map an application window 2
+        - check that window 2 appears on top
+        - unmap the application window 2
+        - check that window 2 is still stacked on top of the home window
+        - configure window 2 to the bottom
+        - check that window 2 is stacked in the bottom
+        - map window 2
+        - check that mapped window 2 is stacked in the bottom
+        - unmap window 2
+        - check that unmapped window 2 is stacked in the bottom
+        - map another application window 3
+        - check that the order of unmapped windows is unchanged
+        - configure the window 2 below the mapped window 3
+        - map the configured window 2
+- Post-conditions
+	- check that window 2 is stacked below window 3\n"

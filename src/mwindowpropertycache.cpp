@@ -126,6 +126,7 @@ void MWindowPropertyCache::init()
     desktop_view = -1;
     being_mapped = false;
     dont_iconify = false;
+    stacked_unmapped = false;
     orientation_angle = 0;
     damage_object = 0;
     collect_timer = 0;
@@ -980,6 +981,23 @@ void MWindowPropertyCache::shapeRefresh()
     addRequest(SLOT(shapeRegion()),
                xcb_shape_get_rectangles(xcb_conn, window,
                                         ShapeBounding).sequence);
+}
+
+bool MWindowPropertyCache::isAppWindow(bool include_transients)
+{
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    if (!include_transients && p->d->getLastVisibleParent(this))
+        return false;
+
+    if (!isOverrideRedirect() && !isDecorator() &&
+        (windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
+         windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
+         /* non-modal, non-transient dialogs behave like applications */
+         (windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
+          !netWmState().contains(ATOM(_NET_WM_STATE_MODAL)) &&
+          !p->d->getLastVisibleParent(this))))
+        return true;
+    return false;
 }
 
 // MWindowDummyPropertyCache

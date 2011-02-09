@@ -7,14 +7,19 @@ transient for.
 - Test steps
 	- show an application window
 	- create and show a dialog window that is transient for the application
+        - check stacking order
 	- iconify the application window
+        - check stacking order
 	- activate the application window
 	- check that the transient is above the application window
 	- iconify the application window
+        - check stacking order
 	- activate the transient window
 	- check that the transient is above the application window
 	- create and show a dialog window that is transient for the previous dialog
+        - check stacking order
 	- iconify the application window
+        - check stacking order
 	- activate the application window
 	- check that both transients are above the application window and in order
 	- swap the transiencies of the dialogs
