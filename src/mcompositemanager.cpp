@@ -391,41 +391,42 @@ static Window transient_for(Window window)
     return transient_for;
 }
 
-static void skiptaskbar_wm_state(int toggle, Window window)
+static void skiptaskbar_wm_state(int toggle, Window window,
+                                 MWindowPropertyCache *pc)
 {
     Atom skip = ATOM(_NET_WM_STATE_SKIP_TASKBAR);
-    MCompAtoms *atom = MCompAtoms::instance();
-    QVector<Atom> states = atom->getAtomArray(window, ATOM(_NET_WM_STATE));
+    QList<Atom> states(pc->netWmState());
     bool update_root = false;
     int i = states.indexOf(skip);
 
     switch (toggle) {
     case 0: {
         if (i != -1) {
-            do {
-                states.remove(i);
-                i = states.indexOf(skip);
-            } while (i != -1);
+            states.removeAll(skip);
+            pc->setNetWmState(states);
             XChangeProperty(QX11Info::display(), window,
                             ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                            (unsigned char *) states.data(), states.size());
+                            (unsigned char *) states.toVector().data(),
+                            states.size());
             update_root = true;
         }
     } break;
     case 1: {
         if (i == -1) {
             states.append(skip);
+            pc->setNetWmState(states);
             XChangeProperty(QX11Info::display(), window,
                             ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                            (unsigned char *) states.data(), states.size());
+                            (unsigned char *) states.toVector().data(),
+                            states.size());
             update_root = true;
         }
     } break;
     case 2: {
         if (i == -1)
-            skiptaskbar_wm_state(1, window);
+            skiptaskbar_wm_state(1, window, pc);
         else
-            skiptaskbar_wm_state(0, window);
+            skiptaskbar_wm_state(0, window, pc);
     } break;
     default: break;
     }
@@ -446,33 +447,25 @@ static void skiptaskbar_wm_state(int toggle, Window window)
 
 static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
                                 int toggle, Window window,
-                                QVector<Atom> *net_wm_state = 0)
+                                MWindowPropertyCache *pc)
 {
     Atom fullscreen = ATOM(_NET_WM_STATE_FULLSCREEN);
     Display *dpy = QX11Info::display();
-    MCompAtoms *atom = MCompAtoms::instance();
-    QVector<Atom> states;
-    if (net_wm_state)
-        states = *net_wm_state;
-    else
-        states = atom->getAtomArray(window, ATOM(_NET_WM_STATE));
+    QList<Atom> states(pc->netWmState());
     int i = states.indexOf(fullscreen);
 
     switch (toggle) {
     case 0: /* remove */ {
         if (i != -1) {
-            do {
-                states.remove(i);
-                i = states.indexOf(fullscreen);
-            } while (i != -1);
+            states.removeAll(fullscreen);
+            pc->setNetWmState(states);
             XChangeProperty(dpy, window,
                             ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                            (unsigned char *) states.data(), states.size());
+                            (unsigned char *) states.toVector().data(),
+                            states.size());
         }
 
         MCompositeWindow *win = MCompositeWindow::compositeWindow(window);
-        if (win)
-            win->propertyCache()->setNetWmState(states.toList());
         if (win && priv->needDecoration(window, win->propertyCache()))
             win->setDecorated(true);
         if (win && !MDecoratorFrame::instance()->managedWindow()
@@ -481,26 +474,25 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             MDecoratorFrame::instance()->setOnlyStatusbar(false);
             MDecoratorFrame::instance()->show();
         }
-        if (win && win->propertyCache()->isMapped())
+        if (pc->isMapped())
             priv->dirtyStacking(false);
     } break;
     case 1: /* add */ {
         if (i == -1) {
             states.append(fullscreen);
+            pc->setNetWmState(states);
             XChangeProperty(dpy, window,
                             ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                            (unsigned char *) states.data(), states.size());
+                            (unsigned char *) states.toVector().data(),
+                            states.size());
         }
 
         int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
         int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
         XMoveResizeWindow(dpy, window, 0, 0, xres, yres);
         MOVE_RESIZE(window, 0, 0, xres, yres);
+        pc->setRequestedGeometry(QRect(0, 0, xres, yres));
         MCompositeWindow *win = priv->windows.value(window, 0);
-        if (win) {
-            win->propertyCache()->setRequestedGeometry(QRect(0, 0, xres, yres));
-            win->propertyCache()->setNetWmState(states.toList());
-        }
         if (win && !priv->device_state->ongoingCall())
             win->setDecorated(false);
         if (!priv->device_state->ongoingCall()
@@ -508,14 +500,14 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             MDecoratorFrame::instance()->hide();
             MDecoratorFrame::instance()->setManagedWindow(0);
         }
-        if (win && win->propertyCache()->isMapped())
+        if (pc->isMapped())
             priv->dirtyStacking(false);
     } break;
     case 2: /* toggle */ {
         if (i == -1)
-            fullscreen_wm_state(priv, 1, window);
+            fullscreen_wm_state(priv, 1, window, pc);
         else
-            fullscreen_wm_state(priv, 0, window);
+            fullscreen_wm_state(priv, 0, window, pc);
     } break;
     default: break;
     }
@@ -1429,6 +1421,29 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
     }
 }
 
+MWindowPropertyCache *MCompositeManagerPrivate::getPropertyCache(Window w,
+                                xcb_get_window_attributes_reply_t *attrs,
+                                xcb_get_geometry_reply_t *geom,
+                                Damage damage_obj)
+{
+    MWindowPropertyCache *pc = prop_caches.value(w, 0);
+    if (pc) return pc;
+    pc = new MWindowPropertyCache(w, attrs, geom, damage_obj);
+    if (!pc->is_valid) {
+        delete pc;
+        if (attrs) free(attrs);
+        if (geom) free(geom);
+        return 0;
+    }
+    prop_caches[w] = pc;
+    if (!stacking_list.contains(w)) {
+        // add it to stacking_list to allow configures before mapping
+        STACKING("adding 0x%lx to stack", w);
+        stacking_list.append(w);
+    }
+    return pc;
+}
+
 void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
 {
     if (e->parent != RootWindow(QX11Info::display(), 0))
@@ -1445,20 +1460,9 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
         << e->x << e->y << e->width << e->height << "above/mode:"
         << e->above << e->detail;*/
 
-    if (!pc) {
+    if (!pc)
         // ConfigureRequest before the window is mapped for the first time
-        pc = new MWindowPropertyCache(e->window);
-        if (!pc->is_valid) {
-            delete pc;
-            return;
-        }
-        prop_caches[e->window] = pc;
-        if (!stacking_list.contains(e->window)) {
-            // add it to stacking_list to allow configures before mapping
-            STACKING("adding 0x%lx to stack", e->window);
-            stacking_list.append(e->window);
-        }
-    }
+        pc = getPropertyCache(e->window);
     configureWindow(pc, e);
     MCompositeWindow *i = COMPOSITE_WINDOW(e->window);
     if (!i || !pc->isMapped())
@@ -1497,21 +1501,8 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     XMapWindow(dpy, e->window);
     XFlush(dpy);
 
-    if (!pc) {
-        pc = new MWindowPropertyCache(e->window, 0, 0, damage_obj);
-        if (!pc->is_valid) {
-            delete pc;
-            return;
-        }
-        prop_caches[e->window] = pc;
-        // we know the parent due to SubstructureRedirectMask on root window
-        pc->setParentWindow(RootWindow(dpy, 0));
-        if (!stacking_list.contains(e->window)) {
-            // add it to stacking_list to allow configures before MapNotify
-            STACKING("adding 0x%lx to stack", e->window);
-            stacking_list.append(e->window);
-        }
-    }
+    if (!pc)
+        pc = getPropertyCache(e->window, 0, 0, damage_obj);
 
     MCompAtoms::Type wtype = pc->windowType();
     QRect a = pc->realGeometry();
@@ -1552,11 +1543,8 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     if (debug_mode) overhead_measure.start();
 #endif
 
-    const QList<Atom> &states = pc->netWmState();
-    if (states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1) {
-        QVector<Atom> v = states.toVector();
-        fullscreen_wm_state(this, 1, e->window, &v);
-    }
+    if (FULLSCREEN_WINDOW(pc))
+        fullscreen_wm_state(this, 1, e->window, pc);
 
     pc->setBeingMapped(true); // don't disable compositing & allow setting state
     const XWMHints &h = pc->getWMHints();
@@ -2325,17 +2313,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         || win == home_button_win || e->event != QX11Info::appRootWindow())
         return;
 
-    MWindowPropertyCache *wpc;
-    if (prop_caches.contains(win))
-        wpc = prop_caches.value(win);
-    else {
-        wpc = new MWindowPropertyCache(win);
-        if (!wpc->is_valid) {
-            delete wpc;
-            return;
-        }
-        prop_caches[win] = wpc;
-    }
+    MWindowPropertyCache *wpc = getPropertyCache(win);
     wpc->setBeingMapped(false);
     wpc->setIsMapped(true);
 
@@ -2585,15 +2563,11 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             }
         }
     } else if (event->message_type == ATOM(_NET_WM_STATE)) {
-        if (event->data.l[1] == (long)  ATOM(_NET_WM_STATE_SKIP_TASKBAR)) {
-            skiptaskbar_wm_state(event->data.l[0], event->window);
-            if (i) {
-                QVector<Atom> states = atom->getAtomArray(event->window,
-                                                          ATOM(_NET_WM_STATE));
-                i->propertyCache()->setNetWmState(states.toList());
-            }
-        } else if (event->data.l[1] == (long) ATOM(_NET_WM_STATE_FULLSCREEN))
-            fullscreen_wm_state(this, event->data.l[0], event->window);
+        MWindowPropertyCache *pc = getPropertyCache(event->window);
+        if (pc && event->data.l[1] == (long)ATOM(_NET_WM_STATE_SKIP_TASKBAR))
+            skiptaskbar_wm_state(event->data.l[0], event->window, pc);
+        else if (pc && event->data.l[1] == (long)ATOM(_NET_WM_STATE_FULLSCREEN))
+            fullscreen_wm_state(this, event->data.l[0], event->window, pc);
     }
 }
 
@@ -3163,14 +3137,9 @@ void MCompositeManagerPrivate::redirectWindows()
             || (geom->width == xres && geom->height == yres))
             && !prop_caches.contains(kids[i])) {
             // attr and geom are freed later
-            MWindowPropertyCache *p = new MWindowPropertyCache(kids[i],
-                                                               attr, geom);
-            if (!p->is_valid) {
-                delete p;
-                free(attr);
-                free(geom);
+            MWindowPropertyCache *p = getPropertyCache(kids[i], attr, geom);
+            if (!p)
                 continue;
-            }
             prop_caches[kids[i]] = p;
             p->setParentWindow(RootWindow(QX11Info::display(), 0));
         } else {
@@ -3437,17 +3406,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     XSelectInput(display, window, PropertyChangeMask);
     XShapeSelectInput(display, window, ShapeNotifyMask);
 
-    MWindowPropertyCache *wpc;
-    if (prop_caches.contains(window)) {
-        wpc = prop_caches.value(window);
-    } else {
-        wpc = new MWindowPropertyCache(window);
-        if (!wpc->is_valid) {
-            delete wpc;
-            return 0;
-        }
-        prop_caches[window] = wpc;
-    }
+    MWindowPropertyCache *wpc = getPropertyCache(window);
     wpc->setIsMapped(true);
     MCompositeWindow *item = new MTexturePixmapItem(window, wpc);
     if (!item->isValid()) {
