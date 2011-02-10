@@ -71,6 +71,10 @@ public:
     MCompositeWindow *bindWindow(Window w);
     QGraphicsScene *scene();
 
+    MWindowPropertyCache* getPropertyCache(Window window,
+                         xcb_get_window_attributes_reply_t *attrs = 0,
+                         xcb_get_geometry_reply_t *geom = 0,
+                         Damage damage_obj = 0);
     void prepare();
     void loadPlugin(const QString &fileName);
     int loadPlugins(const QDir &dir);
