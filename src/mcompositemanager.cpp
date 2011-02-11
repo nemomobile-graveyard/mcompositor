@@ -86,7 +86,6 @@ static KeyCode switcher_key = 0;
 // temporary launch indicator. will get replaced later
 static QGraphicsTextItem *launchIndicator = 0;
 
-static Window transient_for(Window window);
 static bool should_be_pinged(MCompositeWindow *cw);
 static bool compareWindows(Window w_a, Window w_b);
 
@@ -233,110 +232,9 @@ MCompAtoms::MCompAtoms()
                     END_OF_NET_SUPPORTED);
 }
 
-MCompAtoms::Type MCompAtoms::windowType(Window w)
-{
-    // freedesktop.org window type
-    QVector<Atom> a = getAtomArray(w, atoms[_NET_WM_WINDOW_TYPE]);
-    if (!a.size())
-        return NORMAL;
-    if (a[0] == atoms[_NET_WM_WINDOW_TYPE_DESKTOP])
-        return DESKTOP;
-    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_NORMAL])
-        return NORMAL;
-    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_DIALOG]) {
-        if (a.indexOf(atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE]) != -1)
-            return NO_DECOR_DIALOG;
-        else
-            return DIALOG;
-    }
-    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_DOCK])
-        return DOCK;
-    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_INPUT])
-        return INPUT;
-    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_NOTIFICATION])
-        return NOTIFICATION;
-    else if (a[0] == atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE] ||
-             a[0] == atoms[_NET_WM_WINDOW_TYPE_MENU])
-        return FRAMELESS;
-
-    if (transient_for(w))
-        return UNKNOWN;
-    else // fdo spec suggests unknown non-transients must be normal
-        return NORMAL;
-}
-
-bool MCompAtoms::isDecorator(Window w)
-{
-    return (cardValueProperty(w, atoms[_MEEGOTOUCH_DECORATOR_WINDOW]) == 1);
-}
-
 int MCompAtoms::getPid(Window w)
 {
     return cardValueProperty(w, atoms[_NET_WM_PID]);
-}
-
-bool MCompAtoms::hasState(Window w, Atom a)
-{
-    QVector<Atom> states = getAtomArray(w, atoms[_NET_WM_STATE]);
-    return states.indexOf(a) != -1;
-}
-
-QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
-{
-    QVector<Atom> ret;
-
-    Atom actual;
-    int format;
-    unsigned long n, left;
-    unsigned char *data = 0;
-    int result = XGetWindowProperty(QX11Info::display(), w, array_atom, 0, 0,
-                                    False, XA_ATOM, &actual, &format,
-                                    &n, &left, &data);
-    if (data && result == Success && actual == XA_ATOM && format == 32) {
-        ret.resize(left / 4);
-        XFree((void *) data);
-        data = 0;
-
-        if (XGetWindowProperty(QX11Info::display(), w, array_atom, 0,
-                               ret.size(), False, XA_ATOM, &actual, &format,
-                               &n, &left, &data) != Success) {
-            ret.clear();
-        } else if (n != (ulong)ret.size())
-            ret.resize(n);
-
-        if (!ret.isEmpty())
-            memcpy(ret.data(), data, ret.size() * sizeof(Atom));
-    }
-    if (data) XFree(data);
-
-    return ret;
-}
-
-unsigned int MCompAtoms::get_opacity_prop(Display *dpy, Window w, unsigned int def)
-{
-    Q_UNUSED(dpy);
-    Atom actual;
-    int format;
-    unsigned long n, left;
-
-    unsigned char *data = 0;
-    int result = XGetWindowProperty(QX11Info::display(), w, atoms[_NET_WM_WINDOW_OPACITY], 0L, 1L, False,
-                                    XA_CARDINAL, &actual, &format,
-                                    &n, &left, &data);
-    if (result == Success && data != NULL) {
-        unsigned int i;
-        memcpy(&i, data, sizeof(unsigned int));
-        XFree((void *) data);
-        return i;
-    }
-    return def;
-}
-
-double MCompAtoms::get_opacity_percent(Display *dpy, Window w, double def)
-{
-    unsigned int opacity = get_opacity_prop(dpy, w,
-                                            (unsigned int)(OPAQUE * def));
-    return opacity * 1.0 / OPAQUE;
 }
 
 Atom MCompAtoms::getAtom(const unsigned int name)
@@ -361,34 +259,6 @@ int MCompAtoms::cardValueProperty(Window w, Atom property)
     }
 
     return 0;
-}
-
-Atom MCompAtoms::getAtom(Window w, Atoms atomtype)
-{
-    Atom actual;
-    int format;
-    unsigned long n, left;
-    unsigned char *data = 0;
-
-    int result = XGetWindowProperty(QX11Info::display(), w, atoms[atomtype], 0L, 1L, False,
-                                    XA_ATOM, &actual, &format,
-                                    &n, &left, &data);
-    if (result == Success && data) {
-        Atom a;
-        memcpy(&a, data, sizeof(Atom));
-        XFree((void *) data);
-        return a;
-    }
-    return 0;
-}
-
-static Window transient_for(Window window)
-{
-    Window transient_for = 0;
-    XGetTransientForHint(QX11Info::display(), window, &transient_for);
-    if (transient_for == window)
-        transient_for = 0;
-    return transient_for;
 }
 
 static void skiptaskbar_wm_state(int toggle, Window window,
@@ -466,7 +336,7 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
         }
 
         MCompositeWindow *win = MCompositeWindow::compositeWindow(window);
-        if (win && priv->needDecoration(window, win->propertyCache()))
+        if (win && priv->needDecoration(win->propertyCache()))
             win->setDecorated(true);
         if (win && !MDecoratorFrame::instance()->managedWindow()
             && win->needDecoration()) {
@@ -837,51 +707,27 @@ int MCompositeManagerPrivate::loadPlugins(const QDir &dir)
     return nloaded;
 }
 
-bool MCompositeManagerPrivate::needDecoration(Window window,
-                                              MWindowPropertyCache *pc)
+bool MCompositeManagerPrivate::needDecoration(MWindowPropertyCache *pc)
 {
-    bool fs;
-    if (pc && pc->isInputOnly())
+    Q_ASSERT(pc);
+    if (pc->isInputOnly() || pc->isDecorator() || pc->isOverrideRedirect())
         return false;
-    if (!pc)
-        fs = atom->hasState(window, ATOM(_NET_WM_STATE_FULLSCREEN));
-    else
-        fs = pc->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1;
-    if (device_state->ongoingCall() && fs && ((pc &&
+    bool fs = FULLSCREEN_WINDOW(pc);
+    if (device_state->ongoingCall() && fs &&
         pc->windowTypeAtom() != ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) &&
-        pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)) ||
-        (!pc && atom->windowType(window) != MCompAtoms::FRAMELESS)))
+        pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU))
         // fullscreen window is decorated during call
         return true;
     if (fs)
         return false;
-    bool transient;
-    if (!pc)
-        transient = transient_for(window);
-    else
-        transient = (getLastVisibleParent(pc) ? true : false);
-    if (!pc && atom->isDecorator(window))
-        return false;
-    else if (pc && (pc->isDecorator() || pc->isOverrideRedirect()))
-        return false;
-    else if (!pc) {
-        XWindowAttributes a;
-        if (!XGetWindowAttributes(QX11Info::display(), window, &a)
-            || a.override_redirect || a.c_class == InputOnly)
-            return false;
-    }
-    MCompAtoms::Type t;
-    if (!pc)
-        t = atom->windowType(window);
-    else
-        t = pc->windowType();
+    MCompAtoms::Type t = pc->windowType();
     return (t != MCompAtoms::FRAMELESS
             && t != MCompAtoms::DESKTOP
             && t != MCompAtoms::NOTIFICATION
             && t != MCompAtoms::INPUT
             && t != MCompAtoms::DOCK
             && t != MCompAtoms::NO_DECOR_DIALOG
-            && (!transient || t == MCompAtoms::DIALOG));
+            && (!getLastVisibleParent(pc) || t == MCompAtoms::DIALOG));
 }
 
 void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
@@ -1449,20 +1295,16 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
     if (e->parent != RootWindow(QX11Info::display(), 0))
         return;
 
-    MWindowPropertyCache *pc = prop_caches.value(e->window, 0);
+    MWindowPropertyCache *pc = getPropertyCache(e->window);
 
     // sandbox these windows. we own them
-    if ((pc && pc->isDecorator()) || (!pc && atom->isDecorator(e->window))
-        || (pc && !pc->is_valid))
+    if (!pc || !pc->is_valid || pc->isDecorator())
         return;
 
     /*qDebug() << __func__ << "CONFIGURE REQUEST FOR:" << e->window
         << e->x << e->y << e->width << e->height << "above/mode:"
         << e->above << e->detail;*/
 
-    if (!pc)
-        // ConfigureRequest before the window is mapped for the first time
-        pc = getPropertyCache(e->window);
     configureWindow(pc, e);
     MCompositeWindow *i = COMPOSITE_WINDOW(e->window);
     if (!i || !pc->isMapped())
@@ -1552,7 +1394,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         setWindowState(e->window, IconicState);
     else
         setWindowState(e->window, NormalState);
-    if (needDecoration(e->window, pc)) {
+    if (needDecoration(pc)) {
         if (MDecoratorFrame::instance()->decoratorItem()) {
             // initially visualize decorator item so selective compositing
             // checks won't disable compositing
@@ -3445,7 +3287,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
         && windows_as_mapped.indexOf(window) == -1)
         windows_as_mapped.append(window);
 
-    if (needDecoration(window, pc))
+    if (needDecoration(pc))
         item->setDecorated(true);
 
     item->updateWindowPixmap();

@@ -123,14 +123,7 @@ public:
         ATOMS_TOTAL
     };
     static MCompAtoms *instance();
-    Type windowType(Window w);
-    bool isDecorator(Window w);
     int getPid(Window w);
-    bool hasState(Window w, Atom a);
-    QVector<Atom> getAtomArray(Window w, Atom array_atom);
-    unsigned int get_opacity_prop(Display *dpy, Window w, unsigned int def);
-    double get_opacity_percent(Display *dpy, Window w, double def);
-    int globalAlphaFromWindow(Window w);
 
     Atom getAtom(const unsigned int name);
 
@@ -140,8 +133,6 @@ public:
 private:
     explicit MCompAtoms();
     static MCompAtoms *d;
-
-    Atom getAtom(Window w, Atoms atomtype);
 
     Display *dpy;
 };
