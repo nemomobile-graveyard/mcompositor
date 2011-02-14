@@ -3567,6 +3567,10 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
         //qDebug() << __func__ << "to bottom:" << w;
         STACKING_MOVE(wp, 0);
         safe_move(stacking_list, wp, 0);
+        // make sure it's not painted with the old Z value before the next
+        // checkStacking() call, which sets the new Z value
+        MCompositeWindow *i = COMPOSITE_WINDOW(w);
+        if (i) i->requestZValue(-1);
     }
     updateWinList();
 }
