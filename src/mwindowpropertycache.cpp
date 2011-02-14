@@ -623,6 +623,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         addRequest(SLOT(windowTypeAtom()),
                    requestProperty(e->atom, XCB_ATOM_ATOM, MAX_TYPES));
         window_type = MCompAtoms::INVALID;
+        return true;
     } else if (e->atom == ATOM(_NET_WM_ICON_GEOMETRY)) {
         addRequest(SLOT(iconGeometry()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL, 4));
@@ -637,6 +638,11 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         addRequest(SLOT(buttonGeometryHelper()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL, 8));
         emit meegoDecoratorButtonsChanged(window);
+    } else if (e->atom == ATOM(_MEEGOTOUCH_DECORATOR_WINDOW)) {
+        addRequest(SLOT(isDecorator()), 
+                   requestProperty(MCompAtoms::_MEEGOTOUCH_DECORATOR_WINDOW,
+                                   XCB_ATOM_CARDINAL));
+        return true;
     } else if (e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE)) {
         addRequest(SLOT(orientationAngle()),
               requestProperty(MCompAtoms::_MEEGOTOUCH_ORIENTATION_ANGLE,
