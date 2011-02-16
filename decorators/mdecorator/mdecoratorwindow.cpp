@@ -274,8 +274,10 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
         }
         if (!navigationBar) {
             navigationBar = dynamic_cast<MNavigationBar*>(item);
-            if (navigationBar)
+            if (navigationBar) {
+                connect(navigationBar, SIGNAL(closeButtonClicked()), this, SIGNAL(escapeClicked()));
                 continue;
+            }
         }
         if (!statusBar) {
             statusBar = dynamic_cast<MStatusBar*>(item);
