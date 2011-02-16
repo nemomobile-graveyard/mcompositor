@@ -1297,18 +1297,21 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
         return;
 
     MCompAtoms::Type wtype = i->propertyCache()->windowType();
-    if ((e->detail == Above) && (e->above == None) &&
-        (wtype != MCompAtoms::INPUT) && (wtype != MCompAtoms::DOCK)) {
+    if (e->detail == Above && e->above == None && wtype != MCompAtoms::DESKTOP
+        && wtype != MCompAtoms::INPUT && wtype != MCompAtoms::DOCK) {
         setWindowState(e->window, NormalState);
+        i->setIconified(false);
+
+        // redirect home to keep it prepared for animations (if it's redirected
+        // just before the animation, it does not always draw in time)
+        MCompositeWindow *d = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
+        if (d && ((MTexturePixmapItem *)d)->isDirectRendered()) {
+            ((MTexturePixmapItem *)d)->enableRedirectedRendering();
+            setWindowDebugProperties(d->window());
+        }
         setExposeDesktop(false);
 
-        // selective compositing support:
-        // since we call disable compositing immediately
-        // we don't see the animated transition
-        if (!i->propertyCache()->hasAlpha() && !i->needDecoration()) {
-            i->setIconified(false);
-            disableCompositing(FORCED);
-        } else if (MDecoratorFrame::instance()->managedWindow() == e->window)
+        if (MDecoratorFrame::instance()->managedWindow() == e->window)
             enableCompositing();
     }
 }
@@ -2328,11 +2331,6 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     FrameData fd = framed_windows.value(event->window);
 
     if (event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
-        // Visibility notification to desktop window. Ensure this is sent
-        // before transitions are started
-        if (event->window != stack[DESKTOP_LAYER])
-            setExposeDesktop(false);
-
         MWindowPropertyCache *pc = prop_caches.value(event->window, 0);
         if (pc && !skipStartupAnim(pc) &&
             (!m_extensions.values(MapNotify).isEmpty() || !getTopmostApp())) {
@@ -2345,12 +2343,17 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                 needComp = true;
                 enableCompositing(true);
             }
+            // Visibility notification to desktop window. Ensure this is sent
+            // before transitions are started but after redirection
+            if (event->window != stack[DESKTOP_LAYER])
+                setExposeDesktop(false);
             if (i && i->propertyCache()->windowState() == IconicState) {
                 i->setZValue(windows.size() + 1);
                 QRectF iconGeometry = i->propertyCache()->iconGeometry();
                 i->restore(iconGeometry, needComp);
             }
-        }
+        } else if (event->window != stack[DESKTOP_LAYER])
+            setExposeDesktop(false);
 
         if (fd.frame)
             setWindowState(fd.frame->managedWindow(), NormalState);
