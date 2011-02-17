@@ -188,7 +188,7 @@ signals:
 public slots:
 
     void gotHungWindow(MCompositeWindow *window, bool is_hung);
-    void enableCompositing(bool forced = false);
+    void enableCompositing();
     void disableCompositing(ForcingLevel forced = NO_FORCED);
     void showLaunchIndicator(int timeout);
     void hideLaunchIndicator();
