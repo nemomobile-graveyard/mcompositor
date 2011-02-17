@@ -398,7 +398,7 @@ void MCompositeWindow::closeWindowRequest()
         // get a Pixmap for the possible unmap animation
         MCompositeManager *p = (MCompositeManager *) qApp;
         if (!p->isCompositing())
-            p->d->enableCompositing(true);
+            p->d->enableCompositing();
         updateWindowPixmap();
     }
     emit closeWindowRequest(this);
@@ -421,7 +421,7 @@ void MCompositeWindow::closeWindowAnimation()
     bool defer = false;
     setVisible(true);
     if (!p->isCompositing()) {
-        p->d->enableCompositing(true);
+        p->d->enableCompositing();
         defer = true;
     }
     
