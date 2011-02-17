@@ -790,8 +790,8 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         if (cw && !cw->isNewlyMapped()) {
             checkStacking(false, e->time);
             // window on top could have changed
-            if (!possiblyUnredirectTopmostWindow())
-                enableCompositing(false);
+            if (!possiblyUnredirectTopmostWindow() && !compositing)
+                enableCompositing();
         }
     }
 
@@ -1365,7 +1365,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     // Composition is enabled by default because we are introducing animations
     // on window map. It will be turned off once transitions are done
     if (!pc->isInputOnly())
-        enableCompositing(true);
+        enableCompositing();
 
     if (pc->isDecorator()) {
         MDecoratorFrame::instance()->setDecoratorWindow(e->window);
@@ -1931,7 +1931,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             }
             if (!compositing)
                 // decor requires compositing
-                enableCompositing(true);
+                enableCompositing();
             deco->decoratorItem()->updateWindowPixmap();
             deco->show();
             glwidget->update();
@@ -2116,7 +2116,7 @@ void MCompositeManagerPrivate::stackingTimeout()
     stacking_timeout_check_visibility = false;
     stacking_timeout_timestamp = CurrentTime;
     if (!device_state->displayOff() && !possiblyUnredirectTopmostWindow())
-        enableCompositing(true);
+        enableCompositing();
 }
 
 // check if there is a categorically higher mapped window than pc
@@ -2211,7 +2211,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     // Compositing is always assumed to be enabled at this point if a window
     // has alpha channels
     if (!compositing && (pc && pc->hasAlpha()))
-        enableCompositing(true);
+        enableCompositing();
 
     if (item && pc) {
         // reset item for the case previous animation did not end cleanly
@@ -2355,7 +2355,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             if (d_item && d_item->isDirectRendered()
                 && raise != stack[DESKTOP_LAYER]) {
                 needComp = true;
-                enableCompositing(true);
+                enableCompositing();
             }
             // Visibility notification to desktop window. Ensure this is sent
             // before transitions are started but after redirection
@@ -2487,7 +2487,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 // when windows are rendered off-screen
                 i->iconify(i->propertyCache()->iconGeometry(), needComp);
                 if (needComp)
-                    enableCompositing(true);
+                    enableCompositing();
                 if (i->needDecoration())
                     i->startTransition();
                 i->stopPing();
@@ -2668,7 +2668,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
     if (display_off) {
         // keep compositing to have synthetic events to obscure all windows
         if (!haveMappedWindow())
-            enableCompositing(true);
+            enableCompositing();
         scene()->views()[0]->setUpdatesEnabled(false);
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
@@ -2680,17 +2680,18 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
                  i->propertyCache()->damageTracking(false);
         }
     } else {
-        if (!possiblyUnredirectTopmostWindow())
-            enableCompositing(false);
+        if (!possiblyUnredirectTopmostWindow() && !compositing)
+            enableCompositing();
         /* start pinging again */
         pingTopmost();
-        // restart damage tracking
+        // restart damage tracking for redirected windows
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
              MCompositeWindow *i = it.value();
-             if (i->propertyCache() && (i->propertyCache()->isMapped() ||
-                                        i->propertyCache()->beingMapped()))
-                 i->propertyCache()->damageTracking(true);
+             MWindowPropertyCache *pc = i->propertyCache();
+             if (!i->isDirectRendered() && pc &&
+                 (pc->isMapped() || pc->beingMapped()))
+                 pc->damageTracking(true);
         }
     }
     dirtyStacking(true);  // VisibilityNotify generation
@@ -3022,7 +3023,7 @@ void MCompositeManagerPrivate::redirectWindows()
     XIfEvent(QX11Info::display(), &xevent, map_predicate, (XPointer)xoverlay);
     showOverlayWindow(false);
     if (!possiblyUnredirectTopmostWindow())
-        enableCompositing(true);
+        enableCompositing();
 }
 
 void MCompositeManagerPrivate::removeWindow(Window w)
@@ -3444,11 +3445,8 @@ const QList<Window> &MCompositeManager::stackingList() const
     return d->stacking_list;
 }
 
-void MCompositeManagerPrivate::enableCompositing(bool forced)
+void MCompositeManagerPrivate::enableCompositing()
 {
-    if (compositing && !forced)
-        return;
-
     if (!overlay_mapped)
         showOverlayWindow(true);
     else
@@ -3573,7 +3571,7 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
     }
 
     // own the window so we could kill it if we want to.
-    enableCompositing(true);
+    enableCompositing();
     deco->setManagedWindow(w, true);
     deco->setOnlyStatusbar(false);
     deco->setAutoRotation(true);
@@ -4135,7 +4133,8 @@ void MCompositeManager::redirectWindows()
 
 void MCompositeManager::enableCompositing(bool forced)
 {
-    d->enableCompositing(forced);
+    Q_UNUSED(forced)
+    d->enableCompositing();
 }
 
 void MCompositeManager::disableCompositing()
