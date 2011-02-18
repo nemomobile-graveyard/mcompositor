@@ -71,6 +71,30 @@ for arg in ['l', 'b', 'r', 't']:
     print_stack_array(orig_stack)
     ret = 1
     break
+  edge2angle = {'l' : '270', 'b' : '180', 'r' : '90', 't' : '0'}
+  # set _MEEGOTOUCH_ORIENTATION_ANGLE on curren app window
+  f_cw = os.popen('xprop -root _MEEGOTOUCH_CURRENT_APP_WINDOW')
+  o_cw = f_cw.read()
+  cw = o_cw.split('#')
+  print cw[1].strip() 
+  os.popen("xprop -id %s -f _MEEGOTOUCH_ORIENTATION_ANGLE 32c -set _MEEGOTOUCH_ORIENTATION_ANGLE %s"
+                  % ( cw[1].strip(), edge2angle[arg] ))  
+  # check if /Screen/CurrentWindow/OrientationAngle was set
+  time.sleep(1)
+  f_ca = os.popen("qdbus org.maemo.mcompositor.context /Screen/CurrentWindow/OrientationAngle org.maemo.contextkit.Property.Get")
+  o_ca = f_ca.read()
+  if o_ca.splitlines()[0] == edge2angle[arg]:
+    print 'Value as expected: ' + edge2angle[arg]
+    continue
+  ret = 1
+  print '/Screen/CurrentWindow/OrientationAngle does not match expected value'
+  print 'Current value: ' + clout.splitlines()[0]
+  print 'Expected value: ' + edge2angle[arg]
+  break
+
+  
+
+    
 
 # cleanup
 os.popen('pkill windowctl')
