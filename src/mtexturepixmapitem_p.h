@@ -24,6 +24,7 @@
 #include <QRect>
 #include <QRegion>
 #include <QPointer>
+#include <QtOpenGL>
 #include <X11/Xlib.h>
 
 #ifdef GLES2_VERSION
@@ -66,6 +67,10 @@ public:
     void q_drawTexture(const QTransform& transform, const QRectF& drawRect,
                        qreal opacity, bool texcoords_from_rect = false);
     void installEffect(MCompositeWindowShaderEffect* effect);
+    void paint(QPainter *painter,
+               const QStyleOptionGraphicsItem *option,
+               QWidget *widget);
+    void renderTexture(const QTransform& transform);
     static GLuint installPixelShader(const QByteArray& code);
                 
     static QGLContext *ctx;

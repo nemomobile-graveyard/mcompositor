@@ -178,11 +178,6 @@ MTexturePixmapItem::MTexturePixmapItem(Window window,
     init();
 }
 
-void MTexturePixmapItem::saveBackingStore()
-{
-    d->saveBackingStore();
-}
-
 void MTexturePixmapItem::rebindPixmap()
 {
     const int pixmapAttribs[] = {
@@ -247,11 +242,6 @@ void MTexturePixmapItem::enableRedirectedRendering()
     updateWindowPixmap();
 }
 
-bool MTexturePixmapItem::isDirectRendered() const
-{
-    return d->direct_fb_render;
-}
-
 MTexturePixmapItem::~MTexturePixmapItem()
 {
     cleanup();
@@ -310,97 +300,4 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
         }
     }
     update();
-}
-
-void MTexturePixmapItem::paint(QPainter *painter,
-                                 const QStyleOptionGraphicsItem *option,
-                                 QWidget *widget)
-{
-    Q_UNUSED(option)
-    Q_UNUSED(widget)
-
-    if (painter->paintEngine()->type() != QPaintEngine::OpenGL2 &&
-        painter->paintEngine()->type() != QPaintEngine::OpenGL)
-        return;
-
-    painter->beginNativePainting();
-
-    glEnable(GL_TEXTURE_2D);
-    if (propertyCache()->hasAlpha() || (opacity() < 1.0f && !dimmedEffect()) ) {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glColor4f(1.0, 1.0, 1.0, opacity());
-    }
-
-    glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);
-
-    const QRegion &shape = propertyCache()->shapeRegion();
-    bool shape_on = !QRegion(boundingRect().toRect()).subtracted(shape).isEmpty();
-    bool scissor_on = d->damageRegion.numRects() > 1 || shape_on;
-    
-    if (scissor_on)
-        glEnable(GL_SCISSOR_TEST);
-    
-    // Damage regions taking precedence over shape rects 
-    if (d->damageRegion.numRects() > 1) {
-        for (int i = 0; i < d->damageRegion.numRects(); ++i) {
-            glScissor(d->damageRegion.rects().at(i).x(),
-                      d->brect.height() -
-                      (d->damageRegion.rects().at(i).y() +
-                       d->damageRegion.rects().at(i).height()),
-                      d->damageRegion.rects().at(i).width(),
-                      d->damageRegion.rects().at(i).height());
-            d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());        
-        }
-    } else if (shape_on) {
-        // draw a shaped window using glScissor
-        for (int i = 0; i < shape.numRects(); ++i) {
-            glScissor(shape.rects().at(i).x(),
-                      d->brect.height() -
-                      (shape.rects().at(i).y() +
-                       shape.rects().at(i).height()),
-                      shape.rects().at(i).width(),
-                      shape.rects().at(i).height());
-            d->drawTexture(painter->combinedTransform(),
-                           boundingRect(), opacity());
-        }
-    } else
-        d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
-    
-    if (scissor_on)
-        glDisable(GL_SCISSOR_TEST);
-
-    glDisable(GL_BLEND);
-
-    painter->endNativePainting();
-}
-
-void MTexturePixmapItem::resize(int w, int h)
-{
-    d->resize(w, h);
-}
-
-QSizeF MTexturePixmapItem::sizeHint(Qt::SizeHint, const QSizeF &) const
-{
-    return boundingRect().size();
-}
-
-QRectF MTexturePixmapItem::boundingRect() const
-{
-    return d->brect;
-}
-
-void MTexturePixmapItem::clearTexture()
-{
-    glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, 0);
-
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-}
-
-MTexturePixmapPrivate* MTexturePixmapItem::renderer() const
-{
-    return d;
 }
