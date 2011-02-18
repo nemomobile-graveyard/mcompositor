@@ -42,7 +42,9 @@ HEADERS += \
     mdecoratorframe.h \
     mcompositemanagerextension.h \
     mcompositewindowshadereffect.h \
-    mcompmgrextensionfactory.h
+    mcompmgrextensionfactory.h \
+    mcurrentwindoworientationprovider.h \
+    mcurrentwindoworientationprovider_p.h
 
 SOURCES += \
     mtexturepixmapitem_p.cpp \
@@ -55,12 +57,14 @@ SOURCES += \
     mdevicestate.cpp \
     mdecoratorframe.cpp \
     mcompositemanagerextension.cpp \
-    mcompositewindowshadereffect.cpp
+    mcompositewindowshadereffect.cpp \
+    mcurrentwindoworientationprovider.cpp
 
 RESOURCES = tools.qrc
 
 CONFIG += release link_pkgconfig
-PKGCONFIG += contextsubscriber-1.0
+PKGCONFIG += contextsubscriber-1.0 \
+             contextprovider-1.0
 QT += core gui opengl
 
 # TODO: refactor the headers to exclude private stuff
@@ -76,6 +80,10 @@ INSTALLS += publicHeaders
 
 target.path += /usr/lib
 INSTALLS += target 
+
+contextkitXml.files = org.maemo.mcompositor.context
+contextkitXml.path = /usr/share/contextkit/providers
+INSTALLS += contextkitXml
 
 LIBS += -lXdamage -lXcomposite -lXfixes -lX11-xcb -lxcb-render -lxcb-shape \
         -lXrandr ../decorators/libdecorator/libdecorator.so

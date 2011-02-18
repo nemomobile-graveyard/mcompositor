@@ -41,6 +41,7 @@ class MCompositeWindow;
 class MDeviceState;
 class MWindowPropertyCache;
 class MCompositeManagerExtension;
+class MCurrentWindowOrientationProvider;
 
 enum {
     INPUT_LAYER = 0,
@@ -163,6 +164,7 @@ public:
     bool overlay_mapped;
     bool changed_properties;
     MDeviceState *device_state;
+    MCurrentWindowOrientationProvider *orientationProvider;
 
     // Indicates whether MCompositeManager::prepare() has finished.
     // Used by the destructor.
