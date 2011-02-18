@@ -276,6 +276,95 @@ private:
 MShaderProgram *MGLResourceManager::shader[ShaderTotal];
 #endif
 
+void MTexturePixmapPrivate::paint(QPainter *painter,
+                                  const QStyleOptionGraphicsItem *option,
+                                  QWidget *widget)
+{
+    Q_UNUSED(option)
+    Q_UNUSED(widget)
+
+    if (direct_fb_render) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return;
+    }
+
+#ifdef GLES2_VERSION
+    if (painter->paintEngine()->type() != QPaintEngine::OpenGL2)
+        return;
+    if (current_window_group.isNull()) 
+        renderTexture(painter->combinedTransform());
+#else
+    if (painter->paintEngine()->type() != QPaintEngine::OpenGL2
+        && painter->paintEngine()->type() != QPaintEngine::OpenGL)
+        return;
+    painter->beginNativePainting();
+    renderTexture(painter->combinedTransform());
+    painter->endNativePainting();
+#endif
+}
+
+void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
+{
+    if (item->propertyCache()->hasAlpha() ||
+        (item->opacity() < 1.0f && !item->dimmedEffect())) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+    glBindTexture(GL_TEXTURE_2D, custom_tfp ? ctextureId : textureId);
+
+    const QRegion &shape = item->propertyCache()->shapeRegion();
+    // FIXME: not optimal. probably would be better to replace with 
+    // eglSwapBuffersRegionNOK()
+
+    bool shape_on = !QRegion(item->boundingRect().toRect()).subtracted(shape).isEmpty();
+    bool scissor_on = damageRegion.numRects() > 1 || shape_on;
+    
+    if (scissor_on)
+        glEnable(GL_SCISSOR_TEST);
+    
+    // Damage regions taking precedence over shape rects 
+    if (damageRegion.numRects() > 1) {
+        for (int i = 0; i < damageRegion.numRects(); ++i) {
+            glScissor(damageRegion.rects().at(i).x(),
+                      brect.height() -
+                      (damageRegion.rects().at(i).y() +
+                       damageRegion.rects().at(i).height()),
+                      damageRegion.rects().at(i).width(),
+                      damageRegion.rects().at(i).height());
+            drawTexture(transform, item->boundingRect(), item->opacity());        
+        }
+    } else if (shape_on) {
+        // draw a shaped window using glScissor
+        for (int i = 0; i < shape.numRects(); ++i) {
+            glScissor(shape.rects().at(i).x(),
+                      brect.height() -
+                      (shape.rects().at(i).y() +
+                       shape.rects().at(i).height()),
+                      shape.rects().at(i).width(),
+                      shape.rects().at(i).height());
+            drawTexture(transform, item->boundingRect(), item->opacity());
+        }
+    } else
+        drawTexture(transform, item->boundingRect(), item->opacity());
+    
+    if (scissor_on)
+        glDisable(GL_SCISSOR_TEST);
+
+    // Explicitly disable blending. for some reason, the latest drivers
+    // still has blending left-over even if we call glDisable(GL_BLEND)
+    glBlendFunc(GL_ONE, GL_ZERO);
+    glDisable(GL_BLEND);
+}
+
+void MTexturePixmapPrivate::clearTexture()
+{
+    glBindTexture(GL_TEXTURE_2D, custom_tfp ? ctextureId : textureId);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, 0);
+
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
 
 void MTexturePixmapPrivate::drawTexture(const QTransform &transform,
                                         const QRectF &drawRect,
@@ -495,4 +584,51 @@ void MTexturePixmapPrivate::resize(int w, int h)
     }
     brect.setWidth(w);
     brect.setHeight(h);
+}
+
+bool MTexturePixmapItem::isDirectRendered() const
+{
+    return d->direct_fb_render;
+}
+
+void MTexturePixmapItem::paint(QPainter *painter,
+                               const QStyleOptionGraphicsItem *option,
+                               QWidget *widget)
+{
+    d->paint(painter, option, widget);
+}
+
+void MTexturePixmapItem::renderTexture(const QTransform& transform)
+{
+    d->renderTexture(transform);
+}
+
+void MTexturePixmapItem::clearTexture()
+{
+    d->clearTexture();
+}
+
+void MTexturePixmapItem::saveBackingStore()
+{
+    d->saveBackingStore();
+}
+
+void MTexturePixmapItem::resize(int w, int h)
+{
+    d->resize(w, h);
+}
+
+QSizeF MTexturePixmapItem::sizeHint(Qt::SizeHint, const QSizeF &) const
+{
+    return boundingRect().size();
+}
+
+QRectF MTexturePixmapItem::boundingRect() const
+{
+    return d->brect;
+}
+
+MTexturePixmapPrivate* MTexturePixmapItem::renderer() const
+{
+    return d;
 }
