@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<provider xmlns="http://contextkit.freedesktop.org/Provider"
+	bus="session" service="org.maemo.mcompositor.context">
+  <key name="/Screen/CurrentWindow/OrientationAngle" />
+</provider>

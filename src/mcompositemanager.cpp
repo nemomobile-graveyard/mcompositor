@@ -27,6 +27,7 @@
 #include "mdevicestate.h"
 #include "mcompositemanagerextension.h"
 #include "mcompmgrextensionfactory.h"
+#include "mcurrentwindoworientationprovider.h"
 #include "mcompositordebug.h"
 
 #include <QX11Info>
@@ -545,6 +546,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       glwidget(0),
       compositing(true),
       changed_properties(false),
+      orientationProvider(new MCurrentWindowOrientationProvider(this)),
       prepared(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime)
@@ -799,6 +801,10 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     if (pc->isMapped() && (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA) ||
         e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA)))
         dirtyStacking(true, e->time);
+
+    if(pc->isMapped() && e->window == current_app
+         && e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE))
+        orientationProvider->update();
 }
 
 Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
