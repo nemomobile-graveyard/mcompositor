@@ -72,11 +72,9 @@ public:
         XTextProperty p;
         QString title;
 
-        if(XGetWMName(QX11Info::display(), window, &p)) {
-            if (p.value) {
-                title = (char*) p.value;
-                XFree(p.value);
-            }
+        if (window && XGetWMName(QX11Info::display(), window, &p)) {
+            title = (char*) p.value;
+            XFree(p.value);
         }
         decorwindow->managedWindowChanged(window);
         decorwindow->setInputRegion();
