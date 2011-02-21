@@ -883,7 +883,7 @@ Atom MWindowPropertyCache::windowTypeAtom()
         return type_atoms[0];
     }
 
-    Q_ASSERT(type_atoms.isEmpty());
+    type_atoms.resize(0);
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
