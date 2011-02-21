@@ -36,11 +36,15 @@ class MDecoratorFrame: public QObject
 {
     Q_OBJECT
 public:
+    /*!
+     * Creates the singleton
+     */
+    MDecoratorFrame(QObject *object = 0);
 
     /*!
      * Singleton accessor
      */
-    static MDecoratorFrame *instance();
+    static MDecoratorFrame *instance() { return d; }
 
     /*!
      * Retuns the window id of the managed window.
@@ -102,7 +106,6 @@ private slots:
     void visualizeDecorator(bool visible);
 
 private:
-    explicit MDecoratorFrame(QObject *object = 0);
     void sendManagedWindowId();
     static MDecoratorFrame *d;
 

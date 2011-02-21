@@ -23,8 +23,44 @@
 
 #include <QObject>
 
-class MRmiServerPrivate;
-class MRmiServerPrivateSocket;
+class MRmiPrivate;
+
+class MRmi: public QObject
+{
+protected:
+    MRmi(const QString& key, QObject* parent, bool isServer);
+
+public:
+    /*!
+     * Disconnects all connections and destroys this object
+     */
+    ~MRmi();
+
+    /*!
+     * Export a QObject for remote invocation. Currently only one QObject per
+     * MRmiServer is supported.
+     *
+     * \param object QObject to be exported.
+     */
+    void exportObject(QObject* object);
+
+    /*!
+     * Invoke the remote function
+     *
+     * \param objectName which object to call
+     * \param methodName the name of the method to call
+     * \param args QVariant representation of the arguments of the remote method
+     */
+    void invoke(const char* objectName, const char* methodName,
+                const QVector<QVariant> &args);
+    void invoke(const char* objectName, const char* methodName,
+                const QVariant &arg);
+
+private:
+    Q_DISABLE_COPY(MRmi)
+
+    MRmiPrivate* d_ptr;
+};
 
 /*!
  * \class MRmiServer
@@ -47,10 +83,8 @@ class MRmiServerPrivateSocket;
  * system using qRegisterMetaType(). Qt uses this class internally for
  * mashalling/unmarshalling types (see QMetaType for details).
  */
-class MRmiServer: public QObject
+class MRmiServer: public MRmi
 {
-  Q_OBJECT
-
 public:
     /*!
      * Creates a MRmiServer
@@ -58,29 +92,33 @@ public:
      * \param key a unique key that identifies this server
      * \param parent QObject.
      */
-    explicit MRmiServer(const QString& key, QObject* parent = 0);
-
-    /*!
-     * Disconnects all connections and destroys this object
-     */
-    virtual ~MRmiServer();
-
-    /*!
-     * Export a QObject for remote invocation. Currently only one QObject per
-     * MRmiServer is supported.
-     *
-     * \param object QObject to be exported.
-     */
-    void exportObject(QObject* object);
+    MRmiServer(const QString& key, QObject* parent = 0):
+        MRmi(key, parent, true) { }
 
 private:
     Q_DISABLE_COPY(MRmiServer)
-    Q_DECLARE_PRIVATE(MRmiServer)
-    Q_PRIVATE_SLOT(d_func(), void _q_incoming())
-    Q_PRIVATE_SLOT(d_func(), void _q_readData())
+};
 
-    MRmiServerPrivate * const d_ptr;
-    friend class MRmiServerPrivateSocket;
+/*!
+ * \class MRmiClient
+ *
+ * \brief The MRmiClient allows member functions of QObjects exported by
+ * MRmiServer from another process to be invoked remotely.
+ */
+class MRmiClient: public MRmi
+{
+public:
+    /*!
+     * Creates a MRmiClient
+     *
+     * \param key the key used to identify the remote MRmiServer
+     * \param parent the parent QObject
+     */
+    MRmiClient(const QString& key, QObject* parent  = 0):
+        MRmi(key, parent, false) { }
+
+private:
+    Q_DISABLE_COPY(MRmiClient)
 };
 
 #endif

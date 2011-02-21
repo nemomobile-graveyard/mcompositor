@@ -22,8 +22,6 @@
 #include "mabstractappinterface.h"
 #include "mdecorator_dbus_adaptor.h"
 #include "mabstractdecorator.h"
-#include <mrmiserver.h>
-#include <mrmiclient.h>
 #include <QX11Info>
 #include <QRect>
 #include <QRegion>

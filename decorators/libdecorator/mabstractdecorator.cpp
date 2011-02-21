@@ -20,8 +20,8 @@
 #include <QtDebug>
 
 #include "mabstractdecorator.h"
-#include <mrmiserver.h>
-#include <mrmiclient.h>
+#include "mrmi.h"
+
 #include <QX11Info>
 #include <QRect>
 #include <QRegion>
@@ -33,12 +33,10 @@
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
 
-class MAbstractDecoratorPrivate
+struct MAbstractDecoratorPrivate
 {    
-public:
-    
     Qt::HANDLE client;
-    MRmiClient* remote_compositor;
+    MRmiServer* rmi;
     QRect clientGeometry;
     MAbstractDecorator* q_ptr;
 };
@@ -49,9 +47,8 @@ MAbstractDecorator::MAbstractDecorator(QObject *parent)
 {
     Q_D(MAbstractDecorator);
     
-    MRmiServer *s = new MRmiServer(".mabstractdecorator", this);
-    s->exportObject(this);
-    d->remote_compositor = new MRmiClient(".mcompositor", this);
+    d->rmi = new MRmiServer(".mabstractdecorator", this);
+    d->rmi->exportObject(this);
 }
 
 MAbstractDecorator::~MAbstractDecorator()
@@ -134,14 +131,15 @@ void MAbstractDecorator::setAvailableGeometry(const QRect& rect)
 {
     Q_D(MAbstractDecorator);
 
-    d->remote_compositor->invoke("MCompositeManager", "decoratorRectChanged", rect);
+    d->rmi->invoke("MCompositeManager", "decoratorRectChanged", rect);
 }
 
 void MAbstractDecorator::queryDialogAnswer(unsigned int w, bool a)
 {
     Q_D(MAbstractDecorator);
 
-    d->remote_compositor->invoke("MCompositeManager", "queryDialogAnswer", w, a);
+    d->rmi->invoke("MCompositeManager", "queryDialogAnswer",
+                   QVector<QVariant>() << w << a);
 }
 
 void MAbstractDecorator::RemoteSetOnlyStatusbar(bool mode)

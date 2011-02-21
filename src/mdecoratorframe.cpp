@@ -22,8 +22,8 @@
 #include "mtexturepixmapitem.h"
 #include "mcompositemanager.h"
 #include "mcompositordebug.h"
+#include "mrmi.h"
 
-#include <mrmiclient.h>
 #include <QX11Info>
 
 #include <X11/Xutil.h>
@@ -33,13 +33,6 @@
 
 MDecoratorFrame *MDecoratorFrame::d = 0;
 
-MDecoratorFrame *MDecoratorFrame::instance()
-{
-    if (!d)
-        d = new MDecoratorFrame();
-    return d;
-}
-
 MDecoratorFrame::MDecoratorFrame(QObject *p)
     : QObject(p),
       client(0),
@@ -47,14 +40,15 @@ MDecoratorFrame::MDecoratorFrame(QObject *p)
       decorator_item(0),
       no_resize(false)
 {    
-    MCompositeManager *mgr = (MCompositeManager *) qApp;
-    connect(mgr, SIGNAL(decoratorRectChanged(const QRect&)), this,
-            SLOT(setDecoratorAvailableRect(const QRect&)));
-    /*!
-     * Excute decorator process here.
-     */
+    // One instance at a time
+    Q_ASSERT(!d);
+    d = this;
+
+    connect(p, SIGNAL(decoratorRectChanged(const QRect&)),
+            this, SLOT(setDecoratorAvailableRect(const QRect&)));
 
     remote_decorator = new MRmiClient(".mabstractdecorator", this);
+    remote_decorator->exportObject(p);
 }
 
 Qt::HANDLE MDecoratorFrame::managedWindow() const
