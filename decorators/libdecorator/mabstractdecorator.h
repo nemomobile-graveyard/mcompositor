@@ -24,7 +24,6 @@
 #include "mabstractappinterface.h"
 
 class MAbstractDecoratorPrivate;
-class MRmiClient;
 class QRect;
 
 /*!
