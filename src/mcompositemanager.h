@@ -142,6 +142,7 @@ public:
     void positionWindow(Window w, StackPosition pos);
     void setWindowState(Window, int);
     const QList<Window> &stackingList() const;
+    Window getLastVisibleParent(MWindowPropertyCache *pc) const;
 
 #ifdef WINDOW_DEBUG
     // Dump the current state of MCompositeManager and MCompositeWindow:s

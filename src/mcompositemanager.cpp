@@ -88,6 +88,7 @@ static QGraphicsTextItem *launchIndicator = 0;
 
 static Window transient_for(Window window);
 static bool should_be_pinged(MCompositeWindow *cw);
+static bool compareWindows(Window w_a, Window w_b);
 
 #ifdef WINDOW_DEBUG
 static QTime overhead_measure;
@@ -112,6 +113,18 @@ static QString dumpWindows(const QList<Window> &wins);
 #else
 # define STACKING(...)                              /* NOP */
 # define STACKING_MOVE(...)                         /* NOP */
+#endif
+
+// Enable to see the decisions of compareWindows().
+#if 0
+# define SORTING(isLess)                            \
+    do {                                            \
+        STACKING("0x%lx %s 0x%lx",                  \
+               w_a, isLess ? "<" : "\\<", w_b);     \
+        return isLess;                              \
+    } while (0)
+#else
+# define SORTING(isLess)                            return isLess
 #endif
 
 // Enable to see what and why getTopmostApp() chooses
@@ -969,6 +982,11 @@ Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
            break;
     }
     return last;
+}
+
+Window MCompositeManager::getLastVisibleParent(MWindowPropertyCache *pc) const
+{
+    return d->getLastVisibleParent(pc);
 }
 
 Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
@@ -3195,51 +3213,58 @@ void MCompositeManagerPrivate::removeWindow(Window w)
 // Unused decorators should be below anything else.
 // The decorated window should be below the decorator.
 // Otherwise we don't know.
-static MCompositeWindow *compareDecorator(bool *cmpp, MCompositeWindow *win)
+static bool compareDecorator(MWindowPropertyCache *win)
 {
-    MDecoratorFrame *deco = MDecoratorFrame::instance();
-    if (deco) {
-        MCompositeWindow *man = deco->managedClient();
-        if (!man)
-            // the decorator is unused
-            *cmpp = true;
-        else if (man == win)
-            // @win is the decorator's managed window, keep them together
-            *cmpp = false;
-        else
-            // Order the decorator like its managed window.
-            return man;
-    } else
-        // the decorator is so unused that we don't even know about it
-        *cmpp = true;
+    MDecoratorFrame *deco;
+    MCompositeWindow *man;
+    const QList<Window> &stack =
+        static_cast<MCompositeManager*>(qApp)->stackingList();
 
-    return NULL;
+    if (!(deco = MDecoratorFrame::instance()))
+        // the decorator is so unused that we don't even know about it
+        return true;
+    if (!(man = deco->managedClient()))
+        // the decorator is unused
+        return true;
+    if (man->propertyCache() == win)
+        // @win is the decorator's managed window, keep them together
+        return false;
+    if (compareWindows(man->window(), win->winId()))
+        return true;
+    if (compareWindows(win->winId(), man->window()))
+        return false;
+    if (stack.indexOf(man->window()) < stack.indexOf(win->winId()))
+        return true;
+    else
+        return false;
 }
 
-// Returns whether @cw in @layer of @type is special with regards to stacking.
+// Returns whether @pc in @layer of @type is special with regards to stacking.
 // Returns None for non-special cases, or NOTIFICATION, INPUT or DIALOG.
-// The returned Atom doesn't mean that @cw has that window type; it merely
+// The returned Atom doesn't mean that @pc has that window type; it merely
 // indicates that it should be stacked like that.
-static Atom isSpecial(MCompositeWindow *cw, int layer, Atom type)
+static Atom isSpecial(MWindowPropertyCache *pc, int layer, Atom type)
 {
     if (layer < 6 && type == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
-        /* @cw is maybe a notification */;
+        /* @pc is maybe a notification */;
     else if (layer < 5 &&
         (type == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
-         cw->propertyCache()->isOverrideRedirect() ||
-         cw->propertyCache()->netWmState().indexOf(ATOM(_NET_WM_STATE_ABOVE)) != -1))
-        // @cw is maybe input or keep-above window
+         pc->isOverrideRedirect() ||
+         pc->netWmState().contains(ATOM(_NET_WM_STATE_ABOVE))))
+        // @pc is maybe input or keep-above window
         type = ATOM(_NET_WM_WINDOW_TYPE_INPUT);
-    else if (layer == 0 && MODAL_WINDOW(cw) &&
+    else if (layer == 0 &&
+             pc->netWmState().contains(ATOM(_NET_WM_STATE_MODAL)) &&
              type == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
-        /* @cw is maybe a system-modal dialog */;
+        /* @pc is maybe a system-modal dialog */;
     else
         // Nothing special.
         return None;
 
-    // @cw deserves special handling only if it doesn't have
+    // @pc deserves special handling only if it doesn't have
     // a lastVisibleParent().
-    return cw->lastVisibleParent() ? None : type;
+    MCompositeManager *cmgr = (MCompositeManager*)qApp;
+    return cmgr->getLastVisibleParent(pc) ? None : type;
 }
 
 // Internal qStableSort() comparator.  The desired rough order of
@@ -3267,76 +3292,66 @@ static bool compareWindows(Window w_a, Window w_b)
     // no item is less than itself.
     Q_ASSERT(w_a != w_b);
     if (w_a == w_b)
-        return false;
+        SORTING(false);
 
+    MCompositeManager *cmgr = (MCompositeManager*)qApp;
     // If we don't know about either of the windows let them in peace
     // -- don't reason about what we don't know.
-    MCompositeWindow *cw_a = MCompositeWindow::compositeWindow(w_a);
-    MCompositeWindow *cw_b = MCompositeWindow::compositeWindow(w_b);
-    if (!cw_a || !cw_b)
-        return false;
-
-    // Valid MCompositeWindow:s must have a MWindowPropertyCache.
-    MWindowPropertyCache *pc_a = cw_a->propertyCache();
-    MWindowPropertyCache *pc_b = cw_b->propertyCache();
-    Q_ASSERT(pc_a != NULL && pc_b != NULL);
+    MWindowPropertyCache *pc_a = cmgr->propCaches().value(w_a, 0);
+    MWindowPropertyCache *pc_b = cmgr->propCaches().value(w_b, 0);
+    if (!pc_a || !pc_b)
+        SORTING(false);
 
     // Mind decorators.  Lone decorators should go below everything else,
     // otherwise it's sorted above its managed window.
-    if (pc_a->isDecorator()) {
-        bool cmp;
-        if (!(cw_a = compareDecorator(&cmp, cw_b)))
-            // @cw_a is a lone decorator or @cw_b happens to be
-            // its managed window.
-            return  cmp;
-    } else if (pc_b->isDecorator()) {
-        bool cmp;
-        if (!(cw_b = compareDecorator(&cmp, cw_a)))
-            // Likewise.
-            return !cmp;
-    }
+    if (pc_a->isDecorator())
+        // @pc_a is a lone decorator or @pc_b happens to be
+        // its managed window.
+        SORTING( compareDecorator(pc_b));
+    else if (pc_b->isDecorator())
+        // Likewise.
+        SORTING(!compareDecorator(pc_a));
 
     // Iconic/withdrawn/unmanaged windows...
     if (pc_a->windowState() != NormalState) {
         if (pc_b->windowState() == NormalState)
             // ...go below NormalState windows ...
-            return true;
+            SORTING(true);
         else
             // ... otherwise we don't care.
-            return false;
-    } else if (pc_b->windowState() != NormalState) {
-        // @cw_a is NormalState, @cw_b is not.
-        return false;
-    }
+            SORTING(false);
+    } else if (pc_b->windowState() != NormalState)
+        // @pc_a is NormalState, @pc_b is not.
+        SORTING(false);
 
-    // Both @cw_a and @cw_b are in NormalState.
-    // Sort the desktop below all NormalState:s.
-    // (Quiz: why do we check @cw_b before @cw_a?
+    // Both @pc_a and @pc_b are in NormalState.
+    // Sort the desktop below all NormalState windows.
+    // (Quiz: why do we check @pc_b before @pc_a?
     //  Answer: to be consistent even if both windows are desktops.)
     type_b = pc_b->windowTypeAtom();
     if (type_b == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
-        return false;
+        SORTING(false);
     type_a = pc_a->windowTypeAtom();
     if (type_a == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
-        return true;
+        SORTING(true);
 
     // Compare by stacking layers.
     layer = pc_a->meegoStackingLayer();
     int rel = layer - pc_b->meegoStackingLayer();
     if (rel < 0)
-        // @cw_a has lower stacking layer
-        return true;
+        // @pc_a has lower stacking layer
+        SORTING(true);
     else if (rel > 0)
-        // @cw_a has greater stacking layer
-        return false;
+        // @pc_a has greater stacking layer
+        SORTING(false);
     // They're in the same layer.
 
     // Order notifications, input windows and system-modal dialogs.
     // We can skip it altogether if the windows' layer is too high,
     // because for them isSpecial() will always be false.
     if (layer < 6) {
-        type_a = isSpecial(cw_a, layer, type_a);
-        type_b = isSpecial(cw_b, layer, type_b);
+        type_a = isSpecial(pc_a, layer, type_a);
+        type_b = isSpecial(pc_b, layer, type_b);
         // type_a, type_b == None || dialog || input || notification
 
         // Skip to the next test if the windows are equally special
@@ -3344,42 +3359,42 @@ static bool compareWindows(Window w_a, Window w_b)
         if (type_a != type_b) {
             if (type_b == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
                 // type_a == None || dialog || input
-                return true;
+                SORTING(true);
             if (type_a == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
                 // type_b == None || dialog || input
-                return false;
+                SORTING(false);
             if (type_b == ATOM(_NET_WM_WINDOW_TYPE_INPUT))
                 // type_a == None || dialog
-                return true;
+                SORTING(true);
             if (type_a == ATOM(_NET_WM_WINDOW_TYPE_INPUT))
                 // type_b == None || dialog
-                return false;
+                SORTING(false);
             if (type_b == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
                 // type_a == None
-                return true;
+                SORTING(true);
             if (type_a == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
                 // type_b == None
-                return false;
+                SORTING(false);
         }
     }
 
     // Order transient windows below what they are transient for.
     // Since the sorting algorithm can infer that if trfor(@a) == @b
     // and trfor(@b) == @c then @a is transient for @c it is not
-    // necessary for us to check if @cw_a is a grandparent of @cw_b
-    // or vica versa.  However, we *do* have to mind circular
-    // transiency between @cw_a and @cw_b otherwise we would
-    // return true for both compareWindows(@cw_a, @cw_b) and
-    // compareWindows(cw_b, @cw_a), which would make the sorting
+    // necessary for us to check if @pc_a is a grandparent of @pc_b
+    // or vice versa.  However, we *do* have to mind circular
+    // transiency between @pc_a and @pc_b otherwise we would
+    // return true for both compareWindows(@w_a, @w_b) and
+    // compareWindows(@w_b, @w_a), which would make the sorting
     // undeterministic.
     if (pc_b->transientFor() == w_a && pc_a->transientFor() != w_b)
-      // @cw_b is transient for @cw_a, so it must be above it.
-      return true;
+      // @pc_b is transient for @pc_a, so it must be above it.
+      SORTING(true);
 
-    // Either @cw_a is transient for @cw_b or they are transient
+    // Either @pc_a is transient for @pc_b or they are transient
     // for each other, or they are not in direct relationship,
     // or they are not in any relationship at all.
-    return false;
+    SORTING(false);
 }
 
 void MCompositeManagerPrivate::roughSort()
