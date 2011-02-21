@@ -28,7 +28,6 @@
 #include "mcompositemanagerextension.h"
 #include "mcompmgrextensionfactory.h"
 #include "mcompositordebug.h"
-#include <mrmiserver.h>
 
 #include <QX11Info>
 #include <QByteArray>
@@ -4052,10 +4051,10 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
     d = new MCompositeManagerPrivate(this);
-    MRmiServer *s = new MRmiServer(".mcompositor", this);
-    s->exportObject(this);
-
     d->mayShowApplicationHungDialog = !arguments().contains("-nohung");
+
+    // Publish ourselves
+    new MDecoratorFrame(this);
 
 #ifdef WINDOW_DEBUG
     signal(SIGUSR1, sigusr1_handler);
