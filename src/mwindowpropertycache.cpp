@@ -150,6 +150,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
         if (!attrs) {
             //qWarning("%s: invalid window 0x%lx", __func__, window);
             init_invalid();
+            free(geom);
             if (damage_obj)
                 XDamageDestroy(QX11Info::display(), damage_obj);
             return;
@@ -174,6 +175,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     if (geom) {
         real_geom = QRect(geom->x, geom->y, geom->width, geom->height);
         requests[QLatin1String(SLOT(realGeometry()))] = 0;
+        free(geom);
     } else
         addRequest(SLOT(realGeometry()),
                    xcb_get_geometry(xcb_conn, window).sequence);
@@ -272,10 +274,7 @@ MWindowPropertyCache::~MWindowPropertyCache()
       if (i.value())
           xcb_discard_reply(xcb_conn, i.value());
 
-    if (attrs) {
-        free(attrs);
-        attrs = 0;
-    }
+    free(attrs);
     XFree(wmhints);
     damageTracking(false);
 }
