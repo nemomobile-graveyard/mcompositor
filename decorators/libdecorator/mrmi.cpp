@@ -142,7 +142,6 @@ void MRmiPrivate::invokeLocal(QLocalSocket* socket, QDataStream& stream)
     args.resize(10);
 
     // Is the message for us?
-//qWarning("LOCAL %s %s", objectName, methodName);
     if (!objectName || !methodName) {
         qWarning("MRmiPrivate::invokeLocal: don't know what to call");
     } else if (!strcmp(objectName, "MRmiServer") &&
@@ -171,7 +170,6 @@ void MRmiPrivate::invokeRemote(const char* objectName,
 {
     QLocalSocket* socket;
 
-//qWarning("REMOTE %s %s", objectName, methodName);
     if (dynamic_cast<QLocalServer*>(_server.data())) {
         // We're a server, let's see which client has the object,
         // and send the message it.
