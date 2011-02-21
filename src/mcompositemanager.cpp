@@ -162,6 +162,7 @@ MCompAtoms::MCompAtoms()
         "_NET_WM_ICON_GEOMETRY",
         "_NET_WM_USER_TIME_WINDOW",
         "WM_STATE",
+        "WM_NAME",
 
         // misc
         "_NET_WM_PID",

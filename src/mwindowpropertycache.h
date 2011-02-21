@@ -186,6 +186,9 @@ public slots:
     int desktopView();
     void desktopView(bool request_only);
 
+    // WM_NAME
+    const QString &wmName();
+
 public:
     /*!
      * Called on PropertyNotify for this window.
@@ -309,6 +312,7 @@ private:
     static xcb_render_query_pict_formats_reply_t *pict_formats_reply;
     static xcb_render_query_pict_formats_cookie_t pict_formats_cookie;
     Damage damage_object;
+    QString wm_name;
 };
 
 // Non-deletable dummy MWindowPropertyCache.
