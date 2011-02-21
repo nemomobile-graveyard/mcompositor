@@ -228,6 +228,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     addRequest(SLOT(cannotMinimize()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_CANNOT_MINIMIZE,
                                 XCB_ATOM_CARDINAL));
+    addRequest(SLOT(wmName()),
+               requestProperty(MCompAtoms::WM_NAME, XCB_ATOM_STRING, 100));
 
     // add any transients to the transients list
     MCompositeManager *m = (MCompositeManager*)qApp;
@@ -663,6 +665,9 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         return true;
     } else if (e->atom == ATOM(_MEEGOTOUCH_CUSTOM_REGION)) {
         emit customRegionChanged(this);
+    } else if (e->atom == ATOM(WM_NAME)) {
+        addRequest(SLOT(wmName()),
+                   requestProperty(MCompAtoms::WM_NAME, XCB_ATOM_STRING, 100));
     }
     return false;
 }
@@ -971,6 +976,29 @@ const QRect MWindowPropertyCache::realGeometry()
         }
     }
     return real_geom;
+}
+
+const QString &MWindowPropertyCache::wmName()
+{
+    QLatin1String me(SLOT(wmName()));
+    if (is_valid && requests[me]) {
+        xcb_get_property_cookie_t c = { requests[me] };
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        replyCollected(me);
+        if (r) {
+            int len = xcb_get_property_value_length(r);
+            if (len > 0) {
+                char buf[len + 1];
+                memcpy(buf, xcb_get_property_value(r), len);
+                buf[len] = '\0';
+                wm_name = buf;
+            } else
+                wm_name = "";
+            free(r);
+        }
+    }
+    return wm_name;
 }
 
 void MWindowPropertyCache::shapeRefresh()
