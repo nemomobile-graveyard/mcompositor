@@ -1276,8 +1276,6 @@ MWindowPropertyCache *MCompositeManagerPrivate::getPropertyCache(Window w,
     pc = new MWindowPropertyCache(w, attrs, geom, damage_obj);
     if (!pc->is_valid) {
         delete pc;
-        if (attrs) free(attrs);
-        if (geom) free(geom);
         return 0;
     }
     prop_caches[w] = pc;
@@ -1345,8 +1343,9 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     XMapWindow(dpy, e->window);
     XFlush(dpy);
 
-    if (!pc)
-        pc = getPropertyCache(e->window, 0, 0, damage_obj);
+    if (!pc && !(pc = getPropertyCache(e->window, 0, 0, damage_obj)))
+        // Don't disturb the dead.  @damage_obj has been cleaned up.
+        return;
 
     MCompAtoms::Type wtype = pc->windowType();
     QRect a = pc->realGeometry();
@@ -2158,6 +2157,9 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
 
     MWindowPropertyCache *wpc = getPropertyCache(win);
+    if (!wpc)
+        return;
+
     wpc->setBeingMapped(false);
     wpc->setIsMapped(true);
 
@@ -2963,37 +2965,43 @@ void MCompositeManagerPrivate::redirectWindows()
     int yres = ScreenOfDisplay(QX11Info::display(),
                                DefaultScreen(QX11Info::display()))->height;
     for (i = 0; i < children; ++i)  {
+        if (kids[i] == localwin || prop_caches.contains(kids[i]))
+            continue;
+
         xcb_get_window_attributes_reply_t *attr;
         attr = xcb_get_window_attributes_reply(xcb_conn,
                      xcb_get_window_attributes(xcb_conn, kids[i]), 0);
         if (!attr || attr->_class == XCB_WINDOW_CLASS_INPUT_ONLY) {
-            if (attr) free(attr);
+            free(attr);
             continue;
         }
+
         xcb_get_geometry_reply_t *geom;
         geom = xcb_get_geometry_reply(xcb_conn,
-                        xcb_get_geometry(xcb_conn, kids[i]), 0);
+                                xcb_get_geometry(xcb_conn, kids[i]), 0);
         if (!geom) {
             free(attr);
             continue;
         }
+
         // Pre-create MWindowPropertyCache for likely application windows
-        if (localwin != kids[i] && (attr->map_state == XCB_MAP_STATE_VIEWABLE
+        MWindowPropertyCache *p = NULL;
+        if (attr->map_state == XCB_MAP_STATE_VIEWABLE
             || (geom->width == xres && geom->height == yres))
-            && !prop_caches.contains(kids[i])) {
-            // attr and geom are freed later
-            MWindowPropertyCache *p = getPropertyCache(kids[i], attr, geom);
-            if (!p)
-                continue;
-            prop_caches[kids[i]] = p;
-            p->setParentWindow(RootWindow(QX11Info::display(), 0));
-        } else {
-            free(attr); attr = 0;
-            free(geom); geom = 0;
+            p = getPropertyCache(kids[i], attr, geom);
+        if (!p) {
+            free(geom);
+            free(attr);
+            continue;
         }
-        if (attr && attr->map_state == XCB_MAP_STATE_VIEWABLE &&
-            localwin != kids[i] && geom &&
-            (geom->width > 1 && geom->height > 1)) {
+        p->setParentWindow(RootWindow(QX11Info::display(), 0));
+
+        if (attr->map_state == XCB_MAP_STATE_VIEWABLE &&
+            // realGeomtry() doesn't block here because we initialized
+            // the object with @geom (which we can't use anyome because
+            // it's been free()d by the property cache.
+            p->realGeometry().width() > 1 &&
+            p->realGeometry().height() > 1) {
             // TODO: remove this bindWindow call -- shouldn't be needed
             MCompositeWindow* window = bindWindow(kids[i]);
             if (window) {
