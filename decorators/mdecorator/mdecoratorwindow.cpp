@@ -306,6 +306,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
                 SIGNAL(escapeClicked()));
 
     connect(navigationBar, SIGNAL(viewmenuTriggered()), SLOT(menuAppearing()));
+    connect(navigationBar, SIGNAL(closeButtonClicked()), SIGNAL(escapeClicked()));
 
     /*sceneManager()->appearSceneWindowNow(statusBar);
     sceneManager()->appearSceneWindowNow(menu);*/
