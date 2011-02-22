@@ -86,18 +86,21 @@ class EglResourceManager
 public:
     EglResourceManager()
         : has_tfp(false) {
-        if (!dpy)
+        int maj, min;
+        if (!dpy) {
             dpy = eglGetDisplay(EGLNativeDisplayType(QX11Info::display()));
+            eglInitialize(dpy, &maj, &min);
+        }
 
         QString exts = QLatin1String(eglQueryString(dpy, EGL_EXTENSIONS));
         if ((exts.contains("EGL_KHR_image") &&
-             exts.contains("EGL_KHR_image_pixmap") &&
              exts.contains("EGL_KHR_gl_texture_2D_image"))) {
             has_tfp = true;
             eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC) eglGetProcAddress("eglCreateImageKHR");
             eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC) eglGetProcAddress("eglDestroyImageKHR"); 
             glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC) eglGetProcAddress("glEGLImageTargetTexture2DOES"); 
         } else {
+            qDebug("EGL version: %d.%d\n", maj, min);
             qDebug("No EGL tfp support.\n");
         }
         texman = new EglTextureManager();
