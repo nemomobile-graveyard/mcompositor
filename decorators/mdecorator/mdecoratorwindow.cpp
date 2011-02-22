@@ -433,8 +433,17 @@ void MDecoratorWindow::showQueryDialog(bool visible)
                 name.resize(name.length()-strlen(".launch"));
             MDesktopEntry de(QString("/usr/share/applications/")
                              + name + ".desktop");
-            if (de.isValid() && !de.name().isEmpty())
+            if (de.isValid() && !de.name().isEmpty()) {
                 name = de.name();
+                QByteArray a = name.toUtf8();
+                // full name and abbreviation are separated by these bytes
+                char sep[3] = { 194, 156, 0 };
+                int i = a.indexOf(sep);
+                if (i > 0) {
+                    a.truncate(i);
+                    name = a;
+                }
+            }
             XFree(cls.res_name);
         } else
             name.sprintf("window 0x%lx", managed_window);
