@@ -1,3 +1,9 @@
+mcompositor (0.8.6-1~unreleased) unstable; urgency=low
+
+  * :)
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 22 Feb 2011 15:46:57 +0200
+
 mcompositor (0.8.5-1) unstable; urgency=low
 
   * add WM_NAME support to MWindowPropertyCache, used in a plugin
