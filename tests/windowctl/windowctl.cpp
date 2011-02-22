@@ -641,7 +641,7 @@ static pid_t rotate_screen(char *o, QString& stdOut)
 			        (char*)"org.freedesktop.ContextKit.Commander",
 				(char*)"string", (char*)"Screen.TopEdge",
 				NULL, NULL};
-		args[4] = orientation;
+		args[5] = orientation;
 		close(pipefd[1]);
 		dup2(pipefd[0], STDIN_FILENO);
 		close(pipefd[0]);
