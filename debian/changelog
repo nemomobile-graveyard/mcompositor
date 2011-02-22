@@ -1,8 +1,16 @@
-mcompositor (0.8.5-1~unreleased) unstable; urgency=low
+mcompositor (0.8.5-1) unstable; urgency=low
 
-  * :)
+  * add WM_NAME support to MWindowPropertyCache, used in a plugin
+  * adjust number of damage events we wait from 2 to 1
+  * positionWindow(): change Z value immediately when stacking to the bottom
+  * mapRequestEvent(): don't switch to compositing for input-only windows
+  * Fixes: NB#225458 - Screen does not get updated fast for VKB
+  * fix decorated window stacking
+  * don't try to GetWMName(None)
+  * fix WINDOW_TYPE assert
+  * Fixes: BMC#10288, unable to exit xterm application using close button
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 08 Feb 2011 11:31:02 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 22 Feb 2011 15:41:29 +0200
 
 mcompositor (0.8.4-1) unstable; urgency=low
 
