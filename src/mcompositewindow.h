@@ -24,7 +24,7 @@
 #include <QtOpenGL>
 #include <QPointer>
 #include <X11/Xutil.h>
-#include "mwindowpropertycache.h"
+#include <mwindowpropertycache.h>
 
 class MCompWindowAnimator;
 class MTexturePixmapPrivate;

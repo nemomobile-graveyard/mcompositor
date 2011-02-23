@@ -23,7 +23,7 @@
 #include <QApplication>
 #include <QGLWidget>
 #include <QDir>
-#include "mwindowpropertycache.h"
+#include <mwindowpropertycache.h>
 
 class QGraphicsScene;
 class MCompositeManagerPrivate;
