@@ -2,3 +2,4 @@ usr/bin/mcompositor
 usr/bin/mdecorator
 usr/lib/libdecorator.so*
 usr/lib/libmcompositor.so*
+usr/share/contextkit
