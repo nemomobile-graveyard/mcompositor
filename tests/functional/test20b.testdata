@@ -1,7 +1,6 @@
 CaseName="fullscreen_apps_during_call_are_decorated"
 CaseRequirement="NONE"
 CaseTimeout="360"
-CaseInsignificant=true
 CaseDescription="Check that fullscreen apps during callare decorated.
 
 - Test steps
