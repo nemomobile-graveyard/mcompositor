@@ -101,18 +101,23 @@ void MRmiPrivate::exportObject(QObject* p)
     // If we're a client tell the server what sort of object we have.
     if (!dynamic_cast<QLocalServer*>(_server.data()))
         invokeRemote("MRmiServer", "exportObject",
-                     _obj ? _obj->metaObject()->className() : "");
+                     QVector<QVariant>(1, _obj
+                         ? _obj->metaObject()->className()
+                         : ""));
 }
 
 void MRmiPrivate::_q_readData()
 {
     QLocalSocket* socket = static_cast<QLocalSocket*>(sender());
-    stream.setDevice(socket);
 
     // Read and execute as much requests we can, there could be more than one
     // in the pipe and if we didn't they would be left there until there is
     // more incoming data.
     for (;;) {
+        // Reset @stream every time in the loop because the method called by
+        // invokeLocal() might have inveokeRemote()d.
+        stream.setDevice(socket);
+
         // How many bytes to expect
         if (method_size == 0) {
             if (socket->bytesAvailable() < (int)sizeof(method_size))
@@ -134,7 +139,7 @@ void MRmiPrivate::invokeLocal(QLocalSocket* socket, QDataStream& stream)
 {
     char *objectName = 0, *methodName = 0;
 
-    // Make sure all args[9] is indexable.
+    // Make sure args[0..9] are indexable.
     args.resize(0);
     stream >> objectName;
     stream >> methodName;
@@ -147,18 +152,21 @@ void MRmiPrivate::invokeLocal(QLocalSocket* socket, QDataStream& stream)
     } else if (!strcmp(objectName, "MRmiServer") &&
         !strcmp(methodName, "exportObject")) {
         socket->setObjectName(args[0].toString());
-    } else // Call @methodName on _obj.
+    } else { // Call @methodName on _obj.
+        // Copy @args so the invoked method is safe from us modifying it.
+        QVector<QVariant> marg = args;
         QMetaObject::invokeMethod(_obj, methodName,
-                   QGenericArgument(args[0].typeName(), args[0].data()),
-                   QGenericArgument(args[1].typeName(), args[1].data()),
-                   QGenericArgument(args[2].typeName(), args[2].data()),
-                   QGenericArgument(args[3].typeName(), args[3].data()),
-                   QGenericArgument(args[4].typeName(), args[4].data()),
-                   QGenericArgument(args[5].typeName(), args[5].data()),
-                   QGenericArgument(args[6].typeName(), args[6].data()),
-                   QGenericArgument(args[7].typeName(), args[7].data()),
-                   QGenericArgument(args[8].typeName(), args[8].data()),
-                   QGenericArgument(args[9].typeName(), args[9].data()));
+                   QGenericArgument(marg[0].typeName(), marg[0].data()),
+                   QGenericArgument(marg[1].typeName(), marg[1].data()),
+                   QGenericArgument(marg[2].typeName(), marg[2].data()),
+                   QGenericArgument(marg[3].typeName(), marg[3].data()),
+                   QGenericArgument(marg[4].typeName(), marg[4].data()),
+                   QGenericArgument(marg[5].typeName(), marg[5].data()),
+                   QGenericArgument(marg[6].typeName(), marg[6].data()),
+                   QGenericArgument(marg[7].typeName(), marg[7].data()),
+                   QGenericArgument(marg[8].typeName(), marg[8].data()),
+                   QGenericArgument(marg[9].typeName(), marg[9].data()));
+    }
 
     delete[] objectName;
     delete[] methodName;
@@ -214,11 +222,13 @@ void MRmiPrivate::invokeRemote(const char* objectName,
     stream.setDevice(socket);
     stream << buf.size();
     socket->write(buf);
-    socket->waitForBytesWritten();
 
+    // Flush the pipe.  We need to be kind of reentrant because
+    // waitForBytesWritten() spins the main loop and we might start
+    // processing incoming messages, which in turn may send some.
     buf.truncate(0);
     output_buffer.seek(0);
-
+    socket->waitForBytesWritten();
 }
 
 void MRmiPrivate::invokeRemote(const char* objectName,
