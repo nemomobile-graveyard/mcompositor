@@ -292,8 +292,8 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
         }
     }
 
-
-    if (!homeButtonPanel || !navigationBar || !statusBar)
+    // Check for presence of homeButtonPanel and navigationBar, statusBar can be NULL
+    if (!homeButtonPanel || !navigationBar)
         qFatal("Meego elements not found");
 
     homeButtonPanel = new MHomeButtonPanel();
@@ -528,9 +528,12 @@ void MDecoratorWindow::setInputRegion()
         region = fs;
     } else {
         // Decoration includes the status bar, and possibly other elements.
-        QRect sbrect = statusBar->geometry().toRect();
-        if (statusBarHeight)
-            sbrect.setHeight(statusBarHeight);
+        QRect sbrect;
+        if (statusBar) {
+            sbrect = statusBar->geometry().toRect();
+            if (statusBarHeight)
+                sbrect.setHeight(statusBarHeight);
+        }
         region = sbrect;
         if (!only_statusbar) {
             region += navigationBar->geometry().toRect();
