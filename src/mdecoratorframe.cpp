@@ -96,11 +96,13 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw, bool no_resize)
         disconnect(client, SIGNAL(destroyed()), this, SLOT(destroyClient()));
     client = cw;
 
-    if (!decorator_item)
-        return;
-    sendManagedWindowId();
-    if (cw)
+    if (decorator_item)
+        sendManagedWindowId();
+    if (cw) {
+        if (!no_resize)
+            cw->expectResize();
         connect(cw, SIGNAL(destroyed()), SLOT(destroyClient()));
+    }
 }
 
 void MDecoratorFrame::setDecoratorWindow(Qt::HANDLE window)
@@ -156,12 +158,12 @@ void MDecoratorFrame::setDecoratorAvailableRect(const QRect& r)
         || !decorator_item->propertyCache())
         return;
     
-    Display* dpy = QX11Info::display();
-
     if (client->propertyCache()->realGeometry() != available_rect) {
       // resize app window to occupy the free area
-      XMoveResizeWindow(dpy, client->window(), r.x(), r.y(), r.width(), r.height());
+      XMoveResizeWindow(QX11Info::display(), client->window(),
+                        r.x(), r.y(), r.width(), r.height());
       MOVE_RESIZE(client->window(), r.x(), r.y(), r.width(), r.height());
+      static_cast<MCompositeManager *>(qApp)->expectResize(client, r);
     }
 }
 
