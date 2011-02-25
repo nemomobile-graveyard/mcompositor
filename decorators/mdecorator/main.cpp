@@ -17,9 +17,14 @@
 **
 ****************************************************************************/
 
-#include <QTextStream>
 #include <MApplication>
+#include <mcomponentdata.h>
+#include "mondisplaychangeevent.h"
 #include "mdecoratorwindow.h"
+
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/Xmd.h>
 
 class MDecoratorApp : public MApplication
 {
@@ -29,12 +34,22 @@ public:
         window.show();
     }
 
-    virtual bool x11EventFilter(XEvent *e)
+    virtual bool x11EventFilter(XEvent *xev)
     {
-        bool ret = window.x11Event(e);
-        if (!ret)
-            ret = MApplication::x11EventFilter(e);
-        return ret;
+        if (xev->type == VisibilityNotify) {
+            XVisibilityEvent *xve = (XVisibilityEvent *)xev;
+
+            foreach (MWindow *win, MComponentData::instance()->windows()) {
+                if (win && win->effectiveWinId() == xve->window) {
+                    MOnDisplayChangeEvent mev(
+                        xve->state != VisibilityFullyObscured,
+                        QRectF(QPointF(0, 0), win->visibleSceneSize()));
+                    sendEvent(win, &mev);
+                }
+            }
+        }
+
+        return MApplication::x11EventFilter(xev);
     }
 
 private:
