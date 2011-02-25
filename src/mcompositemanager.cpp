@@ -740,8 +740,7 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
          * http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html and
          * http://www.opengl.org/registry/specs/OML/glx_swap_method.txt */
         item->updateWindowPixmap(0, 0, e->timestamp);
-        if (item->waitingForDamage())
-            item->damageReceived(false);
+        item->damageReceived();
     }
 }
 
@@ -1100,7 +1099,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     dirtyStacking(false);
 }
 
-void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
+void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
+                                              bool nostacking)
 {
     if (e->window == xoverlay || e->window == localwin
         || e->window == close_button_win || e->window == home_button_win)
@@ -1119,7 +1119,8 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                 check_visibility = true;
         }
         if (item && pc->windowState() != IconicState) {
-            item->setPos(e->x, e->y);
+            if (check_visibility || !item->isWindowTransitioning())
+                item->setPos(e->x, e->y);
             item->resize(e->width, e->height);
         }
         if (e->override_redirect == True) {
@@ -1127,6 +1128,11 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                 dirtyStacking(true);
             return;
         }
+
+        if (nostacking)
+            // Just MDecoratorFrame let us know the position
+            // of the managed window in advance.
+            return;
 
         Window above = e->above;
         if (item && pc->isMapped() && above != None) {
@@ -3429,6 +3435,18 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
         if (i) i->requestZValue(-1);
     }
     updateWinList();
+}
+
+void MCompositeManager::expectResize(MCompositeWindow *cw, const QRect &r)
+{
+    XConfigureEvent xev;
+
+    xev.window = cw->window();
+    xev.x = r.x();
+    xev.y = r.y();
+    xev.width = r.width();
+    xev.height = r.height();
+    d->configureEvent(&xev, true);
 }
 
 void MCompositeManager::positionWindow(Window w,

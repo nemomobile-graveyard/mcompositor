@@ -86,8 +86,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 
     damage_timer = new QTimer(this);
     damage_timer->setSingleShot(true);
-    damage_timer->setInterval(500);
-    connect(damage_timer, SIGNAL(timeout()), SLOT(damageTimeout()));
+    connect(damage_timer, SIGNAL(timeout()), SLOT(damageReceived()));
 
     // Newly-mapped non-decorated application windows are not initially 
     // visible to prevent flickering when animation is started.
@@ -347,24 +346,58 @@ bool MCompositeWindow::showWindow()
         // Meegotouch apps draw their window or the default background with
         // the first damage
         waiting_for_damage = 1;
+        resize_expected = false;
+        damage_timer->setInterval(500);
         damage_timer->start();
     } else
         q_fadeIn();
     return true;
 }
 
-void MCompositeWindow::damageTimeout()
+void MCompositeWindow::expectResize()
 {
-    damageReceived(true);
+    // In addition to @waiting_for_damages, also wait for a resize().
+    // Be nice and wait some more because mdecorator has a huge latency.
+    if (!damage_timer->isActive())
+        return;
+    resize_expected = true;
+    damage_timer->setInterval(800);
 }
 
-void MCompositeWindow::damageReceived(bool timeout)
+void MCompositeWindow::damageReceived()
 {
-    if (timeout || (waiting_for_damage > 0 && !--waiting_for_damage)) {
-        damage_timer->stop();
-        waiting_for_damage = 0;
-        q_fadeIn();
+    if (!waiting_for_damage && !resize_expected) {
+        // We aren't planning to show the window.
+        Q_ASSERT(!damage_timer->isActive());
+        return;
+    } else if (damage_timer->isActive()) {
+        // We're within timeout and just got a damage.
+        Q_ASSERT(waiting_for_damage > 0);
+        if (--waiting_for_damage || resize_expected)
+            // Conditions haven't been met yet.
+            return;
     }
+
+    // Either timeout or the conditions have been met.
+    Q_ASSERT(!damage_timer->isActive() ||
+             (!waiting_for_damage && !resize_expected));
+    damage_timer->stop();
+    waiting_for_damage = 0;
+    resize_expected = false;
+    q_fadeIn();
+}
+
+void MCompositeWindow::resize(int, int)
+{
+    if (!resize_expected)
+        return;
+    if (!waiting_for_damage) {
+        // We got the expected resize and the damages have arrived too.
+        // Simulate a timeout to kick the animation.
+        damage_timer->stop();
+        damageReceived();
+    } else
+        resize_expected = false;
 }
 
 void MCompositeWindow::q_fadeIn()

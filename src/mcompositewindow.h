@@ -170,11 +170,6 @@ public:
     void setUntransformed();
 
     /*!
-     * True if this window is waiting for damage event before it can animate.
-     */
-    bool waitingForDamage() const { return waiting_for_damage > 0; }
-
-    /*!
      * Returns how this window was iconified.
      */
     IconifyState iconifyState() const;
@@ -263,9 +258,10 @@ public:
     virtual bool isDirectRendered() const = 0;
 
     /*!
-     * Sets the width and height if the item
+     * Sets the width and height of the item.
+     * Reimplementations must chain back.
      */
-    virtual void resize(int w, int h) = 0;
+    virtual void resize(int w, int h);
 
     static bool hasTransitioningWindow();
 
@@ -341,10 +337,15 @@ public slots:
      void endAnimation();
 
     /*!
-     * Called on first showing of a window when first damage event is received
-     * or on timeout.
+     * Called when the window contents are damaged or on timeout.
      */
-    void damageReceived(bool timeout);
+    void damageReceived();
+
+    /*!
+     * Don't start the windowShown() animation until the item is resized,
+     * in addition to waiting for the damage(s).
+     */
+    void expectResize();
 
     /*!
      * Called to start a reappearance timer for the application hung dialog.
@@ -418,6 +419,7 @@ private:
     bool is_transitioning;
     bool dimmed_effect;
     char waiting_for_damage;
+    bool resize_expected;
 
     static int window_transitioning;
 
