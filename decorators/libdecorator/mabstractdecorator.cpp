@@ -131,14 +131,14 @@ void MAbstractDecorator::setAvailableGeometry(const QRect& rect)
 {
     Q_D(MAbstractDecorator);
 
-    d->rmi->invoke("MCompositeManager", "decoratorRectChanged", rect);
+    d->rmi->invoke("MDecoratorFrame", "decoratorRectChanged", rect);
 }
 
 void MAbstractDecorator::queryDialogAnswer(unsigned int w, bool a)
 {
     Q_D(MAbstractDecorator);
 
-    d->rmi->invoke("MCompositeManager", "queryDialogAnswer",
+    d->rmi->invoke("MDecoratorFrame", "queryDialogAnswer",
                    QVector<QVariant>() << w << a);
 }
 
