@@ -91,7 +91,7 @@ public:
     void destroyEvent(XDestroyWindowEvent *);
     void propertyEvent(XPropertyEvent *);
     void unmapEvent(XUnmapEvent *);
-    void configureEvent(XConfigureEvent *);
+    void configureEvent(XConfigureEvent *, bool nostacking = false);
     void configureRequestEvent(XConfigureRequestEvent *);
     void mapEvent(XMapEvent *);
     void mapRequestEvent(XMapRequestEvent *);

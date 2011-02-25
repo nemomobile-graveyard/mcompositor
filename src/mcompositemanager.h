@@ -128,6 +128,7 @@ public:
     void debug(const QString& d);
     const QHash<Window, MWindowPropertyCache*>& propCaches() const;
 
+    void expectResize(MCompositeWindow *cw, const QRect &r);
     enum StackPosition {
         STACK_BOTTOM = 0,
         STACK_TOP

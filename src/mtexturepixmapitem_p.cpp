@@ -616,6 +616,7 @@ void MTexturePixmapItem::saveBackingStore()
 void MTexturePixmapItem::resize(int w, int h)
 {
     d->resize(w, h);
+    this->MCompositeWindow::resize(w, h);
 }
 
 QSizeF MTexturePixmapItem::sizeHint(Qt::SizeHint, const QSizeF &) const
