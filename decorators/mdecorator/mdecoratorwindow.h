@@ -48,10 +48,8 @@ class MDecoratorWindow : public MApplicationWindow
 
 public:
     explicit MDecoratorWindow(QWidget *parent = 0);
-    virtual ~MDecoratorWindow();
-    
+
     const QRect availableClientRect() const;
-    bool x11Event(XEvent *e);
     void setWindowTitle(const QString& title);
     void setOnlyStatusbar(bool mode, bool temporary = false);
     /*!
@@ -82,7 +80,6 @@ signals:
     void escapeClicked();
 
 private:
-    void setWindowVisibility(Window window, bool visible);
     void setSceneSize();
     void setMDecoratorWindowProperty();
 
@@ -95,7 +92,6 @@ private:
     Window managed_window;
     QRect availableRect; // available area for the managed window
     bool only_statusbar, requested_only_statusbar;
-    Atom onlyStatusbarAtom, managedWindowAtom;
     MDecorator *d;
     MDecoratorAppInterface *app;
     MLocale locale;
