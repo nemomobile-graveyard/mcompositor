@@ -28,6 +28,7 @@
 #include "mcompositewindow.h"
 #include "mcompositescene.h"
 #include "mcompositewindowgroup.h"
+#include "mdecoratorframe.h"
 
 #include <X11/extensions/Xfixes.h>
 #ifdef HAVE_SHAPECONST
@@ -94,9 +95,13 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         static int item_type = QGraphicsItem::Type + 2;
 #endif
         if (cw->type() != item_type) {
+            MCompositeWindow *man;
+
             if (!cw->propertyCache())  // this window is dead
                 continue;
-            if (cw->hasTransitioningWindow() && cw->propertyCache()->isDecorator())
+            if (cw->propertyCache()->isDecorator() &&
+                (man = MDecoratorFrame::instance()->managedClient()) &&
+                man->isWindowTransitioning())
                 // if we have a transition animation, don't draw the decorator
                 // lest we can have it drawn with the transition (especially
                 // when desktop window is not yet shown, NB#192454)
