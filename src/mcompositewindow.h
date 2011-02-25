@@ -222,7 +222,7 @@ public:
     WindowStatus status() const;
 
     // For _NET_WM_PING abstraction
-    void startPing();
+    void startPing(bool restart = false);
     void stopPing();
     void receivedPing(ulong timeStamp);
 
@@ -281,6 +281,11 @@ public:
     bool isAppWindow(bool include_transients = false);
 
     bool isClosing() const { return window_status == Closing; }
+
+#ifdef WINDOW_DEBUG
+    void hangIt() { window_status = Hung; }
+    bool isHung() const { return window_status == Hung; }
+#endif
 
     MWindowPropertyCache *propertyCache() const { return pc; }
     
@@ -362,7 +367,7 @@ private slots:
     void pingTimeout();
     void reappearTimeout();
     void damageTimeout();
-    void pingWindow();
+    void pingWindow(bool restart = false);
     void q_itemRestored();
     void q_fadeIn();
     

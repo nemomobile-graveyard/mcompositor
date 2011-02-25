@@ -570,13 +570,15 @@ void MCompositeWindow::setVisible(bool visible)
         clearTexture();
 }
 
-void MCompositeWindow::startPing()
+void MCompositeWindow::startPing(bool restart)
 {
-    if (t_ping->isActive())
+    if (restart)
+        stopPing();
+    else if (t_ping->isActive())
         // this function can be called repeatedly without extending the timeout
         return;
     // startup: send ping now, otherwise it is sent after timeout
-    pingWindow();
+    pingWindow(restart);
     t_ping->start();
 }
 
@@ -626,9 +628,9 @@ void MCompositeWindow::pingTimeout()
         pingWindow();
 }
 
-void MCompositeWindow::pingWindow()
+void MCompositeWindow::pingWindow(bool restart)
 {
-    if (window_status == Hung)
+    if (window_status == Hung && !restart)
         // don't send a new ping before the window responds, otherwise we may
         // queue up too many of them
         return;
