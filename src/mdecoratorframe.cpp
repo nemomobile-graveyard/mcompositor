@@ -44,11 +44,8 @@ MDecoratorFrame::MDecoratorFrame(QObject *p)
     Q_ASSERT(!d);
     d = this;
 
-    connect(p, SIGNAL(decoratorRectChanged(const QRect&)),
-            this, SLOT(setDecoratorAvailableRect(const QRect&)));
-
     remote_decorator = new MRmiClient(".mabstractdecorator", this);
-    remote_decorator->exportObject(p);
+    remote_decorator->exportObject(this);
 }
 
 Qt::HANDLE MDecoratorFrame::managedWindow() const
@@ -129,7 +126,7 @@ MCompositeWindow *MDecoratorFrame::decoratorItem() const
 
 void MDecoratorFrame::destroyDecorator()
 {
-    setDecoratorAvailableRect(QRect());
+    decoratorRectChanged(QRect());
     decorator_item = 0;
     decorator_window = 0;
 }
@@ -149,7 +146,7 @@ void MDecoratorFrame::visualizeDecorator(bool visible)
         decorator_item->setVisible(visible);
 }
 
-void MDecoratorFrame::setDecoratorAvailableRect(const QRect& r)
+void MDecoratorFrame::decoratorRectChanged(const QRect& r)
 {    
     // always store the available rect info from remote decorator
     available_rect = r;
@@ -165,6 +162,11 @@ void MDecoratorFrame::setDecoratorAvailableRect(const QRect& r)
       MOVE_RESIZE(client->window(), r.x(), r.y(), r.width(), r.height());
       static_cast<MCompositeManager *>(qApp)->expectResize(client, r);
     }
+}
+
+void MDecoratorFrame::queryDialogAnswer(unsigned window, bool killit)
+{
+    static_cast<MCompositeManager *>(qApp)->queryDialogAnswer(window, killit);
 }
 
 void MDecoratorFrame::setAutoRotation(bool mode)
