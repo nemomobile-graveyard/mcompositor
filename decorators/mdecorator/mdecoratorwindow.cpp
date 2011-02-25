@@ -27,8 +27,6 @@
 #include <QGraphicsLinearLayout>
 #include <mbutton.h>
 #include <mwidgetaction.h>
-#include <mcomponentdata.h>
-#include "mondisplaychangeevent.h"
 
 #include <QApplication>
 #include <QDesktopWidget>
@@ -62,9 +60,6 @@ public:
         : MAbstractDecorator(p),
         decorwindow(p)
     {
-    }
-
-    ~MDecorator() {
     }
 
     virtual void manageEvent(Qt::HANDLE window)
@@ -227,18 +222,6 @@ private:
     WId currentWindow;
 };
 
-#if 0
-static QRect windowRectFromGraphicsItem(const QGraphicsView &view,
-                                        const QGraphicsItem &item)
-{
-    return view.mapFromScene(
-               item.mapToScene(
-                   item.boundingRect()
-               )
-           ).boundingRect();
-}
-#endif
-
 MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     : MApplicationWindow(parent),
       homeButtonPanel(0),
@@ -253,11 +236,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     locale.addTranslationPath(TRANSLATION_INSTALLDIR);
     locale.installTrCatalog("recovery");
     locale.setDefault(locale);
-
-    onlyStatusbarAtom = XInternAtom(QX11Info::display(),
-                                    "_MDECORATOR_ONLY_STATUSBAR", False);
-    managedWindowAtom = XInternAtom(QX11Info::display(),
-                                    "_MDECORATOR_MANAGED_WINDOW", False);
 
     foreach (QGraphicsItem* item, items()) {
         if (!homeButtonPanel) {
@@ -354,69 +332,6 @@ void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w)
 void MDecoratorWindow::setWindowTitle(const QString& title)
 {
     navigationBar->setViewMenuDescription(title);
-}
-
-MDecoratorWindow::~MDecoratorWindow()
-{
-}
-
-bool MDecoratorWindow::x11Event(XEvent *e)
-{
-    Atom actual;
-    int format, result;
-    unsigned long n, left;
-    unsigned char *data = 0;
-    if (e->type == PropertyNotify
-        && ((XPropertyEvent*)e)->atom == onlyStatusbarAtom) {
-        result = XGetWindowProperty(QX11Info::display(), winId(),
-                                    onlyStatusbarAtom, 0, 1, False,
-                                    XA_CARDINAL, &actual, &format,
-                                    &n, &left, &data);
-        if (result == Success && data) {
-            bool val = *((long*)data);
-            if (val != only_statusbar)
-                d->RemoteSetOnlyStatusbar(val);
-        }
-        if (data)
-            XFree(data);
-        return true;
-    } else if (e->type == PropertyNotify
-               && ((XPropertyEvent*)e)->atom == managedWindowAtom) {
-        result = XGetWindowProperty(QX11Info::display(), winId(),
-                                    managedWindowAtom, 0, 1, False,
-                                    XA_WINDOW, &actual, &format,
-                                    &n, &left, &data);
-        if (result == Success && data)
-            d->RemoteSetManagedWinId(*((long*)data));
-        if (data)
-            XFree(data);
-        return true;
-    } else if (e->type == VisibilityNotify) {
-        XVisibilityEvent *xevent = (XVisibilityEvent *) e;
-
-        switch (xevent->state) {
-        case VisibilityFullyObscured:
-            setWindowVisibility(xevent->window, false);
-            break;
-        case VisibilityUnobscured:
-        case VisibilityPartiallyObscured:
-            setWindowVisibility(xevent->window, true);
-            break;
-        default:
-            break;
-        }
-    }
-    return false;
-}
-
-void MDecoratorWindow::setWindowVisibility(Window window, bool visible)
-{
-    Q_FOREACH(MWindow * win, MComponentData::instance()->windows()) {
-        if (win && win->effectiveWinId() == window) {
-            MOnDisplayChangeEvent ev(visible, QRectF(QPointF(0, 0), win->visibleSceneSize()));
-            QApplication::instance()->sendEvent(win, &ev);
-        }
-    }
 }
 
 void MDecoratorWindow::showQueryDialog(bool visible)
@@ -605,7 +520,8 @@ void MDecoratorWindow::setMDecoratorWindowProperty()
     long on = 1;
 
     XChangeProperty(QX11Info::display(), winId(),
-                    XInternAtom(QX11Info::display(), "_MEEGOTOUCH_DECORATOR_WINDOW", False),
+                    XInternAtom(QX11Info::display(),
+                                "_MEEGOTOUCH_DECORATOR_WINDOW", False),
                     XA_CARDINAL,
                     32, PropModeReplace,
                     (unsigned char *) &on, 1);
