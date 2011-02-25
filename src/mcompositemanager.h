@@ -138,6 +138,9 @@ public:
     const QList<Window> &stackingList() const;
     Window getLastVisibleParent(MWindowPropertyCache *pc) const;
 
+    // called with the answer to mdecorator's dialog
+    void queryDialogAnswer(unsigned int window, bool yes_answer);
+
 #ifdef WINDOW_DEBUG
     // Dump the current state of MCompositeManager and MCompositeWindow:s
     // to qDebug().  Only available if compiled with TESTABILITY=on
@@ -162,8 +165,6 @@ public:
 public slots:
     void enableCompositing(bool forced = false);
     void disableCompositing();
-    // called with the answer to mdecorator's dialog
-    void queryDialogAnswer(unsigned int window, bool yes_answer);
 
     /*! Invoked remotely by MRmiClient to show a launch indicator
      *
@@ -191,9 +192,6 @@ public slots:
 #ifdef WINDOW_DEBUG
     void remoteControl(int fd);
 #endif
-     
-signals:
-    void decoratorRectChanged(const QRect& rect);
 
 private:
     MCompositeManagerPrivate *d;

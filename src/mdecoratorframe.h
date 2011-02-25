@@ -97,10 +97,9 @@ public:
     MCompositeWindow *decoratorItem() const;
     const QRect &availableRect() const { return available_rect; }
 
-public slots:
-    void setDecoratorAvailableRect(const QRect& r);
-
 private slots:
+    void decoratorRectChanged(const QRect& r);
+    void queryDialogAnswer(unsigned window, bool killit);
     void destroyDecorator();
     void destroyClient();
     void visualizeDecorator(bool visible);
