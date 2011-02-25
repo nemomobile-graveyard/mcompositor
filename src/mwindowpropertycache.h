@@ -163,7 +163,7 @@ public slots:
     //! Returns list of WM_PROTOCOLS of the window.
     const QList<Atom>& supportedProtocols();
 
-    //! Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 6].
+    //! Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 10].
     unsigned int meegoStackingLayer();
 
     //! Returns the value of _MEEGOTOUCH_ORIENTATION_ANGLE.

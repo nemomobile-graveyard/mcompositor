@@ -1909,10 +1909,11 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
      * handled above) */
     RAISE_MATCHING(!getLastVisibleParent(pc) &&
                    pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
-    // Meego layer 6
-    RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                   pc->meegoStackingLayer() == 6
-                   && pc->windowState() != IconicState)
+    // Meego layer 6-10
+    for (unsigned int level = 6; level <= 10; ++level)
+         RAISE_MATCHING(!getLastVisibleParent(pc) &&
+                        pc->windowState() != IconicState
+                        && pc->meegoStackingLayer() == level)
 
     int top_decorated_i;
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
