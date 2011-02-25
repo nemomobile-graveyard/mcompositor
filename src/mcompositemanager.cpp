@@ -3983,6 +3983,31 @@ void MCompositeManager::remoteControl(int cmdfd)
 
         fclose(out);
         qDebug("state dumped into %s", fname.toLatin1().constData());
+    } else if (!strcmp(cmd, "hang")) {
+        MDecoratorFrame *deco = MDecoratorFrame::instance();
+        MCompositeWindow *top = COMPOSITE_WINDOW(d->getTopmostApp());
+        MCompositeWindow *man = deco ? COMPOSITE_WINDOW(deco->managedWindow())
+                                     : NULL;
+
+        if (man && man->isHung()) {
+            qWarning("already hanging");
+        } else if (!top) {
+            qWarning("nothing to hang");
+        } else {
+            top->stopPing();
+            top->hangIt();
+            d->gotHungWindow(top, true);
+        }
+    } else if (!strcmp(cmd, "unhang")) {
+        MDecoratorFrame *deco = MDecoratorFrame::instance();
+        MCompositeWindow *man = deco ? COMPOSITE_WINDOW(deco->managedWindow())
+                                     : NULL;
+
+        if (man && man->isHung())
+            // Restart pinging
+            man->startPing(true);
+        else
+            qWarning("nothing to unhang");
     } else if (!strcmp(cmd, "restart")) {
         QString me = qApp->applicationFilePath();
         QStringList args = qApp->arguments();
