@@ -245,7 +245,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
       escapeButtonPanel(0),
       navigationBar(0),
       statusBar(0),
-      statusBarHeight(0),
       messageBox(0),
       managed_window(0),
       menuVisible(false)
@@ -278,15 +277,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
         if (!statusBar) {
             statusBar = dynamic_cast<MStatusBar*>(item);
             if (statusBar) {
-                // We can't believe statusBar.geometry() because it
-                // includes some unwanted margins.  Get straight the
-                // constant if available.
-                MDeviceProfile *dev = MDeviceProfile::instance();
-                QSettings ini("/usr/share/themes/base/meegotouch/constants.ini",
-                              QSettings::IniFormat);
-                QString mm = ini.value("Sizes/HEIGHT_STATUSBAR").toString();
-                if (mm.endsWith("mm"))
-                    statusBarHeight = dev->mmToPixels(atoi(mm.toLatin1().constData()));
                 continue;
             }
         }
@@ -530,16 +520,16 @@ void MDecoratorWindow::setInputRegion()
         // Decoration includes the status bar, and possibly other elements.
         QRect sbrect;
         if (statusBar) {
-            sbrect = statusBar->geometry().toRect();
-            if (statusBarHeight)
-                sbrect.setHeight(statusBarHeight);
+            sbrect = statusBar->sceneBoundingRect().toRect();
+            sbrect.setHeight(statusBar->property("sharedPixmapHeight").value<qreal>());
         }
         region = sbrect;
+
         if (!only_statusbar) {
-            region += navigationBar->geometry().toRect();
-            region += homeButtonPanel->geometry().toRect();
+            region += navigationBar->sceneBoundingRect().toRect();
+            region += homeButtonPanel->sceneBoundingRect().toRect();
             if (escapeButtonPanel)
-                region += escapeButtonPanel->geometry().toRect();
+                region += escapeButtonPanel->sceneBoundingRect().toRect();
         }
 
         // The coordinates we receive from libmeegotouch are rotated
