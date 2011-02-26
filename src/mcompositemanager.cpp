@@ -27,6 +27,7 @@
 #include "mdevicestate.h"
 #include "mcompositemanagerextension.h"
 #include "mcompmgrextensionfactory.h"
+#include "mcurrentwindoworientationprovider.h"
 #include "mcompositordebug.h"
 
 #include <QX11Info>
@@ -545,6 +546,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       glwidget(0),
       compositing(true),
       changed_properties(false),
+      orientationProvider(new MCurrentWindowOrientationProvider(this)),
       prepared(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime)
@@ -798,6 +800,10 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     if (pc->isMapped() && (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA) ||
         e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA)))
         dirtyStacking(true, e->time);
+
+    if(pc->isMapped() && e->window == current_app
+         && e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE))
+        orientationProvider->update();
 }
 
 Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
@@ -1908,10 +1914,11 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
      * handled above) */
     RAISE_MATCHING(!getLastVisibleParent(pc) &&
                    pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
-    // Meego layer 6
-    RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                   pc->meegoStackingLayer() == 6
-                   && pc->windowState() != IconicState)
+    // Meego layer 6-10
+    for (unsigned int level = 6; level <= 10; ++level)
+         RAISE_MATCHING(!getLastVisibleParent(pc) &&
+                        pc->windowState() != IconicState
+                        && pc->meegoStackingLayer() == level)
 
     int top_decorated_i;
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);

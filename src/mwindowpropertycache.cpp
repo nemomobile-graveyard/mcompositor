@@ -530,8 +530,8 @@ unsigned int MWindowPropertyCache::meegoStackingLayer()
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32)) {
                 meego_layer = *((CARD32*)xcb_get_property_value(r));
-                if (meego_layer > 6)
-                    meego_layer = 6;
+                if (meego_layer > 10)
+                    meego_layer = 10;
             }
             free(r);
         }

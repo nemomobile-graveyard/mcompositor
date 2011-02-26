@@ -17,11 +17,12 @@
 #  * check correct stacking
 #  * set the first non-transient application window to Meego level 1
 #  * check correct stacking
-#  * set the second non-transient application window to Meego level 1
-#  * check correct stacking
-#  * set the first non-transient application window to Meego level 2
+#  * for N in [1, 3, 5, 7, 9] do the following:
+#  *   set the second non-transient application window to Meego level N
+#  *   check correct stacking
+#  *   set the first non-transient application window to Meego level N+1
 #* Post-conditions
-#  * check correct stacking
+#  *   check correct stacking
 
 import os, re, sys, time
 
@@ -117,18 +118,19 @@ time.sleep(1)
 check_order([trans3, trans2, trans1, app1, dialog, app2, home_win],
             'app1 on Meego 1 level correctly')
 
-os.popen('windowctl E %s 1' % app2)
-time.sleep(1)
-
-check_order([app2, trans3, trans2, trans1, app1, dialog, home_win],
-            'app2 on Meego 1 level correctly')
-
-# set the first application window to Meego level 2
-os.popen('windowctl E %s 2' % app1)
-time.sleep(1)
-
-check_order([trans3, trans2, trans1, app1, app2, dialog, home_win],
-            'app1 on Meego 2 level correctly')
+for level in range(1, 11):
+  if level % 2 != 0:
+    # levels 1, 3, 5, 7, 9
+    os.popen('windowctl E %s %s' % (app2, level))
+    time.sleep(1)
+    check_order([app2, trans3, trans2, trans1, app1, dialog, home_win],
+                'app2 on Meego %s level correctly' % level)
+  else:
+    # levels 2, 4, 6, 8, 10
+    os.popen('windowctl E %s %s' % (app1, level))
+    time.sleep(1)
+    check_order([trans3, trans2, trans1, app1, app2, dialog, home_win],
+                'app1 on Meego %s level correctly' % level)
 
 # cleanup
 os.popen('pkill windowctl')
