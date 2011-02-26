@@ -20,6 +20,7 @@
 #ifndef MABSTRACTDECORATOR_H
 #define MABSTRACTDECORATOR_H
 
+#include <MWindow>
 #include <QObject>
 #include "mabstractappinterface.h"
 
@@ -37,7 +38,7 @@ public:
      * Initializes MAbstractDecorator and the connections to MCompositor
      */
     MAbstractDecorator(QObject *parent = 0);
-    virtual ~MAbstractDecorator() = 0;
+    virtual ~MAbstractDecorator();
 
     /*!
      * Returns the id of the window decorated by this decorator
@@ -75,12 +76,11 @@ public slots:
     /*!
      * Interface to MRMI sockets
      */
-    void RemoteSetManagedWinId(qulonglong window);
+    void RemoteSetManagedWinId(unsigned, const QRect&, const QString&,
+                               unsigned, bool, bool);
     void RemoteActivateWindow();
-    void RemoteSetAutoRotation(bool mode);
-    void RemoteSetClientGeometry(const QRect& rect);
     void RemoteSetOnlyStatusbar(bool mode);
-    void RemoteShowQueryDialog(bool visible);
+    void RemoteHideQueryDialog();
 
 protected:
 
@@ -92,14 +92,14 @@ protected:
     virtual void activateEvent() = 0;
     
      /*!
-      * Pure virtual function that gets called this decorator manages a window
+      * Pure virtual function that gets called this decorator manages a window.
+      * @wmname and @orient are the title and current orientation of @window.
+      * @hung indicates to show the "not responding" dialog right away.
       */
-    virtual void manageEvent(Qt::HANDLE window) = 0;
-
-     /*!
-      * Pure virtual function to set automatic rotation mode.
-      */
-    virtual void setAutoRotation(bool mode) = 0;
+    virtual void manageEvent(Qt::HANDLE window,
+                             const QString &wmname,
+                             M::OrientationAngle orient,
+                             bool sbonly, bool hung) = 0;
 
      /*!
       * Pure virtual function to set "only statusbar" mode.
@@ -107,9 +107,9 @@ protected:
     virtual void setOnlyStatusbar(bool mode) = 0;
 
      /*!
-      * Pure virtual function to show the "not responding" query dialog.
+      * Pure virtual function to hide the "not responding" query dialog.
       */
-    virtual void showQueryDialog(bool visible) = 0;
+    virtual void hideQueryDialog() = 0;
 
 private:
     

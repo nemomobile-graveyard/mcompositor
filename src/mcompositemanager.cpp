@@ -341,7 +341,6 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
         if (win && !MDecoratorFrame::instance()->managedWindow()
             && win->needDecoration()) {
             MDecoratorFrame::instance()->setManagedWindow(win);
-            MDecoratorFrame::instance()->setOnlyStatusbar(false);
             MDecoratorFrame::instance()->show();
         }
         if (pc->isMapped())
@@ -1062,25 +1061,22 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         if (item->isVisible() && !item->isClosing())
             item->setVisible(false);
 
-        if (MDecoratorFrame::instance()->managedWindow() == e->window) {
+        MDecoratorFrame *deco = MDecoratorFrame::instance();
+        if (deco->managedWindow() == e->window) {
             // decorate next window in the stack if any
             MCompositeWindow *cw = getHighestDecorated();
             if (!cw) {
-                MDecoratorFrame::instance()->hide();
-                MDecoratorFrame::instance()->setManagedWindow(0);
-                positionWindow(MDecoratorFrame::instance()->winId(), false);
+                deco->hide();
+                deco->setManagedWindow(0);
+                positionWindow(deco->winId(), false);
             } else {
-                if (cw->status() == MCompositeWindow::Hung) {
-                    MDecoratorFrame::instance()->setManagedWindow(cw, true);
-                    MDecoratorFrame::instance()->setOnlyStatusbar(false);
-                } else if (FULLSCREEN_WINDOW(cw->propertyCache())
-                           && device_state->ongoingCall()) {
-                    MDecoratorFrame::instance()->setManagedWindow(cw, true);
-                    MDecoratorFrame::instance()->setOnlyStatusbar(true);
-                } else {
-                    MDecoratorFrame::instance()->setManagedWindow(cw);
-                    MDecoratorFrame::instance()->setOnlyStatusbar(false);
-                }
+                if (cw->status() == MCompositeWindow::Hung)
+                    deco->setManagedWindow(cw, true);
+                else if (FULLSCREEN_WINDOW(cw->propertyCache())
+                           && device_state->ongoingCall())
+                    deco->setManagedWindow(cw, true, true);
+                else
+                    deco->setManagedWindow(cw);
             }
         }
     } else {
@@ -1141,20 +1137,18 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
             return;
 
         Window above = e->above;
+        MDecoratorFrame *deco = MDecoratorFrame::instance();
         if (item && pc->isMapped() && above != None) {
             if (item->needDecoration() &&
-                MDecoratorFrame::instance()->decoratorItem() &&
-                MDecoratorFrame::instance()->managedWindow() == e->window) {
+                deco->decoratorItem() &&
+                deco->managedWindow() == e->window) {
                 if (FULLSCREEN_WINDOW(item->propertyCache()) &&
-                    item->status() != MCompositeWindow::Hung) {
+                    item->status() != MCompositeWindow::Hung)
                     // ongoing call case
-                    MDecoratorFrame::instance()->setManagedWindow(item, true);
-                    MDecoratorFrame::instance()->setOnlyStatusbar(true);
-                } else {
-                    MDecoratorFrame::instance()->setManagedWindow(item);
-                    MDecoratorFrame::instance()->setOnlyStatusbar(false);
-                }
-                MDecoratorFrame::instance()->show();
+                    deco->setManagedWindow(item, true, true);
+                else
+                    deco->setManagedWindow(item);
+                deco->show();
                 item->update();
                 dirtyStacking(check_visibility);
                 check_visibility = false;
@@ -1162,8 +1156,8 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
                 dirtyStacking(check_visibility);
         } else if (item) {
             // FIXME: seems that this branch is never executed?
-            if (e->window == MDecoratorFrame::instance()->managedWindow())
-                MDecoratorFrame::instance()->hide();
+            if (e->window == deco->managedWindow())
+                deco->hide();
             // item->setIconified(true);
             // ensure ZValue is set only after the animation is done
             item->requestZValue(0);
@@ -1377,19 +1371,20 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     if (!pc->isInputOnly())
         enableCompositing();
 
+    MDecoratorFrame *deco = MDecoratorFrame::instance();
     if (pc->isDecorator()) {
-        MDecoratorFrame::instance()->setDecoratorWindow(e->window);
-        MDecoratorFrame::instance()->setManagedWindow(0);
         MCompositeWindow *cw;
+        deco->setDecoratorWindow(e->window);
+        deco->setManagedWindow(0);
+
         if ((cw = getHighestDecorated())) {
-            if (cw->status() == MCompositeWindow::Hung) {
-                MDecoratorFrame::instance()->setManagedWindow(cw, true);
-            } else if (FULLSCREEN_WINDOW(cw->propertyCache())
-                       && device_state->ongoingCall()) {
-                MDecoratorFrame::instance()->setManagedWindow(cw, true);
-                MDecoratorFrame::instance()->setOnlyStatusbar(true);
-            } else
-                MDecoratorFrame::instance()->setManagedWindow(cw);
+            if (cw->status() == MCompositeWindow::Hung)
+                deco->setManagedWindow(cw, true);
+            else if (FULLSCREEN_WINDOW(cw->propertyCache())
+                     && device_state->ongoingCall())
+                deco->setManagedWindow(cw, true, true);
+            else
+                deco->setManagedWindow(cw);
         }
         return;
     }
@@ -2410,13 +2405,11 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                     && !ping_source->needDecoration()) {
                     MDecoratorFrame::instance()->hide();
                     MDecoratorFrame::instance()->setManagedWindow(0);
-                    MDecoratorFrame::instance()->setAutoRotation(false);
                     if(!ping_source->propertyCache()->hasAlpha())
                         disableCompositing(FORCED);
                 } else if (was_hung && ping_source->window() == managed
                            && FULLSCREEN_WINDOW(ping_source->propertyCache())) {
                     // ongoing call decorator
-                    MDecoratorFrame::instance()->setAutoRotation(false);
                     MDecoratorFrame::instance()->setOnlyStatusbar(true);
                 }
             }
@@ -2642,25 +2635,22 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
             // move it to the correct position in the stack
             positionWindow(to_stack->winId(), true);
         }
-        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         // possibly set decorator
+        MDecoratorFrame *deco = MDecoratorFrame::instance();
+        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         if (cw && pc->isMapped() && (cw == getHighestDecorated() ||
                                      cw->status() == MCompositeWindow::Hung)) {
             if (FULLSCREEN_WINDOW(cw->propertyCache())) {
                 // fullscreen window has decorator above it during ongoing call
                 // and when it's jammed
-                MDecoratorFrame::instance()->setManagedWindow(cw, true);
                 if (cw->status() == MCompositeWindow::Hung)
-                    MDecoratorFrame::instance()->setOnlyStatusbar(false);
+                    deco->setManagedWindow(cw, true);
                 else
-                    MDecoratorFrame::instance()->setOnlyStatusbar(true);
-            } else if (cw->status() == MCompositeWindow::Hung) {
-                MDecoratorFrame::instance()->setManagedWindow(cw, true);
-                MDecoratorFrame::instance()->setOnlyStatusbar(false);
-            } else {
-                MDecoratorFrame::instance()->setManagedWindow(cw);
-                MDecoratorFrame::instance()->setOnlyStatusbar(false);
-            }
+                    deco->setManagedWindow(cw, true, true);
+            } else if (cw->status() == MCompositeWindow::Hung)
+                deco->setManagedWindow(cw, true);
+            else
+                deco->setManagedWindow(cw);
         }
     } else if (pc->isDecorator()) {
         // if decorator crashes and reappears, stack it to bottom, raise later
@@ -2718,8 +2708,7 @@ void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
         MCompositeWindow *cw = getHighestDecorated();
         if (cw && FULLSCREEN_WINDOW(cw->propertyCache())) {
             cw->setDecorated(true);
-            MDecoratorFrame::instance()->setManagedWindow(cw, true);
-            MDecoratorFrame::instance()->setOnlyStatusbar(true);
+            MDecoratorFrame::instance()->setManagedWindow(cw, true, true);
         }
         dirtyStacking(false);
     } else {
@@ -3598,16 +3587,13 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
     if (!mayShowApplicationHungDialog || !deco->decoratorItem())
         return;
     if (!is_hung) {
-        deco->showQueryDialog(false);
+        deco->hideQueryDialog();
         return;
     }
 
     // own the window so we could kill it if we want to.
     enableCompositing();
-    deco->setManagedWindow(w, true);
-    deco->setOnlyStatusbar(false);
-    deco->setAutoRotation(true);
-    deco->showQueryDialog(true);
+    deco->showQueryDialog(w);
     dirtyStacking(false);
     deco->show();
 

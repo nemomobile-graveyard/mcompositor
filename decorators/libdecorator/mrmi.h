@@ -22,6 +22,8 @@
 #define MRMISERVER_H
 
 #include <QObject>
+#include <QVector>
+#include <QVariant>
 
 class MRmiPrivate;
 
@@ -55,6 +57,8 @@ public:
                 const QVector<QVariant> &args);
     void invoke(const char* objectName, const char* methodName,
                 const QVariant &arg);
+    void invoke(const char* objectName, const char* methodName)
+    { invoke(objectName, methodName, QVector<QVariant>()); }
 
 private:
     Q_DISABLE_COPY(MRmi)
