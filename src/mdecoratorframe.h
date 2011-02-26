@@ -70,22 +70,25 @@ public:
     /*!
      * Sets the managed window.
      */
-    void setManagedWindow(MCompositeWindow *cw, bool no_resize = false);
+    void setManagedWindow(MCompositeWindow *cw,
+                          bool no_resize = false,
+                          bool only_statusbar = false,
+                          bool show_dialog = false);
 
     /*!
-     * Sets the automatic rotation mode.
+     * Manage @cw and show the query dialog.
      */
-    void setAutoRotation(bool mode);
+    void showQueryDialog(MCompositeWindow *cw, bool only_statusbar = false);
+
+    /*!
+     * Hide the query dialog.
+     */
+    void hideQueryDialog();
 
     /*!
      * Sets the "only statusbar" mode.
      */
     void setOnlyStatusbar(bool mode);
-
-    /*!
-     * Show/hide the query dialog.
-     */
-    void showQueryDialog(bool visible);
 
     /*!
      * Sets the decorator window and maps that window if it is unmapped.
@@ -105,7 +108,7 @@ private slots:
     void visualizeDecorator(bool visible);
 
 private:
-    void sendManagedWindowId();
+    void sendManagedWindowId(bool show_dialog = false);
     static MDecoratorFrame *d;
 
     MCompositeWindow *client;
@@ -113,7 +116,7 @@ private:
     MCompositeWindow *decorator_item;
     MRmiClient *remote_decorator;
     int top_offset;
-    bool no_resize;
+    bool no_resize, only_statusbar;
     QRect available_rect;
 };
 

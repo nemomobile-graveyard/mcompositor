@@ -42,7 +42,9 @@ public:
             foreach (MWindow *win, MComponentData::instance()->windows()) {
                 if (win && win->effectiveWinId() == xve->window) {
                     MOnDisplayChangeEvent mev(
-                        xve->state != VisibilityFullyObscured,
+                        xve->state != VisibilityFullyObscured
+                            ? MOnDisplayChangeEvent::FullyOnDisplay
+                            : MOnDisplayChangeEvent::FullyOffDisplay,
                         QRectF(QPointF(0, 0), win->visibleSceneSize()));
                     sendEvent(win, &mev);
                 }

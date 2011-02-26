@@ -50,8 +50,9 @@ public:
     explicit MDecoratorWindow(QWidget *parent = 0);
 
     const QRect availableClientRect() const;
-    void setWindowTitle(const QString& title);
     void setOnlyStatusbar(bool mode, bool temporary = false);
+    void hideEverything();
+    void restoreEverything();
     /*!
      * \brief Sets the region of the window that can receive input events.
      *
@@ -59,15 +60,19 @@ public:
      * to the windows below.
      */
     void setInputRegion();
-    void managedWindowChanged(Qt::HANDLE);
-    void showQueryDialog(bool visible);
+    void managedWindowChanged(Qt::HANDLE w, const QString &title,
+                                            M::OrientationAngle orient,
+                                            bool hung);
+    void createQueryDialog();
+    void hideQueryDialog();
     void addActions(QList<MAction*> actions);
 
 protected:
     virtual void closeEvent(QCloseEvent * event );
+    virtual void enterDisplayEvent();
+    virtual void leaveDisplayEvent();
 
 private slots:
-
     void screenRotated(const M::Orientation &orientation);
     void yesButtonClicked();
     void noButtonClicked();
