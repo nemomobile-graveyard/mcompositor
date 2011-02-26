@@ -23,6 +23,7 @@
 #include <MScene>
 #include <MApplicationMenu>
 #include <MApplicationPage>
+#include <MNavigationBarView>
 #include <MLabel>
 #include <QGraphicsLinearLayout>
 #include <mbutton.h>
@@ -62,33 +63,22 @@ public:
     {
     }
 
-    virtual void manageEvent(Qt::HANDLE window)
+    virtual void manageEvent(Qt::HANDLE window,
+                             const QString &wmname,
+                             M::OrientationAngle orient,
+                             bool sbonly, bool hung)
     {
-        XTextProperty p;
-        QString title;
-
-        if (window && XGetWMName(QX11Info::display(), window, &p)) {
-            title = (char*) p.value;
-            XFree(p.value);
-        }
-        decorwindow->managedWindowChanged(window);
-        decorwindow->setInputRegion();
-        setAvailableGeometry(decorwindow->availableClientRect());
-        decorwindow->setWindowTitle(title);
+        decorwindow->managedWindowChanged(window, wmname, orient, hung);
+        if (window)
+            setOnlyStatusbar(sbonly);
     }
 
 protected:
     virtual void activateEvent() {
     }
 
-    virtual void showQueryDialog(bool visible) {
-        decorwindow->showQueryDialog(visible);
-    }
-
-    virtual void setAutoRotation(bool mode)
-    {
-        Q_UNUSED(mode)
-        // we follow the orientation of the topmost app
+    virtual void hideQueryDialog() {
+        decorwindow->hideQueryDialog();
     }
 
     virtual void setOnlyStatusbar(bool mode) 
@@ -270,7 +260,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
         }
     }
 
-
     if (!homeButtonPanel || !navigationBar || !statusBar)
         qFatal("Meego elements not found");
 
@@ -284,10 +273,9 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     connect(navigationBar, SIGNAL(viewmenuTriggered()), SLOT(menuAppearing()));
     connect(navigationBar, SIGNAL(closeButtonClicked()), SIGNAL(escapeClicked()));
 
-    /*sceneManager()->appearSceneWindowNow(statusBar);
-    sceneManager()->appearSceneWindowNow(menu);*/
-    setOnlyStatusbar(false);
     requested_only_statusbar = false;
+    /*sceneManager()->appearSceneWindow(statusBar);
+    sceneManager()->appearSceneWindow(menu);*/
 
     d = new MDecorator(this);
     app = new MDecoratorAppInterface(this);
@@ -300,129 +288,180 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
             SLOT(screenRotated(M::Orientation)));
 
     setTranslucentBackground(true); // for translucent messageBox
+    setBackgroundBrush(QBrush(QColor(0, 0, 0, 0)));
     setFocusPolicy(Qt::NoFocus);
     setSceneSize();
     setMDecoratorWindowProperty();
 
+    setProperty("animatedOrientationChange", false);
+    setOrientationAngle(M::Angle0);
+    setOrientationAngleLocked(true);
+}
+
+void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w,
+                                            const QString &title,
+                                            M::OrientationAngle orient,
+                                            bool hung)
+{
+    app->setManagedWindow(w);
+    app->actionsChanged(QList<MDecoratorIPCAction>(), w);
+
+    Qt::HANDLE old_window = managed_window;
+    managed_window = w;
+    if (w != old_window && messageBox)
+        hideQueryDialog();
+
+    if (!managed_window) {
+        hideEverything();
+        setProperty("animatedOrientationChange", false);
+        setOrientationAngle(M::Angle0);
+        return;
+    }
+
+    navigationBar->setViewMenuDescription(title);
+    setProperty("animatedOrientationChange", !!old_window);
+    setOrientationAngle(orient);
+    if (hung) {
+        createQueryDialog();
+        if (isOnDisplay())
+            // We can start showing it, otherwise wait.
+            enterDisplayEvent();
+    } else
+        sceneManager()->appearSceneWindowNow(statusBar);
+}
+
+void MDecoratorWindow::createQueryDialog()
+{
+    QString name;
+
+    if (messageBox)
+        return;
+
+    XClassHint cls = {0, 0};
+    XGetClassHint(QX11Info::display(), managed_window, &cls);
+    if (cls.res_name) {
+        name = QString(cls.res_name);
+        if (name.endsWith(".launch"))
+            // Remove the extension in order to find the .desktop file.
+            name.resize(name.length()-strlen(".launch"));
+        MDesktopEntry de(QString("/usr/share/applications/")
+                         + name + ".desktop");
+        if (de.isValid() && !de.name().isEmpty()) {
+            name = de.name();
+            QByteArray a = name.toUtf8();
+            // full name and abbreviation are separated by these bytes
+            char sep[3] = { 194, 156, 0 };
+            int i = a.indexOf(sep);
+            if (i > 0) {
+                a.truncate(i);
+                name = a;
+            }
+        }
+        XFree(cls.res_name);
+    } else
+        name.sprintf("window 0x%lx", managed_window);
+
+    if (cls.res_class)
+        XFree(cls.res_class);
+
+    XSetTransientForHint(QX11Info::display(), winId(), managed_window);
+    messageBox = new MMessageBox("", "", M::NoStandardButton);
+    messageBox->setCentralWidget(new QGraphicsWidget(messageBox));
+    QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Vertical,
+                                            messageBox->centralWidget());
+    MLabel *title = new MLabel(
+                         qtTrId("qtn_reco_app_not_responding").arg(name),
+                         messageBox);
+    title->setStyleName("CommonQueryTitle");
+    title->setWordWrap(true);
+    title->setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    title->setAlignment(Qt::AlignCenter);
+    layout->addItem(title);
+    MLabel *text = new MLabel(qtTrId("qtn_reco_close_app_question"),
+                              messageBox);
+    text->setStyleName("CommonQueryText");
+    text->setWordWrap(true);
+    text->setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    text->setAlignment(Qt::AlignCenter);
+    layout->addItem(text);
+    messageBox->centralWidget()->setLayout(layout);
+    MButtonModel *yes = messageBox->addButton(qtTrId("qtn_comm_command_yes"),
+                                              M::AcceptRole);
+    MButtonModel *no = messageBox->addButton(qtTrId("qtn_comm_command_no"),
+                                             M::RejectRole);
+    connect(yes, SIGNAL(clicked()), this, SLOT(yesButtonClicked()));
+    connect(no, SIGNAL(clicked()), this, SLOT(noButtonClicked()));
+}
+
+void MDecoratorWindow::hideQueryDialog()
+{
+    if (!messageBox)
+        return;
+
+    XSetTransientForHint(QX11Info::display(), winId(), None);
+    sceneManager()->disappearSceneWindow(messageBox);
+    messageBox = 0;
+
+    restoreEverything();
     setInputRegion();
-    setProperty("followsCurrentApplicationWindowOrientation", true);
+}
+
+void MDecoratorWindow::enterDisplayEvent()
+{   // If we've created the dialog it's time to show it.
+    if (!messageBox
+        || messageBox->sceneWindowState() != MSceneWindow::Disappeared)
+        return;
+    hideEverything();
+    sceneManager()->appearSceneWindow(messageBox,
+                                      MSceneWindow::DestroyWhenDone);
+}
+
+void MDecoratorWindow::leaveDisplayEvent()
+{   // show_query_dialog was cancelled before we could do it
+    hideQueryDialog();
 }
 
 void MDecoratorWindow::yesButtonClicked()
 {
     d->queryDialogAnswer(managed_window, true);
-    showQueryDialog(false);
+    hideQueryDialog();
 }
 
 void MDecoratorWindow::noButtonClicked()
 {
     d->queryDialogAnswer(managed_window, false);
-    showQueryDialog(false);
-}
-
-void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w)
-{
-    app->setManagedWindow(w);
-    app->actionsChanged(QList<MDecoratorIPCAction>(), w);
-    if (w != managed_window && messageBox)
-        showQueryDialog(false);
-    managed_window = w;
-}
-
-void MDecoratorWindow::setWindowTitle(const QString& title)
-{
-    navigationBar->setViewMenuDescription(title);
-}
-
-void MDecoratorWindow::showQueryDialog(bool visible)
-{
-    if (visible && !messageBox) {
-        QString name;
-
-        XClassHint cls = {0, 0};
-        XGetClassHint(QX11Info::display(), managed_window, &cls);
-        if (cls.res_name) {
-            name = QString(cls.res_name);
-            if (name.endsWith(".launch"))
-                // Remove the extension in order to find the .desktop file.
-                name.resize(name.length()-strlen(".launch"));
-            MDesktopEntry de(QString("/usr/share/applications/")
-                             + name + ".desktop");
-            if (de.isValid() && !de.name().isEmpty()) {
-                name = de.name();
-                QByteArray a = name.toUtf8();
-                // full name and abbreviation are separated by these bytes
-                char sep[3] = { 194, 156, 0 };
-                int i = a.indexOf(sep);
-                if (i > 0) {
-                    a.truncate(i);
-                    name = a;
-                }
-            }
-            XFree(cls.res_name);
-        } else
-            name.sprintf("window 0x%lx", managed_window);
-
-        if (cls.res_class)
-            XFree(cls.res_class);
-
-        XSetTransientForHint(QX11Info::display(), winId(), managed_window);
-        requested_only_statusbar = only_statusbar;
-        setOnlyStatusbar(true, true);
-        messageBox = new MMessageBox("", "", M::NoStandardButton);
-        messageBox->setCentralWidget(new QGraphicsWidget(messageBox));
-        QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Vertical,
-                                                messageBox->centralWidget());
-        MLabel *title = new MLabel(
-                             qtTrId("qtn_reco_app_not_responding").arg(name),
-                             messageBox);
-        title->setStyleName("CommonQueryTitle");
-        title->setWordWrap(true);
-        title->setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-        title->setAlignment(Qt::AlignCenter);
-        layout->addItem(title);
-        MLabel *text = new MLabel(qtTrId("qtn_reco_close_app_question"),
-                                  messageBox);
-        text->setStyleName("CommonQueryText");
-        text->setWordWrap(true);
-        text->setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-        text->setAlignment(Qt::AlignCenter);
-        layout->addItem(text);
-        messageBox->centralWidget()->setLayout(layout);
-        MButtonModel *yes = messageBox->addButton(qtTrId("qtn_comm_command_yes"),
-                                                  M::AcceptRole);
-        MButtonModel *no = messageBox->addButton(qtTrId("qtn_comm_command_no"),
-                                                 M::RejectRole);
-        connect(yes, SIGNAL(clicked()), this, SLOT(yesButtonClicked()));
-        connect(no, SIGNAL(clicked()), this, SLOT(noButtonClicked()));
-        sceneManager()->appearSceneWindowNow(messageBox);
-    } else if (!visible && messageBox) {
-        XSetTransientForHint(QX11Info::display(), winId(), None);
-        sceneManager()->disappearSceneWindowNow(messageBox);
-        delete messageBox;
-        messageBox = 0;
-        setOnlyStatusbar(requested_only_statusbar);
-    }
-    setInputRegion();
-    update();
+    hideQueryDialog();
 }
 
 void MDecoratorWindow::setOnlyStatusbar(bool mode, bool temporary)
 {
-    if (mode) {
+    if (mode || messageBox) {
         sceneManager()->disappearSceneWindowNow(navigationBar);
         sceneManager()->disappearSceneWindowNow(homeButtonPanel);
         if (escapeButtonPanel)
             sceneManager()->disappearSceneWindowNow(escapeButtonPanel);
-    } else if (!messageBox) {
+    } else {
         sceneManager()->appearSceneWindowNow(navigationBar);
         sceneManager()->appearSceneWindowNow(homeButtonPanel);
         if (escapeButtonPanel)
             sceneManager()->appearSceneWindowNow(escapeButtonPanel);
     }
+
     if (!temporary)
         requested_only_statusbar = mode;
     only_statusbar = mode;
+}
+
+void MDecoratorWindow::hideEverything()
+{
+    setOnlyStatusbar(true, true);
+    sceneManager()->disappearSceneWindowNow(statusBar);
+}
+
+void MDecoratorWindow::restoreEverything()
+{
+    setOnlyStatusbar(requested_only_statusbar);
+    sceneManager()->appearSceneWindowNow(statusBar);
 }
 
 void MDecoratorWindow::screenRotated(const M::Orientation &orientation)
@@ -477,9 +516,10 @@ void MDecoratorWindow::setInputRegion()
         prev_region = region;
 
         // Convert @region to @xrects.
+        XRectangle *xrects;
         const QVector<QRect> rects = region.rects();
         int nxrects = rects.count();
-        XRectangle *xrects = new XRectangle[nxrects];
+        xrects = new XRectangle[nxrects];
         for (int i = 0; i < nxrects; ++i) {
             xrects[i].x = rects[i].x();
             xrects[i].y = rects[i].y();
@@ -495,7 +535,6 @@ void MDecoratorWindow::setInputRegion()
                                    0, 0, shapeRegion);
 
         XFixesDestroyRegion(dpy, shapeRegion);
-        delete[] xrects;
     }
 
     // The rectangle available for the application is the largest square
@@ -558,8 +597,6 @@ void MDecoratorWindow::addActions(QList<MAction*> new_actions)
         this->addAction(act);
         act->blockSignals(false);
     }
-
-
 
     setUpdatesEnabled(true);
 }

@@ -70,22 +70,33 @@ void MDecoratorFrame::show()
         decorator_item->setVisible(true);
 }
 
-void MDecoratorFrame::sendManagedWindowId()
+void MDecoratorFrame::sendManagedWindowId(bool show_dialog)
 {
-    qulonglong winid = client ? client->window() : 0;
-    if(client)
-        remote_decorator->invoke("MAbstractDecorator",
-                                 "RemoteSetClientGeometry",
-                                 client->propertyCache()->requestedGeometry());
-    remote_decorator->invoke("MAbstractDecorator",
-                             "RemoteSetAutoRotation", false);
-    remote_decorator->invoke("MAbstractDecorator",
-                             "RemoteSetManagedWinId", winid);
+    QVector<QVariant> args;
+
+    if (client) {
+        MWindowPropertyCache *pc = client->propertyCache();
+        args << unsigned(client->window())
+             << pc->requestedGeometry()
+             << pc->wmName()
+             << pc->orientationAngle()
+             << only_statusbar
+             << show_dialog;
+    } else
+        args << unsigned(0) << QRect() << QString() << unsigned(0)
+             << false << false;
+
+    remote_decorator->invoke("MAbstractDecorator", "RemoteSetManagedWinId",
+                             args);
 }
 
-void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw, bool no_resize)
+void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
+                                       bool no_resize,
+                                       bool only_statusbar,
+                                       bool show_dialog)
 {    
     this->no_resize = no_resize;
+    this->only_statusbar = only_statusbar;
 
     if (client == cw)
         return;
@@ -94,12 +105,36 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw, bool no_resize)
     client = cw;
 
     if (decorator_item)
-        sendManagedWindowId();
+        sendManagedWindowId(show_dialog);
     if (cw) {
         if (!no_resize)
             cw->expectResize();
         connect(cw, SIGNAL(destroyed()), SLOT(destroyClient()));
     }
+}
+
+void MDecoratorFrame::showQueryDialog(MCompositeWindow *cw,
+                                      bool only_statusbar)
+{
+    setManagedWindow(cw, true, only_statusbar, true);
+}
+
+void MDecoratorFrame::hideQueryDialog()
+{
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteHideQueryDialog");
+}
+
+void MDecoratorFrame::setOnlyStatusbar(bool mode)
+{
+    only_statusbar = mode;
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteSetOnlyStatusbar", mode);
+}
+
+void MDecoratorFrame::queryDialogAnswer(unsigned window, bool killit)
+{
+    static_cast<MCompositeManager *>(qApp)->queryDialogAnswer(window, killit);
 }
 
 void MDecoratorFrame::setDecoratorWindow(Qt::HANDLE window)
@@ -162,27 +197,4 @@ void MDecoratorFrame::decoratorRectChanged(const QRect& r)
       MOVE_RESIZE(client->window(), r.x(), r.y(), r.width(), r.height());
       static_cast<MCompositeManager *>(qApp)->expectResize(client, r);
     }
-}
-
-void MDecoratorFrame::queryDialogAnswer(unsigned window, bool killit)
-{
-    static_cast<MCompositeManager *>(qApp)->queryDialogAnswer(window, killit);
-}
-
-void MDecoratorFrame::setAutoRotation(bool mode)
-{
-    remote_decorator->invoke("MAbstractDecorator",
-                             "RemoteSetAutoRotation", mode);
-}
-
-void MDecoratorFrame::setOnlyStatusbar(bool mode)
-{
-    remote_decorator->invoke("MAbstractDecorator",
-                             "RemoteSetOnlyStatusbar", mode);
-}
-
-void MDecoratorFrame::showQueryDialog(bool visible)
-{
-    remote_decorator->invoke("MAbstractDecorator",
-                             "RemoteShowQueryDialog", visible);
 }

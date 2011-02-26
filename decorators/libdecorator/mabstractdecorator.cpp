@@ -103,28 +103,36 @@ void MAbstractDecorator::close()
     XSync(QX11Info::display(), FALSE);
 }
 
-void MAbstractDecorator::RemoteSetManagedWinId(qulonglong window)
+void MAbstractDecorator::RemoteSetManagedWinId(unsigned window,
+                                               const QRect &geo,
+                                               const QString &wmname,
+                                               unsigned angle,
+                                               bool only_statusbar,
+                                               bool show_dialog)
 {
     Q_D(MAbstractDecorator);
-    
+    M::OrientationAngle orient;
+
     d->client = window;
-    manageEvent(window);
+    d->clientGeometry = geo;
+
+    if (angle == 0)
+        orient = M::Angle0;
+    else if (angle == 270)
+        orient = M::Angle270;
+    else if (angle == 90)
+        orient = M::Angle90;
+    else if (angle == 180)
+        orient = M::Angle180;
+    else
+        orient = M::Angle0;
+
+    manageEvent(window, wmname, orient, only_statusbar, show_dialog);
 }
 
 void MAbstractDecorator::RemoteActivateWindow()
 {
     activateEvent();
-}
-
-void MAbstractDecorator::RemoteSetAutoRotation(bool mode)
-{
-    setAutoRotation(mode);
-}
-
-void MAbstractDecorator::RemoteSetClientGeometry(const QRect& r)
-{
-    Q_D(MAbstractDecorator);
-    d->clientGeometry = r;
 }
 
 void MAbstractDecorator::setAvailableGeometry(const QRect& rect)
@@ -147,7 +155,7 @@ void MAbstractDecorator::RemoteSetOnlyStatusbar(bool mode)
     setOnlyStatusbar(mode);
 }
 
-void MAbstractDecorator::RemoteShowQueryDialog(bool visible)
+void MAbstractDecorator::RemoteHideQueryDialog()
 {
-    showQueryDialog(visible);
+    hideQueryDialog();
 }
