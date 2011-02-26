@@ -202,6 +202,7 @@ private:
     friend class MTexturePixmapPrivate;
     friend class MWindowPropertyCache;
     friend class MCompositeWindowGroup;
+    friend class MCurrentWindowOrientationProvider;
 };
 
 #endif

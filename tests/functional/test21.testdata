@@ -16,8 +16,9 @@ CaseDescription="Some tests for Meego stacking layer support.
 	- check correct stacking
 	- set the first non-transient application window to Meego level 1
 	- check correct stacking
-	- set the second non-transient application window to Meego level 1
-	- check correct stacking
-	- set the first non-transient application window to Meego level 2
+        - for N in [1, 3, 5, 7, 9] do the following:
+	-   set the second non-transient application window to Meego level N
+	-   check correct stacking
+	-   set the first non-transient application window to Meego level N+1
 - Post-conditions
-	- check correct stacking\n"
+	-   check correct stacking\n"
