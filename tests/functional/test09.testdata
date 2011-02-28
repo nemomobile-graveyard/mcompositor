@@ -4,10 +4,24 @@ CaseTimeout="360"
 CaseDescription="Check that configure requests for changing stacking order are supported.
 
 - Test steps
-	- show an application window
-	- show another application window
+	- show a decorated application window
+        - check correct stacking
+	- show another decorated application window
+        - check correct stacking
 	- configure topmost application below the other
+        - check correct stacking
 	- configure bottommost application above the other
+        - check correct stacking
 	- configure bottommost application to the top (sibling None)
+        - check correct stacking
+	- configure topmost application to the bottom
+        - check correct stacking
+	- configure topmost application to the bottom
+        - check correct stacking
+        - create two override-redirect windows
+        - check correct stacking
+        - configure lower OR window to top
+        - check correct stacking
+        - configure topmost OR window to bottom
 - Post-conditions
 	- stacking order is changed according to the configure requests\n"

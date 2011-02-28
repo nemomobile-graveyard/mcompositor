@@ -105,7 +105,6 @@ private slots:
     void queryDialogAnswer(unsigned window, bool killit);
     void destroyDecorator();
     void destroyClient();
-    void visualizeDecorator(bool visible);
 
 private:
     void sendManagedWindowId(bool show_dialog = false);

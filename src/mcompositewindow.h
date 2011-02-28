@@ -378,8 +378,6 @@ signals:
      */
     void windowHung(MCompositeWindow *window, bool is_hung);
 
-    void visualized(bool);
-
     /*! Emitted when this window gets restored from an iconified state */
     void itemRestored(MCompositeWindow *window);
     /*! Emitted just after this window gets iconified  */

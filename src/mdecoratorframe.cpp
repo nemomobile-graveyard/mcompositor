@@ -146,6 +146,8 @@ void MDecoratorFrame::setDecoratorWindow(Qt::HANDLE window)
 void MDecoratorFrame::setDecoratorItem(MCompositeWindow *window)
 {
     decorator_item = window;
+    if (!window)
+        return;
     connect(decorator_item, SIGNAL(destroyed()), SLOT(destroyDecorator()));
 
     MTexturePixmapItem *item = (MTexturePixmapItem *) window;
@@ -170,15 +172,6 @@ void MDecoratorFrame::destroyClient()
 {
     if (client == sender())
         client = 0;
-}
-
-void MDecoratorFrame::visualizeDecorator(bool visible)
-{
-    if (sender() == decorator_item)
-        return;
-
-    if (decorator_item)
-        decorator_item->setVisible(visible);
 }
 
 void MDecoratorFrame::decoratorRectChanged(const QRect& r)
