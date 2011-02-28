@@ -57,6 +57,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       is_transitioning(false),
       dimmed_effect(false),
       waiting_for_damage(0),
+      resize_expected(false),
       win_id(window)
 {
     thumb_mode = false;
