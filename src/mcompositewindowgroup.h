@@ -49,6 +49,8 @@ class MCompositeWindowGroup: public MCompositeWindow
     virtual QRectF boundingRect() const;
     virtual void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*);
     virtual Pixmap windowPixmap() const { return 0; }    
+    void beginAnimation();
+    void endAnimation();
     //! \reimp_end
     
     virtual int	type () const { return Type; }
