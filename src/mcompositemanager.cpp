@@ -339,10 +339,8 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
         if (win && priv->needDecoration(win->propertyCache()))
             win->setDecorated(true);
         if (win && !MDecoratorFrame::instance()->managedWindow()
-            && win->needDecoration()) {
-            MDecoratorFrame::instance()->setManagedWindow(win);
-            MDecoratorFrame::instance()->show();
-        }
+            && win->needDecoration())
+            priv->dirtyStacking(false); // reset decorator's managed window
         if (pc->isMapped())
             priv->dirtyStacking(false);
     } break;
@@ -366,8 +364,8 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             win->setDecorated(false);
         if (!priv->device_state->ongoingCall()
             && MDecoratorFrame::instance()->managedWindow() == window) {
-            MDecoratorFrame::instance()->hide();
             MDecoratorFrame::instance()->setManagedWindow(0);
+            priv->positionWindow(MDecoratorFrame::instance()->winId(), false);
         }
         if (pc->isMapped())
             priv->dirtyStacking(false);
@@ -1039,6 +1037,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         if (!wpc->isInputOnly()
             && wpc->parentWindow() != QX11Info::appRootWindow())
             XRemoveFromSaveSet(QX11Info::display(), e->window);
+        if (wpc->isDecorator())
+            MDecoratorFrame::instance()->setDecoratorItem(0);
     }
 
     // do not keep unmapped windows in windows_as_mapped list
@@ -1061,23 +1061,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
             item->setVisible(false);
 
         MDecoratorFrame *deco = MDecoratorFrame::instance();
-        if (deco->managedWindow() == e->window) {
-            // decorate next window in the stack if any
-            MCompositeWindow *cw = getHighestDecorated();
-            if (!cw) {
-                deco->hide();
-                deco->setManagedWindow(0);
-                positionWindow(deco->winId(), false);
-            } else {
-                if (cw->status() == MCompositeWindow::Hung)
-                    deco->setManagedWindow(cw, true);
-                else if (FULLSCREEN_WINDOW(cw->propertyCache())
-                           && device_state->ongoingCall())
-                    deco->setManagedWindow(cw, true, true);
-                else
-                    deco->setManagedWindow(cw);
-            }
-        }
+        if (deco->managedWindow() == e->window)
+            dirtyStacking(false); // reset decorator's managed window
     } else {
         // We got an unmap event from a framed window
         FrameData fd = framed_windows.value(e->window);
@@ -1124,49 +1109,16 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
                 item->setPos(e->x, e->y);
             item->resize(e->width, e->height);
         }
-        if (e->override_redirect == True) {
-            if (check_visibility)
-                dirtyStacking(true);
-            return;
-        }
 
         if (nostacking)
             // Just MDecoratorFrame let us know the position
             // of the managed window in advance.
             return;
 
-        Window above = e->above;
-        MDecoratorFrame *deco = MDecoratorFrame::instance();
-        if (item && pc->isMapped() && above != None) {
-            if (item->needDecoration() &&
-                deco->decoratorItem() &&
-                deco->managedWindow() == e->window) {
-                if (FULLSCREEN_WINDOW(item->propertyCache()) &&
-                    item->status() != MCompositeWindow::Hung)
-                    // ongoing call case
-                    deco->setManagedWindow(item, true, true);
-                else
-                    deco->setManagedWindow(item);
-                deco->show();
-                item->update();
-                dirtyStacking(check_visibility);
-                check_visibility = false;
-            } else
-                dirtyStacking(check_visibility);
-        } else if (item) {
-            // FIXME: seems that this branch is never executed?
-            if (e->window == deco->managedWindow())
-                deco->hide();
-            // item->setIconified(true);
-            // ensure ZValue is set only after the animation is done
-            item->requestZValue(0);
-
-            MCompositeWindow *desktop = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
-            if (desktop)
-                item->stackBefore(desktop);
-        }
-        if (check_visibility)
-            dirtyStacking(true);
+        if (check_visibility ||
+            // restack & reset decorator's managed window
+            (item && pc->isMapped() && item->needDecoration()))
+            dirtyStacking(check_visibility);
     }
 }
 
@@ -1386,7 +1338,8 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
                 deco->setManagedWindow(cw, true, true);
             else
                 deco->setManagedWindow(cw);
-        }
+        } else
+            positionWindow(e->window, false);
         return;
     }
 
@@ -1404,11 +1357,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     else
         setWindowState(e->window, NormalState);
     if (needDecoration(pc)) {
-        if (MDecoratorFrame::instance()->decoratorItem()) {
-            // initially visualize decorator item so selective compositing
-            // checks won't disable compositing
-            MDecoratorFrame::instance()->show();
-        } else {
+        if (!MDecoratorFrame::instance()->decoratorItem()) {
 #if 0 /* FIXME/TODO: this does NOT work when mdecorator starts after the first
          decorated window is shown. See NB#196194 */
             if (!pc->isInputOnly())
@@ -1924,6 +1873,11 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 
     int top_decorated_i;
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
+    if (highest_d && !highest_d->isWindowTransitioning()) {
+        bool fs = FULLSCREEN_WINDOW(highest_d->propertyCache());
+        deco->setManagedWindow(highest_d, fs, fs);
+    } else if (!highest_d)
+        deco->setManagedWindow(0);
     /* raise/lower decorator */
     if (highest_d && top_decorated_i >= 0 && deco->decoratorItem()
         && deco->managedWindow() == highest_d->window()
@@ -1937,16 +1891,15 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         if (deco_i >= 0) {
             if (deco_i < top_decorated_i) {
                 STACKING_MOVE(deco_i, top_decorated_i);
-                safe_move(stacking_list, deco_i, top_decorated_i);
+                stacking_list.move(deco_i, top_decorated_i);
             } else {
                 STACKING_MOVE(deco_i, top_decorated_i + 1);
-                safe_move(stacking_list, deco_i, top_decorated_i + 1);
+                stacking_list.move(deco_i, top_decorated_i + 1);
             }
             if (!compositing)
                 // decor requires compositing
                 enableCompositing();
             deco->decoratorItem()->updateWindowPixmap();
-            deco->show();
             glwidget->update();
         }
     } else if ((!highest_d || top_decorated_i < 0) && deco->decoratorItem()) {
@@ -1955,7 +1908,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         if (deco_i > 0) {
             STACKING_MOVE(deco_i, 0);
             stacking_list.move(deco_i, 0);
-            MDecoratorFrame::instance()->setManagedWindow(0);
         }
     }
 
@@ -2286,13 +2238,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
 
         // the current decorated window got mapped
         if (e->window == MDecoratorFrame::instance()->managedWindow() &&
-                MDecoratorFrame::instance()->decoratorItem()) {
-            connect(item, SIGNAL(visualized(bool)),
-                    MDecoratorFrame::instance(),
-                    SLOT(visualizeDecorator(bool)));
-            MDecoratorFrame::instance()->show();
+            MDecoratorFrame::instance()->decoratorItem())
             MDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue() + 1);
-        }
         setWindowDebugProperties(win);
     }
 
@@ -2410,10 +2357,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                 Window managed = MDecoratorFrame::instance()->managedWindow();
                 if (was_hung && ping_source->window() == managed
                     && !ping_source->needDecoration()) {
-                    MDecoratorFrame::instance()->hide();
-                    MDecoratorFrame::instance()->setManagedWindow(0);
-                    if(!ping_source->propertyCache()->hasAlpha())
-                        disableCompositing(FORCED);
+                    // reset decorator's managed window & check compositing
+                    dirtyStacking(false);
                 } else if (was_hung && ping_source->window() == managed
                            && FULLSCREEN_WINDOW(ping_source->propertyCache())) {
                     // ongoing call decorator
@@ -2534,11 +2479,8 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
         delete_sent = true;
     }
 
-    if ((!delete_sent || window->status() == MCompositeWindow::Hung)) {
+    if (!delete_sent || window->status() == MCompositeWindow::Hung)
         kill_window(window->window());
-        if (MDecoratorFrame::instance()->managedWindow() == window->window())
-            MDecoratorFrame::instance()->hide();
-    }
     /* DO NOT deleteLater() this window yet because
        a) it can remove a mapped window from stacking_list
        b) delete can be ignored (e.g. "Do you want to exit?" dialog)
@@ -2643,22 +2585,7 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
             positionWindow(to_stack->winId(), true);
         }
         // possibly set decorator
-        MDecoratorFrame *deco = MDecoratorFrame::instance();
-        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && pc->isMapped() && (cw == getHighestDecorated() ||
-                                     cw->status() == MCompositeWindow::Hung)) {
-            if (FULLSCREEN_WINDOW(cw->propertyCache())) {
-                // fullscreen window has decorator above it during ongoing call
-                // and when it's jammed
-                if (cw->status() == MCompositeWindow::Hung)
-                    deco->setManagedWindow(cw, true);
-                else
-                    deco->setManagedWindow(cw, true, true);
-            } else if (cw->status() == MCompositeWindow::Hung)
-                deco->setManagedWindow(cw, true);
-            else
-                deco->setManagedWindow(cw);
-        }
+        dirtyStacking(false);
     } else if (pc->isDecorator()) {
         // if decorator crashes and reappears, stack it to bottom, raise later
         if (!stacked)
@@ -3582,9 +3509,6 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
     showOverlayWindow(false);
 #endif
 
-    if (MDecoratorFrame::instance()->decoratorItem())
-        MDecoratorFrame::instance()->hide();
-
     compositing = false;
 }
 
@@ -3602,7 +3526,6 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
     enableCompositing();
     deco->showQueryDialog(w);
     dirtyStacking(false);
-    deco->show();
 
     // We need to activate the window as well with instructions to decorate
     // the hung window. Above call just seems to mark the window as needing
