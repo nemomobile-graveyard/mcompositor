@@ -333,13 +333,13 @@ public slots:
       * is an atomic operation. Ensure that endTransition() is invoked when
       * the animation is finished.
       */
-    void beginAnimation();
+    virtual void beginAnimation();
     
     /*!
       * This slot is called whenever the window has finished animating its 
       * effects
       */
-     void endAnimation();
+    virtual void endAnimation();
 
     /*!
      * Called when the window contents are damaged or on timeout.
