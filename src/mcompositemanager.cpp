@@ -1797,6 +1797,7 @@ static int xrestackwindows_error_handler(Display *dpy, XErrorEvent *err)
                 pc = prop_caches.value(next, 0); \
                 if (pc && (X)) \
                     break; \
+                next = 0; /* in case we bail out before next assignment */ \
             } \
 	    raiseWithTransients(orig_pc, i); \
             if (!first_moved) first_moved = w; \
