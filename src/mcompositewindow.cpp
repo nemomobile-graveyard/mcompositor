@@ -457,12 +457,9 @@ void MCompositeWindow::prettyDestroy()
 
 void MCompositeWindow::finalizeState()
 {
-    endAnimation();
-
     // as far as this window is concerned, it's OK to direct render
     window_status = Normal;
-    if (pc && pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
-        emit desktopActivated(this);
+    endAnimation();
 
     // iconification status
     if (iconified) {
@@ -654,6 +651,10 @@ void MCompositeWindow::endAnimation()
     if (is_transitioning) {
         --window_transitioning;
         is_transitioning = false;
+        if (!window_transitioning
+            && pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+            // it doesn't have anything to do with desktop being activated
+            emit desktopActivated(this);
     }
 }
 
