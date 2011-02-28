@@ -366,7 +366,6 @@ private slots:
 
     void pingTimeout();
     void reappearTimeout();
-    void damageTimeout();
     void pingWindow(bool restart = false);
     void q_itemRestored();
     void q_fadeIn();
