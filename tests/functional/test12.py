@@ -9,6 +9,9 @@
 #  * check that application is composited (due to the decorator)
 #  * iconify the application by raising desktop
 #  * check that desktop is not composited
+#  * show a meegotouch-looking window
+#  * try to close it before the animation ends
+#  * check that desktop is not composited
 #  * show a non-decorated RGBA application window
 #* Post-conditions
 #  * check that compositing is on (because the topmost window is RGBA)
@@ -77,6 +80,28 @@ for l in s.splitlines():
   elif re.search("%s " % home_win, l.strip()) and \
        re.search(' redir.', l.strip()):
     print 'FAIL: desktop is redirected'
+    print 'Failed stack:\n', s
+    ret = 1
+    break
+
+# map an LMT-looking application window and quickly kill it
+fd = os.popen('windowctl nk')
+old_win = fd.readline().strip()
+pidfd = os.popen('pidof windowctl')
+pid = pidfd.readline().split()[0]
+time.sleep(0.1)
+os.popen('kill %s' % pid)
+time.sleep(1)
+
+# check that desktop is not redirected
+fd = os.popen('windowstack v')
+s = fd.read(5000)
+for l in s.splitlines():
+  if re.search("%s " % home_win, l.strip()) and re.search(' dir.', l.strip()):
+    break
+  elif re.search("%s " % home_win, l.strip()) and \
+       re.search(' redir.', l.strip()):
+    print 'FAIL: desktop is redirected after aborted animation'
     print 'Failed stack:\n', s
     ret = 1
     break
