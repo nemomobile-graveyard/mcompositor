@@ -1292,9 +1292,11 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     // create the damage object before mapping to get 'em all
     MWindowPropertyCache *pc = prop_caches.value(e->window, 0);
     if (!device_state->displayOff()) {
-        if (pc)
+        if (pc) {
             pc->damageTracking(true);
-        else
+            XCompositeRedirectWindow(QX11Info::display(), e->window,
+                                     CompositeRedirectManual);
+        } else
             damage_obj = XDamageCreate(dpy, e->window, XDamageReportNonEmpty);
     }
     // map early to give the app a chance to start drawing
