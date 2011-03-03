@@ -208,6 +208,11 @@ void MCompWindowAnimator::startAnimation()
 
 void MCompWindowAnimator::stopAnimation()
 {
+    if (timer.state() == QTimeLine::Running) {
+        // Make it appear as if @timer had finished.
+        resetState();
+        emit transitionDone();
+    }
     timer.stop();
     item->setTransform(matrix);
 }
