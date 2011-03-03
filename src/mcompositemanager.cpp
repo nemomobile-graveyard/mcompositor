@@ -547,7 +547,6 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       glwidget(0),
       compositing(true),
       changed_properties(false),
-      orientationProvider(new MCurrentWindowOrientationProvider(this)),
       prepared(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime)
@@ -803,9 +802,9 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA)))
         dirtyStacking(true, e->time);
 
-    if(pc->isMapped() && e->window == current_app
-         && e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE))
-        orientationProvider->update();
+    if (pc->isMapped() && e->window == current_app
+        && e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE))
+        orientationProvider.update(pc);
 }
 
 Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
@@ -1754,9 +1753,11 @@ void MCompositeManagerPrivate::setupButtonWindows(Window curr_app)
     }
 }
 
-void MCompositeManagerPrivate::setCurrentApp(Window w, bool restacked)
+void MCompositeManagerPrivate::setCurrentApp(MCompositeWindow *cw,
+                                             bool restacked)
 {
     static Window prev = (Window)-1;
+    Window w = cw ? cw->window() : stack[DESKTOP_LAYER];
     if (prev == w) {
         if (restacked)
             // signal listener may need to restack its window
@@ -1768,6 +1769,9 @@ void MCompositeManagerPrivate::setCurrentApp(Window w, bool restacked)
                     XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
     current_app = w;
     emit currentAppChanged(current_app);
+    if (cw)
+        orientationProvider.update(cw->propertyCache());
+
     prev = w;
 }
 
@@ -2097,7 +2101,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             reset_global_alpha();
     }
     // current app has different semantics from getTopmostApp and pure isAppWindow
-    Window set_as_current_app = duihome;
+    MCompositeWindow *set_as_current_app = 0;
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);
         if (!w) continue;
@@ -2110,7 +2114,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         if (type != ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
             type != ATOM(_NET_WM_WINDOW_TYPE_MENU) &&
             cw->isMapped() && cw->isAppWindow(true)) {
-            set_as_current_app = w;
+            set_as_current_app = cw;
             break;
         }
     }
