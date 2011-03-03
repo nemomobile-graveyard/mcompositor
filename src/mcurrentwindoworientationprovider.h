@@ -3,19 +3,17 @@
 
 #include <QObject>
 
-//typedef int Window;
+class MWindowPropertyCache;
 class MCurrentWindowOrientationProviderPrivate;
 
-class MCurrentWindowOrientationProvider : public QObject
+class MCurrentWindowOrientationProvider
 {
-    Q_OBJECT
 public:
-    explicit MCurrentWindowOrientationProvider(QObject *parent = 0);
+    MCurrentWindowOrientationProvider();
     ~MCurrentWindowOrientationProvider();
-signals:
 
-public slots:
-    void update();
+public:
+    void update(MWindowPropertyCache *pc);
 
 private:
     Q_DECLARE_PRIVATE(MCurrentWindowOrientationProvider)

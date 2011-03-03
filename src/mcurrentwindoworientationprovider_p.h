@@ -4,7 +4,6 @@
 #include <contextprovider/ContextProvider>
 
 class MCurrentWindowOrientationProvider;
-class MCompositeManagerPrivate;
 
 class MCurrentWindowOrientationProviderPrivate
 {
@@ -14,8 +13,6 @@ public:
     ContextProvider::Service service;
     ContextProvider::Property property;
     unsigned currentWindowOrientationAngle;
-
-    MCompositeManagerPrivate* mc_priv;
 
     MCurrentWindowOrientationProvider* q_ptr;
 };

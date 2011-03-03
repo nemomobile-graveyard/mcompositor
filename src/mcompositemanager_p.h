@@ -20,6 +20,8 @@
 #ifndef DUICOMPOSITEMANAGER_P_H
 #define DUICOMPOSITEMANAGER_P_H
 
+#include "mcurrentwindoworientationprovider.h"
+
 #include <QObject>
 #include <QHash>
 #include <QPixmap>
@@ -127,7 +129,7 @@ public:
     void setWindowStateForTransients(MWindowPropertyCache *pc, int state);
     
     void roughSort();
-    void setCurrentApp(Window w, bool restacked);
+    void setCurrentApp(MCompositeWindow *cw, bool restacked);
     bool raiseWithTransients(MWindowPropertyCache *pc,
                            int parent_idx, QList<int> *anewpos = NULL);
     MCompositeScene *watch;
@@ -164,7 +166,7 @@ public:
     bool overlay_mapped;
     bool changed_properties;
     MDeviceState *device_state;
-    MCurrentWindowOrientationProvider *orientationProvider;
+    MCurrentWindowOrientationProvider orientationProvider;
 
     // Indicates whether MCompositeManager::prepare() has finished.
     // Used by the destructor.
