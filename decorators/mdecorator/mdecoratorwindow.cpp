@@ -348,14 +348,16 @@ void MDecoratorWindow::createQueryDialog()
                          + name + ".desktop");
         if (de.isValid() && !de.name().isEmpty()) {
             name = de.name();
-            QByteArray a = name.toUtf8();
-            // full name and abbreviation are separated by these bytes
-            char sep[3] = { 194, 156, 0 };
-            int i = a.indexOf(sep);
-            if (i > 0) {
-                a.truncate(i);
-                name = a;
-            }
+
+            // "If a translated string has many length variants, they are
+            //  separated with U+009C (STRING TERMINATOR) character, and
+            //  according to DTD for .ts file format, they should be ordered
+            //  by decreasing length." (quote from mapplicationwindow.cpp)
+            // This confuses the outlier and it decides it doesn't have space
+            // for the "not responding" string.  Only keep the full string.
+            int i = name.indexOf(QChar(0x9c));
+            if (i >= 0)
+                name.truncate(i);
         }
         XFree(cls.res_name);
     } else
