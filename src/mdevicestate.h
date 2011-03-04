@@ -41,6 +41,7 @@ public:
 
     bool displayOff() const { return display_off; }
     bool ongoingCall() const { return ongoing_call; }
+    const QString &screenTopEdge() const { return screen_topedge; }
 
 signals:
 
@@ -53,15 +54,17 @@ private slots:
     void mceDisplayStatusIndSignal(QString mode);
 #endif
     void callPropChanged();
+    void topPropChanged();
 
 private:
 
 #ifdef GLES2_VERSION
     QDBusConnection *systembus_conn;
 #endif
-    ContextProperty *call_prop;
+    ContextProperty *call_prop, *top_prop;
     bool display_off;
     bool ongoing_call;
+    QString screen_topedge;
 };
 
 #endif

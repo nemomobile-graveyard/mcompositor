@@ -25,6 +25,7 @@
 #include "mdecoratorframe.h"
 #include "mcompositemanagerextension.h"
 #include "mcompositewindowgroup.h"
+#include "msplashscreen.h"
 
 #include <QX11Info>
 #include <QGraphicsScene>
@@ -62,7 +63,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       win_id(window)
 {
     thumb_mode = false;
-    if (!mpc || (mpc && !mpc->is_valid)) {
+    if (!mpc || (mpc && !mpc->is_valid && !mpc->isVirtual())) {
         is_valid = false;
         newly_mapped = false;
         t_ping = t_reappear = damage_timer = 0;
@@ -232,7 +233,7 @@ void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
         return;
     window_obscured = new_value;
 
-    if (!no_notify) {
+    if (!no_notify && !pc->isVirtual()) {
         XVisibilityEvent c;
         c.type       = VisibilityNotify;
         c.send_event = True;
@@ -301,6 +302,10 @@ void MCompositeWindow::restore(const QRectF &icongeometry, bool defer)
 
 bool MCompositeWindow::showWindow()
 {
+    if (type() == MSplashScreen::Type) {
+        q_fadeIn();
+        return true;
+    }
     // defer putting this window in the _NET_CLIENT_LIST
     // only after animation is done to prevent the switcher from rendering it
     if (!isAppWindow() || !pc || !pc->is_valid
@@ -727,7 +732,7 @@ bool MCompositeWindow::windowVisible() const
 
 bool MCompositeWindow::isAppWindow(bool include_transients)
 {
-    if (pc && pc->is_valid)
+    if (pc && (pc->is_valid || pc->isVirtual()))
         return pc->isAppWindow(include_transients);
     else
         return false;

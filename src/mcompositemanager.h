@@ -169,14 +169,6 @@ public slots:
     void enableCompositing(bool forced = false);
     void disableCompositing();
 
-    /*! Invoked remotely by MRmiClient to show a launch indicator
-     *
-     * \param timeout seconds elapsed to hide the launch indicator in case
-     * window does not yet appear.
-     */
-    void showLaunchIndicator(int timeout);
-    void hideLaunchIndicator();
-
     /*!
      * Invoke to show the desktop window, possibly with switcher contents
      */
@@ -212,6 +204,7 @@ private:
     friend class MTexturePixmapPrivate;
     friend class MWindowPropertyCache;
     friend class MCompositeWindowGroup;
+    friend class MSplashScreen;
 };
 
 #endif

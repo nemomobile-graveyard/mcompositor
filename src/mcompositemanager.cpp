@@ -29,6 +29,7 @@
 #include "mcompmgrextensionfactory.h"
 #include "mcurrentwindoworientationprovider.h"
 #include "mcompositordebug.h"
+#include "msplashscreen.h"
 
 #include <QX11Info>
 #include <QByteArray>
@@ -82,9 +83,6 @@ Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
 Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
 MCompAtoms *MCompAtoms::d = 0;
 static KeyCode switcher_key = 0;
-
-// temporary launch indicator. will get replaced later
-static QGraphicsTextItem *launchIndicator = 0;
 
 static bool should_be_pinged(MCompositeWindow *cw);
 static bool compareWindows(Window w_a, Window w_b);
@@ -178,6 +176,7 @@ MCompAtoms::MCompAtoms()
         "_NET_WM_USER_TIME_WINDOW",
         "WM_STATE",
         "WM_NAME",
+        "WM_CLASS",
 
         // misc
         "_NET_WM_PID",
@@ -202,6 +201,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_MSTATUSBAR_GEOMETRY",
         "_MEEGOTOUCH_CUSTOM_REGION",
         "_MEEGOTOUCH_ORIENTATION_ANGLE",
+        "_MEEGO_SPLASH_SCREEN",
         "_MEEGO_LOW_POWER_MODE",
 
 #ifdef WINDOW_DEBUG
@@ -551,7 +551,8 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       changed_properties(false),
       prepared(false),
       stacking_timeout_check_visibility(false),
-      stacking_timeout_timestamp(CurrentTime)
+      stacking_timeout_timestamp(CurrentTime),
+      splash(0)
 {
     xcb_conn = XGetXCBConnection(QX11Info::display());
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
@@ -627,29 +628,31 @@ void MCompositeManagerPrivate::prepare()
 {
     MDecoratorFrame::instance();
     watch->prepareRoot();
-    Window w;
     QString wm_name = "MCompositor";
 
-    w = XCreateSimpleWindow(QX11Info::display(),
+    wm_window = XCreateSimpleWindow(QX11Info::display(),
                             RootWindow(QX11Info::display(), 0),
                             0, 0, 1, 1, 0,
                             None, None);
     XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
                     ATOM(_NET_SUPPORTING_WM_CHECK), XA_WINDOW, 32,
-                    PropModeReplace, (unsigned char *)&w, 1);
-    XChangeProperty(QX11Info::display(), w, ATOM(_NET_SUPPORTING_WM_CHECK),
-                    XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
-    XChangeProperty(QX11Info::display(), w, ATOM(_NET_WM_NAME),
+                    PropModeReplace, (unsigned char *)&wm_window, 1);
+    XChangeProperty(QX11Info::display(), wm_window,
+                    ATOM(_NET_SUPPORTING_WM_CHECK),
+                    XA_WINDOW, 32, PropModeReplace,
+                    (unsigned char *)&wm_window, 1);
+    XChangeProperty(QX11Info::display(), wm_window, ATOM(_NET_WM_NAME),
                     XInternAtom(QX11Info::display(), "UTF8_STRING", 0), 8,
                     PropModeReplace, (unsigned char *) wm_name.toUtf8().data(),
                     wm_name.size());
     setup_key_grabs();
 
-    Xutf8SetWMProperties(QX11Info::display(), w, "MCompositor",
+    Xutf8SetWMProperties(QX11Info::display(), wm_window, "MCompositor",
                          "MCompositor", NULL, 0, NULL, NULL,
                          NULL);
     Atom a = XInternAtom(QX11Info::display(), "_NET_WM_CM_S0", False);
-    XSetSelectionOwner(QX11Info::display(), a, w, 0);
+    XSetSelectionOwner(QX11Info::display(), a, wm_window, 0);
+    XSelectInput(QX11Info::display(), wm_window, PropertyChangeMask);
 
     xoverlay = XCompositeGetOverlayWindow(QX11Info::display(),
                                           RootWindow(QX11Info::display(), 0));
@@ -776,9 +779,51 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
     }
 }
 
+void MCompositeManagerPrivate::splashTimeout()
+{
+    splash->hide();
+    prop_caches.remove(splash->window());
+    removeWindow(splash->window());
+    splash->deleteLater();
+    splash = 0;
+    glwidget->update();
+    dirtyStacking(false);
+}
+
 void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 {
     MWindowPropertyCache *pc;
+
+    if (e->atom == ATOM(_MEEGO_SPLASH_SCREEN) && e->window == wm_window
+        && e->state == PropertyNewValue) {
+        if (MWindowPropertyCache::readSplashProperty()) {
+            if (splash)
+                splashTimeout();
+            splash = new MSplashScreen(MWindowPropertyCache::splashPID(),
+                                   MWindowPropertyCache::splashWMClass(),
+                                   MWindowPropertyCache::splashFilePortrait(),
+                                   MWindowPropertyCache::splashFileLandscape(),
+                                   MWindowPropertyCache::splashPixmapID());
+            if (!splash->windowPixmap()) {
+                // no pixmap and/or failed to load the image file
+                splash->deleteLater();
+                splash = 0;
+                return;
+            }
+            // it has a fake window ID
+            windows[splash->window()] = splash;
+            prop_caches[splash->window()] = splash->propertyCache();
+            setWindowState(splash->window(), NormalState);
+            STACKING("adding 0x%lx to stack", splash->window());
+            stacking_list.append(splash->window());
+            roughSort();
+            splash->setZValue(stacking_list.indexOf(splash->window()));
+            addItem(splash);
+            splash->showWindow();
+            dirtyStacking(false);
+        }
+        return;
+    }
 
     if (!prop_caches.contains(e->window))
         return;
@@ -1492,6 +1537,7 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
         Window iw = stacking_list.at(i);
         MWindowPropertyCache *pc = prop_caches.value(iw, 0);
         if (!pc || !pc->isMapped() || !pc->wantsFocus() || pc->isDecorator()
+            || pc->isVirtual()
             || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
             continue;
         if (!pc->isOverrideRedirect() &&
@@ -1564,7 +1610,7 @@ void MCompositeManagerPrivate::pingTopmost()
              saw_desktop = true;
              continue;
          }
-         if (!(cw = COMPOSITE_WINDOW(w)))
+         if (!(cw = COMPOSITE_WINDOW(w)) || cw->propertyCache()->isVirtual())
              continue;
          if (!found && !saw_desktop && cw->isMapped() && should_be_pinged(cw)) {
              cw->startPing();
@@ -1852,8 +1898,12 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     bool restacked = false;
     if (xrestackwindows_error || order_changed) {
         QList<Window> reverse;
-        for (int i = last_i; i >= 0; --i)
+        for (int i = last_i; i >= 0; --i) {
+            MWindowPropertyCache *pc = prop_caches.value(stacking_list.at(i),
+                                                         0);
+            if (pc && pc->isVirtual()) continue;
             reverse.append(stacking_list.at(i));
+        }
 
         // Log the actual arguments of XRestackWindows().
         STACKING("XRestackWindows([%s])",
@@ -1880,10 +1930,11 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         // decorator and OR windows are not included to the property
         QList<Window> no_decors = only_mapped;
         for (int i = 0; i <= last_i; ++i) {
-             MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
-             if (witem && witem->isMapped() &&
-                 (witem->propertyCache()->isOverrideRedirect()
-                  || witem->propertyCache()->isDecorator()))
+             MWindowPropertyCache *pc = prop_caches.value(stacking_list.at(i),
+                                                          0);
+             if (pc && pc->isMapped() &&
+                 (pc->isOverrideRedirect() || pc->isVirtual()
+                  || pc->isDecorator()))
                  no_decors.removeOne(stacking_list.at(i));
         }
         XChangeProperty(QX11Info::display(),
@@ -1907,7 +1958,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         Window w = stacking_list.at(i);
         if (!w) continue;
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (!cw || !cw->propertyCache() || !cw->propertyCache()->is_valid)
+        if (!cw || !cw->propertyCache() || !cw->propertyCache()->is_valid
+            || cw->propertyCache()->isVirtual())
             continue;
         if (cw->propertyCache()->winId() == duihome)
             break;
@@ -1981,17 +2033,17 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         || win == home_button_win || e->event != QX11Info::appRootWindow())
         return;
 
-    MWindowPropertyCache *wpc = getPropertyCache(win);
-    if (!wpc)
+    MWindowPropertyCache *pc = getPropertyCache(win);
+    if (!pc || !pc->is_valid)
         return;
 
-    wpc->setBeingMapped(false);
-    wpc->setIsMapped(true);
+    pc->setBeingMapped(false);
+    pc->setIsMapped(true);
 
 #ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
     FrameData fd = framed_windows.value(win);
     if (fd.frame) {
-        QRect a = wpc->realGeometry();
+        QRect a = pc->realGeometry();
         XConfigureEvent c;
         c.type = ConfigureNotify;
         c.send_event = True;
@@ -2009,7 +2061,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     }
 #endif // ENABLE_BROKEN_SIMPLEWINDOWFRAME
 
-    MCompAtoms::Type wtype = wpc->windowType();
+    MCompAtoms::Type wtype = pc->windowType();
     // simple stacking model legacy code...
     if (wtype == MCompAtoms::DESKTOP) {
         stack[DESKTOP_LAYER] = win;
@@ -2017,21 +2069,11 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         stack[INPUT_LAYER] = win;
     } else if (wtype == MCompAtoms::DOCK) {
         stack[DOCK_LAYER] = win;
-    } else {
-        if ((wtype == MCompAtoms::FRAMELESS || wtype == MCompAtoms::NORMAL)
-                && !wpc->isDecorator()
-                && (wpc->parentWindow() == RootWindow(QX11Info::display(), 0))
-                && (e->event == QX11Info::appRootWindow())) {
-            hideLaunchIndicator();
-        }
     }
 
-    MWindowPropertyCache *pc = 0;
     MCompositeWindow *item = COMPOSITE_WINDOW(win);
     if (item) {
         item->setIsMapped(true);
-        pc = item->propertyCache();
-        if (!pc) return;
         if (!pc->isDecorator() && !pc->isOverrideRedirect()
             && windows_as_mapped.indexOf(win) == -1)
             windows_as_mapped.append(win);
@@ -2056,6 +2098,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         } else
             item->saveBackingStore();
         if (!pc->alwaysMapped() && e->send_event == False
+            && (!splash || !splash->matches(pc))
             && !pc->isInputOnly() && !skipStartupAnim(pc)) {
             item->setNewlyMapped(true);
             if (!item->showWindow()) {
@@ -2070,8 +2113,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     }
 
     // only composite top-level windows
-    if ((wpc->parentWindow() == RootWindow(QX11Info::display(), 0))
-            && (e->event == QX11Info::appRootWindow())) {
+    if (pc->parentWindow() == RootWindow(QX11Info::display(), 0)) {
         item = bindWindow(win);
         if (!item)
             return;
@@ -2082,6 +2124,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
                      << overhead_measure.elapsed();
 #endif
         if (!pc->alwaysMapped() && e->send_event == False
+            && (!splash || !splash->matches(pc))
             && !pc->isInputOnly() && item->isAppWindow()
             && !skipStartupAnim(pc)) {
             if (!item->showWindow()) {
@@ -2104,7 +2147,7 @@ stack_and_return:
     if (!pc || (e->event != QX11Info::appRootWindow()) || !item) {
         // only handle the MapNotify sent for the root window
         prop_caches.remove(win);
-        delete wpc;
+        delete pc;
         return;
     }
 
@@ -2147,6 +2190,9 @@ stack_and_return:
             roughSort();
         }
     }
+    if (splash && splash->matches(pc))
+        // TODO: cross-fade animation
+        splashTimeout();
 
     dirtyStacking(false);
 }
@@ -2579,6 +2625,8 @@ void MCompositeManagerPrivate::setWindowState(Window w, int state, int level)
             setWindowStateForTransients(pc, state, level);
     }
 
+    if (pc && pc->isVirtual())
+        return;
     CARD32 d[2];
     d[0] = state;
     d[1] = None;
@@ -3301,8 +3349,10 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
 void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
 {
     watch->addItem(item);
-    updateWinList();
-    setWindowDebugProperties(item->window());
+    if (!item->propertyCache()->isVirtual()) {
+        updateWinList();
+        setWindowDebugProperties(item->window());
+    }
 
     connect(item, SIGNAL(lastAnimationFinished(MCompositeWindow *)),
                 SLOT(onAnimationsFinished(MCompositeWindow *)));
@@ -3592,26 +3642,6 @@ void MCompositeManagerPrivate::installX11EventFilter(long xevent,
                                                      MCompositeManagerExtension* extension)
 {
     m_extensions.insert(xevent, extension);
-}
-
-void MCompositeManagerPrivate::showLaunchIndicator(int timeout)
-{
-    if (!launchIndicator) {
-        launchIndicator = new QGraphicsTextItem("launching...");
-        scene()->addItem(launchIndicator);
-        launchIndicator->setPos((scene()->sceneRect().width() / 2) -
-                                - (launchIndicator->boundingRect().width() / 2),
-                                (scene()->sceneRect().height() / 2) -
-                                (launchIndicator->boundingRect().width() / 2));
-    }
-    launchIndicator->show();
-    QTimer::singleShot(timeout * 1000, this, SLOT(hideLaunchIndicator()));
-}
-
-void MCompositeManagerPrivate::hideLaunchIndicator()
-{
-    if (launchIndicator)
-        launchIndicator->hide();
 }
 
 #ifdef WINDOW_DEBUG
@@ -4150,16 +4180,6 @@ void MCompositeManager::enableCompositing(bool forced)
 void MCompositeManager::disableCompositing()
 {
     d->disableCompositing();
-}
-
-void MCompositeManager::showLaunchIndicator(int timeout)
-{
-    d->showLaunchIndicator(timeout);
-}
-
-void MCompositeManager::hideLaunchIndicator()
-{
-    d->hideLaunchIndicator();
 }
 
 bool MCompositeManager::isCompositing()

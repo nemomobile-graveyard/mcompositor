@@ -49,6 +49,11 @@ public:
 
 xcb_render_query_pict_formats_reply_t *MWindowPropertyCache::pict_formats_reply = 0;
 xcb_render_query_pict_formats_cookie_t MWindowPropertyCache::pict_formats_cookie = {0};
+unsigned int MWindowPropertyCache::splash_pid;
+QString MWindowPropertyCache::splash_wm_class;
+QString MWindowPropertyCache::splash_portrait;
+QString MWindowPropertyCache::splash_landscape;
+unsigned int MWindowPropertyCache::splash_pixmap;
 
 // Returns whether the property of @collector does not need to be refreshed:
 // if it has been requested and it has been replied.
@@ -699,6 +704,9 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     } else if (e->atom == ATOM(WM_NAME)) {
         addRequest(SLOT(wmName()),
                    requestProperty(MCompAtoms::WM_NAME, XCB_ATOM_STRING, 100));
+    } else if (e->atom == ATOM(WM_CLASS)) {
+        wm_class[0].clear();
+        wm_class[1].clear();
     }
     return false;
 }
@@ -1032,6 +1040,36 @@ const QString &MWindowPropertyCache::wmName()
     return wm_name;
 }
 
+const QString *MWindowPropertyCache::wmClass()
+{
+    if (!wm_class[0].isEmpty() || !wm_class[0].isEmpty())
+        return wm_class;
+    xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c;
+    c = xcb_get_property(xcb_conn, 0, window, ATOM(WM_CLASS),
+                         XCB_ATOM_STRING, 0, 1000);
+    wm_class[0].clear();
+    wm_class[1].clear();
+    r = xcb_get_property_reply(xcb_conn, c, 0);
+    if (r) {
+        int len = xcb_get_property_value_length(r);
+        if (len > 0) {
+            QByteArray a((const char*)xcb_get_property_value(r), len);
+            while (a.endsWith('\0'))
+                a.chop(1);
+            QList<QByteArray> l = a.split('\0');
+            if (l.size() < 2)
+                qWarning("WM_CLASS has only %d items", l.size());
+            else {
+                wm_class[0] = QString(l.at(0).data());
+                wm_class[1] = QString(l.at(1).data());
+            }
+        }
+        free(r);
+    }
+    return wm_class;
+}
+
 void MWindowPropertyCache::shapeRefresh()
 {
     if (!is_valid)
@@ -1040,6 +1078,59 @@ void MWindowPropertyCache::shapeRefresh()
                xcb_shape_get_rectangles(xcb_conn, window,
                                         ShapeBounding).sequence);
 }
+
+bool MWindowPropertyCache::readSplashProperty()
+{
+    xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c;
+    bool ret = false;
+    MCompositeManager *m = (MCompositeManager*)qApp;
+    c = xcb_get_property(xcb_conn, 0, m->d->wm_window,
+                         ATOM(_MEEGO_SPLASH_SCREEN),
+                         XCB_ATOM_STRING, 0, 1000);
+    splash_pid = splash_pixmap = 0;
+    splash_wm_class.clear();
+    splash_portrait.clear();
+    splash_landscape.clear();
+    r = xcb_get_property_reply(xcb_conn, c, 0);
+    if (r) {
+        int len = xcb_get_property_value_length(r);
+        if (len >= 3 + 4 /* 3 separators + 4 non-empty items */) {
+            QByteArray a((const char*)xcb_get_property_value(r), len);
+            while (a.endsWith('\0'))
+                a.chop(1);
+            QList<QByteArray> l = a.split('\0');
+            if (l.size() < 4)
+                qWarning("_MEEGO_SPLASH_SCREEN has only %d items", l.size());
+            else {
+                splash_pid = l.at(0).toUInt();
+                splash_wm_class = l.at(1).data();
+                splash_portrait = l.at(2).data();
+                splash_landscape = l.at(3).data();
+                if (l.size() >= 5)
+                    splash_pixmap = l.at(4).toUInt();
+                ret = true;
+            }
+        }
+        free(r);
+    }
+    return ret;
+}
+
+unsigned int MWindowPropertyCache::splashPID()
+{ return MWindowPropertyCache::splash_pid; }
+
+const QString &MWindowPropertyCache::splashWMClass()
+{ return MWindowPropertyCache::splash_wm_class; }
+
+const QString &MWindowPropertyCache::splashFilePortrait()
+{ return MWindowPropertyCache::splash_portrait; }
+
+const QString &MWindowPropertyCache::splashFileLandscape()
+{ return MWindowPropertyCache::splash_landscape; }
+
+unsigned int MWindowPropertyCache::splashPixmapID()
+{ return MWindowPropertyCache::splash_pixmap; }
 
 bool MWindowPropertyCache::isAppWindow(bool include_transients)
 {

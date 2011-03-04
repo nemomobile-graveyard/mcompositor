@@ -22,6 +22,9 @@
 #include "mcompositescene.h"
 #include "mcompositemanager.h"
 
+#define TMPDIR "/tmp"
+#define HACKDIR ".mcompositor-qt-plugin-hack"
+
 int main(int argc, char *argv[])
 {
     // We don't need meego graphics system
@@ -33,9 +36,30 @@ int main(int argc, char *argv[])
     setenv("CONTEXT_COMMANDING", "1", 1);
 #endif
     
-    // Don't load any Qt plugins
-    QCoreApplication::setLibraryPaths(QStringList());
+    // Load only Qt plugins that are for image formats. This seems to be
+    // possible only with some hackery (otherwise we load e.g. style plugins).
+    QStringList oldpath = QCoreApplication::libraryPaths();
+    if (!oldpath.size())
+        oldpath.append(QString("/usr/lib/qt4/plugins"));
+    QDir tmpdir(QString(TMPDIR));
+    tmpdir.mkdir(QString(HACKDIR));
+    bool succ = tmpdir.cd(QString(HACKDIR));
+    tmpdir.mkdir(QString("plugins"));
+    succ = succ && tmpdir.cd(QString("plugins"));
+    QFile fmts(QString(TMPDIR "/" HACKDIR "/plugins/imageformats"));
+    fmts.remove();
+    fmts.setFileName(oldpath[0] + QString("/imageformats"));
+    succ = succ && fmts.link(QString(TMPDIR "/" HACKDIR
+                                     "/plugins/imageformats"));
+    if (succ)
+        QCoreApplication::setLibraryPaths(
+                             QStringList(TMPDIR "/" HACKDIR "/plugins"));
+    else
+        QCoreApplication::setLibraryPaths(QStringList());
+
     QApplication::setDesktopSettingsAware(false);
+    // make QPixmap create X pixmaps
+    QApplication::setGraphicsSystem("native");
     MCompositeManager app(argc, argv);
 
     QGraphicsScene *scene = app.scene();

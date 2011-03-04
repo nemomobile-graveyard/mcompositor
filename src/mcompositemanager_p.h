@@ -44,6 +44,7 @@ class MDeviceState;
 class MWindowPropertyCache;
 class MCompositeManagerExtension;
 class MCurrentWindowOrientationProvider;
+class MSplashScreen;
 
 enum {
     INPUT_LAYER = 0,
@@ -136,7 +137,7 @@ public:
     bool raiseWithTransients(MWindowPropertyCache *pc,
                            int parent_idx, QList<int> *anewpos = NULL);
     MCompositeScene *watch;
-    Window localwin, localwin_parent;
+    Window localwin, localwin_parent, wm_window;
     Window xoverlay;
     Window prev_focus;
     Window close_button_win, home_button_win, buttoned_win;
@@ -189,6 +190,7 @@ public:
     Time stacking_timeout_timestamp;
     void dirtyStacking(bool force_visibility_check, Time t = CurrentTime);
     void pingTopmost();
+    MSplashScreen *splash;
 
 signals:
     void compositingEnabled();
@@ -200,8 +202,6 @@ public slots:
     void gotHungWindow(MCompositeWindow *window, bool is_hung);
     void enableCompositing();
     void disableCompositing(ForcingLevel forced = NO_FORCED);
-    void showLaunchIndicator(int timeout);
-    void hideLaunchIndicator();
 
     void lowerHandler(MCompositeWindow *window);
     void restoreHandler(MCompositeWindow *window);
@@ -214,6 +214,7 @@ public slots:
     void callOngoing(bool call_ongoing);
     void stackingTimeout();
     void setupButtonWindows(Window topmost);
+    void splashTimeout();
 };
 
 #endif
