@@ -100,8 +100,8 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
             if (!cw->propertyCache())  // this window is dead
                 continue;
             if (cw->propertyCache()->isDecorator() &&
-                (man = MDecoratorFrame::instance()->managedClient()) &&
-                man->isWindowTransitioning())
+                (!(man = MDecoratorFrame::instance()->managedClient()) ||
+                 man->isWindowTransitioning()))
                 // if we have a transition animation, don't draw the decorator
                 // lest we can have it drawn with the transition (especially
                 // when desktop window is not yet shown, NB#192454)

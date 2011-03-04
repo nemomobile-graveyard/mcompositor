@@ -65,6 +65,10 @@ public:
     // this is called on ConfigureNotify
     void setRealGeometry(const QRect &rect);
 
+    // This is where MCompositeManager stores the expectResize().
+    // Until its ConfigureNotify arrives, they are ignored.
+    QRect &expectedGeometry() { return expected_geom; }
+
     Window winId() const { return window; }
     Window parentWindow() const { return parent_window; }
     void setParentWindow(Window w) { parent_window = w; }
@@ -246,7 +250,7 @@ private:
     QList<Atom> net_wm_state;
     // geometry is requested only once in the beginning, after that, we
     // use ConfigureNotifys to update the size through setRealGeometry()
-    QRect req_geom, real_geom, statusbar_geom;
+    QRect req_geom, real_geom, expected_geom, statusbar_geom;
     QRect home_button_geom, close_button_geom;
     XWMHints *wmhints;
     xcb_get_window_attributes_reply_t *attrs;
