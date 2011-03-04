@@ -325,23 +325,3 @@ GLuint MCompositeWindowGroup::texture()
     Q_D(MCompositeWindowGroup);
     return d->texture;
 }
-
-void MCompositeWindowGroup::beginAnimation()
-{
-    Q_D(MCompositeWindowGroup);
-    d->main_window->beginAnimation();
-    for (int i = 0; i < d->item_list.size(); ++i) {
-        MTexturePixmapItem* item = d->item_list[i];
-        item->beginAnimation();
-    }
-}
-
-void MCompositeWindowGroup::endAnimation()
-{
-    Q_D(MCompositeWindowGroup);
-    d->main_window->endAnimation();
-    for (int i = 0; i < d->item_list.size(); ++i) {
-        MTexturePixmapItem* item = d->item_list[i];
-        item->endAnimation();
-    }
-}
