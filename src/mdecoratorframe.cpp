@@ -179,7 +179,7 @@ void MDecoratorFrame::decoratorRectChanged(const QRect& r)
     // always store the available rect info from remote decorator
     available_rect = r;
 
-    if (!client || no_resize || !decorator_item
+    if (!client || no_resize || !decorator_item || r.isEmpty()
         || !decorator_item->propertyCache())
         return;
     

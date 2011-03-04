@@ -1093,9 +1093,16 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
         return;
 
     MWindowPropertyCache *pc = prop_caches.value(e->window, 0);
-    if (pc && pc->is_valid) {
-        MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
-        bool check_visibility = false;
+    if (!pc || !pc->is_valid)
+        return;
+
+    bool check_visibility = false;
+    MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
+    QRect &exp = pc->expectedGeometry();
+    if (exp == QRect(e->x, e->y, e->width, e->height))
+        exp = QRect();
+
+    if (exp.isEmpty()) {
         QRect g = pc->realGeometry();
         if (e->x != g.x() || e->y != g.y() || e->width != g.width() ||
             e->height != g.height()) {
@@ -1109,12 +1116,11 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
                 item->setPos(e->x, e->y);
             item->resize(e->width, e->height);
         }
+    }
 
-        if (nostacking)
-            // Just MDecoratorFrame let us know the position
-            // of the managed window in advance.
-            return;
-
+    // Don't mess with stacking if it's just MDecoratorFrame wanting
+    // to let us know the position of the managed window in advance.
+    if (!nostacking) {
         if (check_visibility ||
             // restack & reset decorator's managed window
             (item && pc->isMapped() && item->needDecoration()))
@@ -1874,8 +1880,13 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     int top_decorated_i;
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
     if (highest_d && !highest_d->isWindowTransitioning()) {
-        bool fs = FULLSCREEN_WINDOW(highest_d->propertyCache());
-        deco->setManagedWindow(highest_d, fs, fs);
+        if (highest_d->status() == MCompositeWindow::Hung)
+            deco->setManagedWindow(highest_d, true);
+        else if (FULLSCREEN_WINDOW(highest_d->propertyCache())
+                 && device_state->ongoingCall())
+            deco->setManagedWindow(highest_d, true, true);
+        else
+            deco->setManagedWindow(highest_d);
     } else if (!highest_d)
         deco->setManagedWindow(0);
     /* raise/lower decorator */
@@ -2524,6 +2535,14 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
         setWindowStateForTransients(pc, IconicState);
         roughSort();
     }
+
+    // let MCompositeScene::drawItems() know @deco is useless
+    // and not to be drawn before we had a chance to stack it
+    // to the bottom
+    MDecoratorFrame *deco = MDecoratorFrame::instance();
+    if (deco->managedClient() == window)
+        deco->setManagedWindow(0);
+
     // checkStacking() will redirect windows for the switcher
     dirtyStacking(false);
 }
@@ -3377,6 +3396,7 @@ void MCompositeManager::expectResize(MCompositeWindow *cw, const QRect &r)
     xev.width = r.width();
     xev.height = r.height();
     d->configureEvent(&xev, true);
+    cw->propertyCache()->expectedGeometry() = r;
 }
 
 void MCompositeManager::positionWindow(Window w,
