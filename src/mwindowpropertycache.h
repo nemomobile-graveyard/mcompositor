@@ -53,7 +53,7 @@ public:
                          Damage damage_obj = 0);
     virtual ~MWindowPropertyCache();
 
-    MCompAtoms::Type windowType();
+    virtual MCompAtoms::Type windowType();
 
     void setRequestedGeometry(const QRect &rect) {
         req_geom = rect;
@@ -102,7 +102,7 @@ public:
     void setStackedUnmapped(bool s) { stacked_unmapped = s; }
     bool stackedUnmapped() const { return stacked_unmapped; }
 
-    bool isMapped() const {
+    virtual bool isMapped() const {
         if (!is_valid || !attrs)
             return false;
         return attrs->map_state == XCB_MAP_STATE_VIEWABLE;
@@ -143,15 +143,15 @@ public:
 
 public slots:
     bool isDecorator();
-    Atom windowTypeAtom();
+    virtual Atom windowTypeAtom();
 
     const XWMHints &getWMHints();
     const QRect realGeometry();
     const QRectF &iconGeometry();
-    const QRegion &shapeRegion();
+    virtual const QRegion &shapeRegion();
     void shapeRefresh();
 
-    bool hasAlpha();
+    virtual bool hasAlpha();
     int globalAlpha();
     int videoGlobalAlpha();
 
@@ -192,6 +192,8 @@ public slots:
 
     // WM_NAME
     const QString &wmName();
+    // WM_CLASS: array of two QStrings
+    const QString *wmClass();
 
 public:
     /*!
@@ -223,6 +225,21 @@ public:
      * Returns whether this is an application window
      */
     bool isAppWindow(bool include_transients = false);
+
+    /*! 
+     * Following accessors are for the _MEEGO_SPLASH_SCREEN window property.
+     */
+    static bool readSplashProperty();
+    static unsigned int splashPID();
+    static const QString &splashWMClass();
+    static const QString &splashFilePortrait();
+    static const QString &splashFileLandscape();
+    static unsigned int splashPixmapID();
+
+    /*! 
+     * Is this a special property cache without a corresponding X window?
+     */
+    virtual bool isVirtual() const { return false; }
 
 signals:
     void iconGeometryUpdated();
@@ -315,8 +332,14 @@ private:
     static xcb_connection_t *xcb_conn;
     static xcb_render_query_pict_formats_reply_t *pict_formats_reply;
     static xcb_render_query_pict_formats_cookie_t pict_formats_cookie;
+    static unsigned int splash_pid;
+    static QString splash_wm_class;
+    static QString splash_portrait;
+    static QString splash_landscape;
+    static unsigned int splash_pixmap;
     Damage damage_object;
     QString wm_name;
+    QString wm_class[2];
 };
 
 // Non-deletable dummy MWindowPropertyCache.

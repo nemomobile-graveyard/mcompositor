@@ -50,14 +50,22 @@ void MDeviceState::callPropChanged()
     }
 }
 
+void MDeviceState::topPropChanged()
+{
+    screen_topedge = top_prop->value().toString();
+}
+
 MDeviceState::MDeviceState(QObject* parent)
     : QObject(parent),
-      ongoing_call(false)
+      ongoing_call(false),
+      screen_topedge("top")
 {
     display_off = false;
 
     call_prop = new ContextProperty("Phone.Call");
     connect(call_prop, SIGNAL(valueChanged()), this, SLOT(callPropChanged()));
+    top_prop = new ContextProperty("Screen.TopEdge");
+    connect(top_prop, SIGNAL(valueChanged()), this, SLOT(topPropChanged()));
 
 #ifdef GLES2_VERSION
     systembus_conn = new QDBusConnection(QDBusConnection::systemBus());

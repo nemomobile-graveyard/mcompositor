@@ -75,6 +75,7 @@ public:
         _NET_WM_USER_TIME_WINDOW,
         WM_STATE,
         WM_NAME,
+        WM_CLASS,
 
         // misc
         _NET_WM_PID,
@@ -100,6 +101,7 @@ public:
         _MEEGOTOUCH_MSTATUSBAR_GEOMETRY,
         _MEEGOTOUCH_CUSTOM_REGION,
         _MEEGOTOUCH_ORIENTATION_ANGLE,
+        _MEEGO_SPLASH_SCREEN,
 
 #ifdef WINDOW_DEBUG
         _M_WM_INFO,
