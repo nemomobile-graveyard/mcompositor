@@ -553,7 +553,7 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
     if (item->propertyCache())
         item->propertyCache()->damageTracking(false);
 
-    if (windowp)
+    if (windowp && !item->propertyCache()->isVirtual())
         XFreePixmap(QX11Info::display(), windowp);
 
     if (pastDamages)
@@ -562,6 +562,11 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
 
 void MTexturePixmapPrivate::saveBackingStore()
 {
+    if (item->propertyCache()->isVirtual()) {
+        windowp = item->windowPixmap();
+        item->rebindPixmap();
+        return;
+    }
     if ((item->propertyCache()->is_valid && !item->propertyCache()->isMapped())
         || item->propertyCache()->isInputOnly()
         || !window)

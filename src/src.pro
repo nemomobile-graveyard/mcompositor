@@ -40,6 +40,7 @@ HEADERS += \
     mdevicestate.h \
     mcompatoms_p.h \
     mdecoratorframe.h \
+    msplashscreen.h \
     mcompositemanagerextension.h \
     mcompositewindowshadereffect.h \
     mcompmgrextensionfactory.h \
@@ -55,6 +56,7 @@ SOURCES += \
     mcompositemanager.cpp \
     mdevicestate.cpp \
     mdecoratorframe.cpp \
+    msplashscreen.cpp \
     mcompositemanagerextension.cpp \
     mcompositewindowshadereffect.cpp \
     mcurrentwindoworientationprovider.cpp \

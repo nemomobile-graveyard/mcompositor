@@ -125,7 +125,8 @@ EGLDisplay EglResourceManager::dpy = 0;
 
 void MTexturePixmapItem::init()
 {
-    if (!isValid() || propertyCache()->isInputOnly())
+    if ((!isValid() && !propertyCache()->isVirtual())
+        || propertyCache()->isInputOnly())
         return;
     
     if (!d->eglresource)
@@ -187,10 +188,10 @@ void MTexturePixmapItem::rebindPixmap()
 
 void MTexturePixmapItem::enableDirectFbRendering()
 {
-    if (d->direct_fb_render)
+    if (d->direct_fb_render || propertyCache()->isVirtual())
         return;
-    if (d->item->propertyCache())
-        d->item->propertyCache()->damageTracking(false);
+    if (propertyCache())
+        propertyCache()->damageTracking(false);
 
     d->direct_fb_render = true;
 
@@ -205,10 +206,10 @@ void MTexturePixmapItem::enableDirectFbRendering()
 
 void MTexturePixmapItem::enableRedirectedRendering()
 {
-    if (!d->direct_fb_render)
+    if (!d->direct_fb_render || propertyCache()->isVirtual())
         return;
-    if (d->item->propertyCache())
-        d->item->propertyCache()->damageTracking(true);
+    if (propertyCache())
+        propertyCache()->damageTracking(true);
 
     d->direct_fb_render = false;
     XCompositeRedirectWindow(QX11Info::display(), window(),
@@ -220,7 +221,7 @@ void MTexturePixmapItem::enableRedirectedRendering()
 MTexturePixmapItem::~MTexturePixmapItem()
 {
     cleanup();
-    delete d;
+    delete d; // frees the pixmap too
 }
 
 void MTexturePixmapItem::initCustomTfp()
@@ -234,11 +235,6 @@ void MTexturePixmapItem::cleanup()
 {
     freeEglImage(d);
     d->eglresource->texman->closeTexture(d->textureId);
-
-    if (d->windowp) {
-        XFreePixmap(QX11Info::display(), d->windowp);
-        d->windowp = 0;
-    }
 }
 
 void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
