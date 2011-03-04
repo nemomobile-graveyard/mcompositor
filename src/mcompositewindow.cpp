@@ -18,7 +18,7 @@
 ****************************************************************************/
 
 #include "mcompositewindow.h"
-#include "mcompwindowanimator.h"
+#include "mcompositewindowanimation.h"
 #include "mcompositemanager.h"
 #include "mcompositemanager_p.h"
 #include "mtexturepixmapitem.h"
@@ -40,6 +40,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
                                    QGraphicsItem *p)
     : QGraphicsItem(p),
       pc(mpc),
+      animator(0),
       scalefrom(1),
       scaleto(1),
       scaled(false),
@@ -63,16 +64,12 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     thumb_mode = false;
     if (!mpc || (mpc && !mpc->is_valid)) {
         is_valid = false;
-        anim = 0;
         newly_mapped = false;
         t_ping = t_reappear = damage_timer = 0;
         window_visible = false;
         return;
     } else
         is_valid = true;
-    anim = new MCompWindowAnimator(this);
-    connect(anim, SIGNAL(transitionDone()),  SLOT(finalizeState()));
-    connect(anim, SIGNAL(transitionStart()), SLOT(beginAnimation()));
     connect(mpc, SIGNAL(iconGeometryUpdated()), SLOT(updateIconGeometry()));
     setAcceptHoverEvents(true);
 
@@ -109,6 +106,9 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         fadeRect.setHeight(d.height()/2);
         fadeRect.moveTo(fadeRect.width()/2, fadeRect.height()/2);
     }
+
+    MCompositeWindowAnimation* a = new MCompositeWindowAnimation(this);
+    a->setTargetWindow(this);
 }
 
 MCompositeWindow::~MCompositeWindow()
@@ -119,15 +119,14 @@ MCompositeWindow::~MCompositeWindow()
         stopPing();
         t_ping = t_reappear = 0;
     }
-    endAnimation();
-    
-    anim = 0;
-    
+    endAnimation();    
     if (pc) {
         pc->damageTracking(false);
         p->d->prop_caches.remove(window());
         pc->deleteLater();
-    }    
+    }
+    if (animator)
+        delete animator;
 }
 
 void MCompositeWindow::setBlurred(bool b)
@@ -143,12 +142,12 @@ bool MCompositeWindow::blurred()
 
 void MCompositeWindow::saveState()
 {
-    anim->saveState();
+    
 }
 
 void MCompositeWindow::localSaveState()
 {
-    anim->localSaveState();
+    
 }
 
 // set the scale point to actual values
@@ -177,39 +176,25 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
     if (window_status != MCompositeWindow::Closing)
         window_status = MCompositeWindow::Minimizing;
     
-    // Custom iconify handler
-    MCompositeManager *p = (MCompositeManager *) qApp;
-    QList<MCompositeManagerExtension*> evlist = p->d->m_extensions.values(MapNotify);
-    for (int i = 0; i < evlist.size(); ++i) { 
-        if (evlist[i]->windowIconified(this, defer)) {
-            iconified = true;
-            window_status = Normal;
-            return;
-        }
-    }
-    
     this->iconGeometry = icongeometry;
     if (!iconified)
         origPosition = pos();
-
-    // horizontal and vert. scaling factors
-    qreal sx = iconGeometry.width() / boundingRect().width();
-    qreal sy = iconGeometry.height() / boundingRect().height();
-    
-    anim->deferAnimation(defer);
-    anim->translateScale(qreal(1.0), qreal(1.0), sx, sy,
-                         iconGeometry.topLeft());
     iconified = true;
-    // do this to avoid stacking code disturbing Z values
-    beginAnimation();
+    
+    // iconify handler
+    if (animator) {
+        if (defer)
+            animator->deferAnimation(MCompositeWindowAnimation::Iconify);
+        else
+            animator->windowIconified();
+        window_status = Normal;
+    }
 }
 
 void MCompositeWindow::setUntransformed()
 {
     endAnimation();
     
-    if (anim)
-        anim->stopAnimation(); // stop and restore the matrix
     newly_mapped = false;
     setVisible(true);
     setOpacity(1.0);
@@ -222,9 +207,9 @@ void MCompositeWindow::setIconified(bool iconified)
 {
     iconified_final = iconified;
     iconify_state = ManualIconifyState;
-    if (iconified && !anim->pendingAnimation())
+    if (iconified && !animator->pendingAnimation())
         emit itemIconified(this);
-    else if (!iconified && !anim->pendingAnimation())
+    else if (!iconified && !animator->pendingAnimation())
         iconify_state = NoIconifyState;
 }
 
@@ -272,10 +257,12 @@ void MCompositeWindow::startTransition()
             return;
         setWindowObscured(true);
     }
-    if (anim->pendingAnimation()) {
+    if (animator->pendingAnimation()) {
+        // don't trigger irrelevant windows
+        // if (animator->targetWindow() != this)
+        //     animator->setTargetWindow(this);
         MCompositeWindow::setVisible(true);
-        anim->startAnimation();
-        anim->deferAnimation(false);
+        animator->startTransition();
     }
 }
 
@@ -289,44 +276,27 @@ void MCompositeWindow::updateIconGeometry()
         return;
     
     // trigger transition the second time around and update animation values
-    if (iconified) {
-        qreal sx = iconGeometry.width() / boundingRect().width();
-        qreal sy = iconGeometry.height() / boundingRect().height();
-        anim->translateScale(qreal(1.0), qreal(1.0), sx, sy,
-                             iconGeometry.topLeft());
+    if (iconified) 
         startTransition();
-    }
 }
 
 // TODO: have an option of disabling the animation
 void MCompositeWindow::restore(const QRectF &icongeometry, bool defer)
 {
-     // Custom restore handler
-    MCompositeManager *p = (MCompositeManager *) qApp;
-    QList<MCompositeManagerExtension*> evlist = p->d->m_extensions.values(MapNotify);
-    for (int i = 0; i < evlist.size(); ++i) { 
-        if (evlist[i]->windowRestored(this, defer)) {
-            iconified = false;
-            return;
-        }
-    }
-
     if (icongeometry.isEmpty())
         this->iconGeometry = fadeRect;
     else
         this->iconGeometry = icongeometry;
-    setPos(iconGeometry.topLeft());
-    // horizontal and vert. scaling factors
-    qreal sx = iconGeometry.width() / boundingRect().width();
-    qreal sy = iconGeometry.height() / boundingRect().height();
-
+   
     setVisible(true);
-
-    anim->deferAnimation(defer);
-    anim->translateScale(qreal(1.0), qreal(1.0), sx, sy, origPosition, true);
     iconified = false;
-    // do this to avoid stacking code disturbing Z values
-    beginAnimation();
+     // Restore handler
+    if (animator) {
+        if (defer)
+            animator->deferAnimation(MCompositeWindowAnimation::Restore);
+        else
+            animator->windowRestored();
+    }
 }
 
 bool MCompositeWindow::showWindow()
@@ -412,16 +382,14 @@ void MCompositeWindow::q_fadeIn()
     origPosition = pos();
     newly_mapped = true;
     
-    // Custom fade-in handler
-    MCompositeManager *p = (MCompositeManager *) qApp;
-    QList<MCompositeManagerExtension*> evlist = p->d->m_extensions.values(MapNotify);
-    for (int i = 0; i < evlist.size(); ++i) { 
-        if (evlist[i]->windowShown(this)) 
-            return;
+    iconified = false;
+    // fade-in handler
+    if (animator) {
+        // always ensure the animation is visible. zvalues get corrected later 
+        // at checkStacking 
+        setZValue(((MCompositeManager *) qApp)->d->stacking_list.size()+1);
+        animator->windowShown();
     }
-    
-    setPos(fadeRect.topLeft());
-    restore(fadeRect, false);
 }
 
 void MCompositeWindow::closeWindowRequest()
@@ -461,15 +429,14 @@ void MCompositeWindow::closeWindowAnimation()
     
     origPosition = pos();
     
-    // Custom close window animation handler    
-    QList<MCompositeManagerExtension*> evlist = p->d->m_extensions.values(MapNotify);
-    for (int i = 0; i < evlist.size(); ++i) { 
-        if (evlist[i]->windowClosed(this)) {
-            window_status = Normal; // can't guarantee that Closing is cleared
-            return;
-        }
+    // fade-out handler
+    if (animator) {
+        if (defer)
+            animator->deferAnimation(MCompositeWindowAnimation::Closing);
+        else
+            animator->windowClosed();
+        window_status = Normal;
     }
-    iconify(fadeRect, defer);
 }
 
 bool MCompositeWindow::event(QEvent *e)
@@ -493,7 +460,6 @@ void MCompositeWindow::finalizeState()
 {
     // as far as this window is concerned, it's OK to direct render
     window_status = Normal;
-    endAnimation();
 
     // iconification status
     if (iconified) {
@@ -526,13 +492,13 @@ void MCompositeWindow::requestZValue(int zvalue)
 {
     // when animating, Z-value is set again after finishing the animation
     // (setting it later in finalizeState() caused flickering)
-    if (anim && !anim->isActive() && !anim->pendingAnimation())
+    if (animator && !animator->isActive() && !animator->pendingAnimation())
         setZValue(zvalue);
 }
 
 bool MCompositeWindow::isIconified() const
 {
-    if (anim->isActive())
+    if (animator->isActive())
         return false;
 
     return iconified_final;
@@ -812,4 +778,9 @@ MCompositeWindowGroup* MCompositeWindow::group() const
 #else
     return 0;
 #endif
+}
+
+MCompositeWindowAnimation* MCompositeWindow::windowAnimator() const
+{
+    return animator;
 }

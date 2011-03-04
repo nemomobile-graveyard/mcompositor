@@ -193,6 +193,7 @@ public:
 signals:
     void compositingEnabled();
     void currentAppChanged(Window w);
+    void windowBound(MCompositeWindow* window);
 
 public slots:
 

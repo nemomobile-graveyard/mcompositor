@@ -196,11 +196,18 @@ public slots:
     void remoteControl(int fd);
 #endif
 
+ signals:
+    /*!
+     * This signal is emitted the first time a window is bound as a
+     * MCompositeWindow object
+     */
+    void windowBound(MCompositeWindow* window);
+
 private:
     MCompositeManagerPrivate *d;
 
     friend class MCompositeWindow;
-    friend class MCompWindowAnimator;
+    friend class MCompositeWindowAnimation;
     friend class MCompositeManagerExtension;
     friend class MTexturePixmapPrivate;
     friend class MWindowPropertyCache;

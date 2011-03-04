@@ -29,6 +29,8 @@
 class MCompWindowAnimator;
 class MTexturePixmapPrivate;
 class MCompositeWindowGroup;
+class MCompositeWindowAnimation;
+class McParallelAnimation;
 
 /*!
  * This is the base class for composited window items. It provided general
@@ -43,6 +45,7 @@ class MCompositeWindow: public QObject, public QGraphicsItem
     Q_INTERFACES(QGraphicsItem)
     Q_PROPERTY(QPointF pos READ pos WRITE setPos)
     Q_PROPERTY(qreal scale READ scale WRITE setScale)
+    Q_PROPERTY(qreal opacity READ opacity WRITE setOpacity)
 #endif
 public:
     
@@ -314,6 +317,8 @@ public:
     void setDimmedEffect(bool dimmed) { dimmed_effect = dimmed; }
     
     bool dimmedEffect() const { return dimmed_effect; }
+
+    MCompositeWindowAnimation* windowAnimator() const;
     
 public slots:
 
@@ -327,20 +332,7 @@ public slots:
     // start unmap animation
     void closeWindowAnimation();
     bool showWindow();
-
-    /*!
-      * This slot is called whenever a start of window animation occurs. This
-      * is an atomic operation. Ensure that endTransition() is invoked when
-      * the animation is finished.
-      */
-    void beginAnimation();
     
-    /*!
-      * This slot is called whenever the window has finished animating its 
-      * effects
-      */
-     void endAnimation();
-
     /*!
      * Called when the window contents are damaged or on timeout.
      */
@@ -358,6 +350,19 @@ public slots:
     void startDialogReappearTimer();
     
 private slots:
+
+     /*!
+      * This internal slot is called whenever a start of window animation 
+      * occurs. This is an atomic operation. 
+      */
+    void beginAnimation(); 
+    
+    /*!
+      * This internal slot is called whenever the window has finished 
+      * animating its effects
+      */
+     void endAnimation();
+
 
     /*! Called internally to update how this item looks when the transitions
       are done
@@ -399,8 +404,9 @@ private:
 
     QPointer<MWindowPropertyCache> pc;
     QPointer<MCompositeWindow> behind_window;
+    QPointer<MCompositeWindowAnimation> animator;
     bool thumb_mode;
-    MCompWindowAnimator *anim;
+    //MCompWindowAnimator *anim;
     qreal scalefrom;
     qreal scaleto;
     bool scaled;
@@ -436,6 +442,8 @@ private:
 
     friend class MTexturePixmapPrivate;
     friend class MCompositeWindowShaderEffect;
+    friend class MCompositeWindowAnimation;
+    friend class McParallelAnimation;
 };
 
 #endif

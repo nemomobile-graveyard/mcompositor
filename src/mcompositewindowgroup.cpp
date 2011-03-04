@@ -325,5 +325,3 @@ GLuint MCompositeWindowGroup::texture()
     Q_D(MCompositeWindowGroup);
     return d->texture;
 }
-
-

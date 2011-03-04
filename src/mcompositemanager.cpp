@@ -2057,9 +2057,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             item->saveBackingStore();
         if (!pc->alwaysMapped() && e->send_event == False
             && !pc->isInputOnly() && !skipStartupAnim(pc)) {
-            // remapped/prestarted apps should also have startup animation
-            // FIXME: assumes this window is on top
-            item->requestZValue(scene()->items().count() + 1);
             item->setNewlyMapped(true);
             if (!item->showWindow()) {
                 item->setNewlyMapped(false);
@@ -2180,18 +2177,17 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
             bool needComp = false;
             if (d_item && d_item->isDirectRendered()
-                && raise != stack[DESKTOP_LAYER]) {
+                && raise != stack[DESKTOP_LAYER]) 
                 needComp = true;
-                enableCompositing();
-            }
             // Visibility notification to desktop window. Ensure this is sent
             // before transitions are started but after redirection
             if (event->window != stack[DESKTOP_LAYER])
                 setExposeDesktop(false);
             if (i && i->propertyCache()->windowState() == IconicState) {
-                i->setZValue(windows.size() + 1);
                 QRectF iconGeometry = i->propertyCache()->iconGeometry();
                 i->restore(iconGeometry, needComp);
+                if (needComp)
+                    enableCompositing();
             }
         } else if (event->window != stack[DESKTOP_LAYER]) {
             // unless we redirect the desktop we run the risk of using trash
@@ -3298,6 +3294,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
 
     dirtyStacking(false);
 
+    emit windowBound(item);
     return item;
 }
 
@@ -3495,8 +3492,8 @@ void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
     scene()->views()[0]->setUpdatesEnabled(true);
     // NOTE: enableRedirectedRendering() calls glwidget->update() if needed
     if (emit_signal)
-        // At this point everything should be rendered off-screen
-        emit compositingEnabled();
+        // At this point everything should be rendered off-screen 
+        emit compositingEnabled();        
 }
 
 void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
@@ -4055,6 +4052,7 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
     d = new MCompositeManagerPrivate(this);
+    connect(d, SIGNAL(windowBound(MCompositeWindow*)), SIGNAL(windowBound(MCompositeWindow*)));
     d->mayShowApplicationHungDialog = !arguments().contains("-nohung");
 
     // Publish ourselves
