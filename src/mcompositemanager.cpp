@@ -1831,29 +1831,22 @@ static int xrestackwindows_error_handler(Display *dpy, XErrorEvent *err)
     return 0;
 }
 
-#define RAISE_MATCHING(X) { \
-    first_moved = 0; \
-    for (int i = 0; i < last_i;) { \
-        Window w = stacking_list.at(i); \
-        if (w == first_moved) break; \
-        MWindowPropertyCache *pc = prop_caches.value(w, 0); \
+#define RAISE_MATCHING(X) \
+do { \
+    int last = last_i; \
+    for (int i = 0; i <= last && i < last_i; ) { \
+        Window w = stacking_list[i]; \
+        MWindowPropertyCache *pc = prop_caches.value(w); \
         if (pc && (X)) { \
-            MWindowPropertyCache *orig_pc = pc; \
-            /* find the next window to move */ \
-            Window next = 0; \
-            for (int next_i = i + 1; next_i <= last_i; ++next_i) { \
-                next = stacking_list.at(next_i); \
-                pc = prop_caches.value(next, 0); \
-                if (pc && (X)) \
-                    break; \
-                next = 0; /* in case we bail out before next assignment */ \
-            } \
-	    raiseWithTransients(orig_pc, i); \
-            if (!first_moved) first_moved = w; \
-            if (!next || (i = stacking_list.indexOf(next)) < 0) \
-                break; \
-        } else ++i; \
-    } }
+            Window next = i < last ? stacking_list[i+1] : None; \
+	    raiseWithTransients(pc, i); \
+            /* don't raised windows ever again */ \
+            last -= stacking_list.size() - stacking_list.indexOf(w); \
+            i = next ? stacking_list.indexOf(next) : last_i; \
+        } else \
+            ++i; \
+    } \
+} while (0)
 
 /* Go through stacking_list and verify that it is in order.
  * If it isn't, reorder it and call XRestackWindows.
@@ -1870,7 +1863,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         stacking_timer.stop();
         stacking_timeout_timestamp = CurrentTime;
     }
-    Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved;
+    Window active_app = 0, duihome = stack[DESKTOP_LAYER];
     int last_i = stacking_list.size() - 1;
     bool desktop_up = false, fs_app = false;
     int app_i = -1;
@@ -1925,7 +1918,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
      * non-fullscreen */
     if (desktop_up || !active_app || app_i < 0 || !aw || !fs_app)
         RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                       pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
+                       pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK));
     else if (active_app && aw && deco->decoratorItem() &&
              deco->managedWindow() == active_app) {
         // no dock => decorator starts from (0,0)
@@ -1936,12 +1929,12 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     /* raise all system-modal dialogs */
     RAISE_MATCHING(!getLastVisibleParent(pc)
                     && MODAL_WINDOW(pc) &&
-                    pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
+                    pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG));
     /* Meego layers 1-3: lock screen, ongoing call etc. */
     for (unsigned int level = 1; level < 4; ++level)
          RAISE_MATCHING(!getLastVisibleParent(pc) &&
                         pc->windowState() != IconicState
-                        && pc->meegoStackingLayer() == level)
+                        && pc->meegoStackingLayer() == level);
     /* raise all keep-above flagged, input methods and Meego layer 4
      * (incoming call), at the same time preserving their mapping order */
     RAISE_MATCHING(!getLastVisibleParent(pc) &&
@@ -1950,20 +1943,20 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
          pc->meegoStackingLayer() == 4
          || pc->isOverrideRedirect() ||
-         pc->netWmState().contains(ATOM(_NET_WM_STATE_ABOVE))))
+         pc->netWmState().contains(ATOM(_NET_WM_STATE_ABOVE))));
     // Meego layer 5
     RAISE_MATCHING(!getLastVisibleParent(pc) &&
                    pc->meegoStackingLayer() == 5
-                   && pc->windowState() != IconicState)
+                   && pc->windowState() != IconicState);
     /* raise all non-transient notifications (transient ones were already
      * handled above) */
     RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                   pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
+                   pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION));
     // Meego layer 6-10
     for (unsigned int level = 6; level <= 10; ++level)
          RAISE_MATCHING(!getLastVisibleParent(pc) &&
                         pc->windowState() != IconicState
-                        && pc->meegoStackingLayer() == level)
+                        && pc->meegoStackingLayer() == level);
 
     int top_decorated_i;
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
