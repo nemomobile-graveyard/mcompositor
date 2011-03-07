@@ -649,12 +649,10 @@ void MCompositeWindow::beginAnimation()
 void MCompositeWindow::endAnimation()
 {    
     if (is_transitioning) {
-        --window_transitioning;
         is_transitioning = false;
-        if (!window_transitioning
-            && pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
-            // it doesn't have anything to do with desktop being activated
-            emit desktopActivated(this);
+        --window_transitioning;
+        if (!window_transitioning)
+            emit lastAnimationFinished(this);
     }
 }
 

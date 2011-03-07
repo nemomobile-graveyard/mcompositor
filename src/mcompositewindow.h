@@ -386,8 +386,8 @@ signals:
     void itemRestored(MCompositeWindow *window);
     /*! Emitted just after this window gets iconified  */
     void itemIconified(MCompositeWindow *window);
-    /*! Emitted when desktop is raised */
-    void desktopActivated(MCompositeWindow *window);
+    /*! Emitted when last animation finished (yeah) */
+    void lastAnimationFinished(MCompositeWindow *window);
     /*! Emitted when the user wants to close this window */
     void closeWindowRequest(MCompositeWindow *window);
 
