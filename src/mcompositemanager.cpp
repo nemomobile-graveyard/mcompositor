@@ -1730,6 +1730,94 @@ void MCompositeManagerPrivate::setCurrentApp(MCompositeWindow *cw,
     prev = w;
 }
 
+void MCompositeManagerPrivate::fixZValues()
+{
+    int last_i = stacking_list.size() - 1;
+
+    // fix Z-values always to make sure we do it after an animation
+    for (int i = 0; i <= last_i; ++i) {
+         MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
+         if (witem && witem->hasTransitioningWindow())
+             // don't change Z values until animation is over
+             break;
+         if (witem)
+             witem->requestZValue(i);
+    }
+}
+
+void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
+{
+    static int xres = ScreenOfDisplay(QX11Info::display(),
+                               DefaultScreen(QX11Info::display()))->width;
+    static int yres = ScreenOfDisplay(QX11Info::display(),
+                               DefaultScreen(QX11Info::display()))->height;
+    static const QRegion fs_r(0, 0, xres, yres);
+    Window duihome = stack[DESKTOP_LAYER];
+    int last_i = stacking_list.size() - 1, covering_i = 0;
+
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+         Window w = stacking_list.at(i);
+         if (w == stack[DESKTOP_LAYER]) {
+             covering_i = i;
+             break;
+         }
+         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+         MWindowPropertyCache *pc = 0;
+         if (cw && cw->isMapped())
+             pc = cw->propertyCache();
+         if (cw && cw->isMapped() && !pc->hasAlpha() &&
+             !pc->isDecorator() && !cw->hasTransitioningWindow() &&
+             // allow input windows to composite their app, see NB#223280
+             pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
+             /* FIXME: decorated window is assumed to be fullscreen */
+             (cw->needDecoration() ||
+              fs_r.subtracted(pc->shapeRegion()).isEmpty())) {
+             covering_i = i;
+             break;
+         }
+    }
+    MWindowPropertyCache *ga_pc = 0;
+    /* Send synthetic visibility events for our babies */
+    int home_i = stacking_list.indexOf(duihome);
+    for (int i = 0; i <= last_i; ++i) {
+        MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
+        if (!cw || !cw->isMapped() || !cw->propertyCache()) continue;
+        if (device_state->displayOff()) {
+            cw->setWindowObscured(true);
+            // setVisible(false) is not needed because updates are frozen
+            // and for avoiding NB#174346
+            if (duihome && i >= home_i)
+                setWindowState(cw->window(), NormalState);
+            continue;
+        }
+        if (i >= covering_i) {
+            cw->setWindowObscured(false);
+            cw->setVisible(true);
+            if (!ga_pc && (cw->propertyCache()->globalAlpha() < 255 ||
+                cw->propertyCache()->videoGlobalAlpha() < 255))
+                // select topmost window with global alpha properties
+                ga_pc = cw->propertyCache();
+        } else {
+            if (i < home_i &&
+                ((MTexturePixmapItem *)cw)->isDirectRendered()) {
+                // make sure window below duihome is redirected
+                ((MTexturePixmapItem *)cw)->enableRedirectedRendering();
+                setWindowDebugProperties(cw->window());
+            }
+            cw->setWindowObscured(true);
+            if (cw->window() != duihome)
+                cw->setVisible(false);
+        }
+        // if !duihome, we use IconicState to stack windows to bottom
+        if (duihome && i >= home_i)
+            setWindowState(cw->window(), NormalState);
+    }
+    if (ga_pc)
+        set_global_alpha(ga_pc->globalAlpha(), ga_pc->videoGlobalAlpha());
+    else
+        reset_global_alpha();
+}
+
 // XSetErrorHandler() function, used exclusively to catch errors
 // with XRestackWindows().
 static bool xrestackwindows_error;
@@ -1933,15 +2021,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     }
     static QList<Window> prev_stacked_mapped, prev_stacked;
 
-    // fix Z-values always to make sure we do it after an animation
-    for (int i = 0; i <= last_i; ++i) {
-         MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
-         if (witem && witem->hasTransitioningWindow())
-             // don't change Z values until animation is over
-             break;
-         if (witem)
-             witem->requestZValue(i);
-    }
+    fixZValues();
     bool mapped_order_changed = prev_stacked_mapped != only_mapped;
     bool order_changed = prev_stacked != stacking_list;
     bool restacked = false;
@@ -1994,75 +2074,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             pingTopmost();
         checkInputFocus(timestamp);
     }
-    if (mapped_order_changed || force_visibility_check) {
-        static int xres = ScreenOfDisplay(QX11Info::display(),
-                                   DefaultScreen(QX11Info::display()))->width;
-        static int yres = ScreenOfDisplay(QX11Info::display(),
-                                   DefaultScreen(QX11Info::display()))->height;
-        int covering_i = 0;
-        static const QRegion fs_r(0, 0, xres, yres);
-        for (int i = stacking_list.size() - 1; i >= 0; --i) {
-             Window w = stacking_list.at(i);
-             if (w == stack[DESKTOP_LAYER]) {
-                 covering_i = i;
-                 break;
-             }
-             MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-             MWindowPropertyCache *pc = 0;
-             if (cw && cw->isMapped())
-                 pc = cw->propertyCache();
-             if (cw && cw->isMapped() && !pc->hasAlpha() &&
-                 !pc->isDecorator() && !cw->hasTransitioningWindow() &&
-                 // allow input windows to composite their app, see NB#223280
-                 pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
-                 /* FIXME: decorated window is assumed to be fullscreen */
-                 (cw->needDecoration() ||
-                  fs_r.subtracted(pc->shapeRegion()).isEmpty())) {
-                 covering_i = i;
-                 break;
-             }
-        }
-        MWindowPropertyCache *ga_pc = 0;
-        /* Send synthetic visibility events for our babies */
-        int home_i = stacking_list.indexOf(duihome);
-        for (int i = 0; i <= last_i; ++i) {
-            MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
-            if (!cw || !cw->isMapped() || !cw->propertyCache()) continue;
-            if (device_state->displayOff()) {
-                cw->setWindowObscured(true);
-                // setVisible(false) is not needed because updates are frozen
-                // and for avoiding NB#174346
-                if (duihome && i >= home_i)
-                    setWindowState(cw->window(), NormalState);
-                continue;
-            }
-            if (i >= covering_i) {
-                cw->setWindowObscured(false);
-                cw->setVisible(true);
-                if (!ga_pc && (cw->propertyCache()->globalAlpha() < 255 ||
-                    cw->propertyCache()->videoGlobalAlpha() < 255))
-                    // select topmost window with global alpha properties
-                    ga_pc = cw->propertyCache();
-            } else {
-                if (i < home_i &&
-                    ((MTexturePixmapItem *)cw)->isDirectRendered()) {
-                    // make sure window below duihome is redirected
-                    ((MTexturePixmapItem *)cw)->enableRedirectedRendering();
-                    setWindowDebugProperties(cw->window());
-                }
-                cw->setWindowObscured(true);
-                if (cw->window() != duihome)
-                    cw->setVisible(false);
-            }
-            // if !duihome, we use IconicState to stack windows to bottom
-            if (duihome && i >= home_i)
-                setWindowState(cw->window(), NormalState);
-        }
-        if (ga_pc)
-            set_global_alpha(ga_pc->globalAlpha(), ga_pc->videoGlobalAlpha());
-        else
-            reset_global_alpha();
-    }
+    if (mapped_order_changed || force_visibility_check)
+        sendSyntheticVisibilityEventsForOurBabies();
     // current app has different semantics from getTopmostApp and pure isAppWindow
     MCompositeWindow *set_as_current_app = 0;
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
@@ -2566,11 +2579,13 @@ void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
     dirtyStacking(false);
 }
 
-void MCompositeManagerPrivate::onDesktopActivated(MCompositeWindow *window)
+void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
 {
-    Q_UNUSED(window);
-    /* desktop is on top, direct render it */
-    possiblyUnredirectTopmostWindow();
+    fixZValues();
+    if (window->propertyCache()->windowTypeAtom() ==
+        ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+        /* desktop is on top, direct render it */
+        possiblyUnredirectTopmostWindow();
 }
 
 void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
@@ -3296,12 +3311,11 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
     updateWinList();
     setWindowDebugProperties(item->window());
 
+    connect(item, SIGNAL(lastAnimationFinished(MCompositeWindow *)),
+                SLOT(onAnimationsFinished(MCompositeWindow *)));
     if (item->propertyCache() && item->propertyCache()->windowType()
-                                               == MCompAtoms::DESKTOP) {
-        connect(item, SIGNAL(desktopActivated(MCompositeWindow *)),
-                SLOT(onDesktopActivated(MCompositeWindow *)));
+                                               == MCompAtoms::DESKTOP)
         return;
-    }
 
     connect(this, SIGNAL(compositingEnabled()), item, SLOT(startTransition()));
     connect(item, SIGNAL(itemRestored(MCompositeWindow *)), SLOT(restoreHandler(MCompositeWindow *)));
