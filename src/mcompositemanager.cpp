@@ -3133,6 +3133,19 @@ static bool compareWindows(Window w_a, Window w_b)
     if (type_a == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         SORTING(true);
 
+    // Order transient windows below what they are transient for.
+    // Since the sorting algorithm can infer that if trfor(@a) == @b
+    // and trfor(@b) == @c then @a is transient for @c it is not
+    // necessary for us to check if @pc_a is a grandparent of @pc_b
+    // or vice versa.  However, we *do* have to mind circular
+    // transiency between @pc_a and @pc_b otherwise we would
+    // return true for both compareWindows(@w_a, @w_b) and
+    // compareWindows(@w_b, @w_a), which would make the sorting
+    // undeterministic.
+    if (pc_b->transientFor() == w_a && pc_a->transientFor() != w_b)
+      // @pc_b is transient for @pc_a, so it must be above it.
+      SORTING(true);
+
     // Compare by stacking layers.
     layer = pc_a->meegoStackingLayer();
     int rel = layer - pc_b->meegoStackingLayer();
@@ -3175,19 +3188,6 @@ static bool compareWindows(Window w_a, Window w_b)
                 SORTING(false);
         }
     }
-
-    // Order transient windows below what they are transient for.
-    // Since the sorting algorithm can infer that if trfor(@a) == @b
-    // and trfor(@b) == @c then @a is transient for @c it is not
-    // necessary for us to check if @pc_a is a grandparent of @pc_b
-    // or vice versa.  However, we *do* have to mind circular
-    // transiency between @pc_a and @pc_b otherwise we would
-    // return true for both compareWindows(@w_a, @w_b) and
-    // compareWindows(@w_b, @w_a), which would make the sorting
-    // undeterministic.
-    if (pc_b->transientFor() == w_a && pc_a->transientFor() != w_b)
-      // @pc_b is transient for @pc_a, so it must be above it.
-      SORTING(true);
 
     // Either @pc_a is transient for @pc_b or they are transient
     // for each other, or they are not in direct relationship,
@@ -3762,10 +3762,11 @@ void MCompositeManager::dumpState(const char *heading)
                cw->isValid() ? "" : " (not valid anymore)",
                name ? name : "[noname]");
         qDebug("    PID: %d, cmdline: %s", pid, cmdline.constData());
-        qDebug("    mapped: %s, newly mapped: %s, InputOnly: %s",
+        qDebug("    mapped: %s, newly mapped: %s, stacked unmapped: %s",
                yn[cw->isMapped()], yn[cw->isNewlyMapped()],
-               yn[cw->propertyCache()->isInputOnly()]);
-        qDebug("    visible: %s, direct rendered: %s",
+               yn[cw->propertyCache()->stackedUnmapped()]);
+        qDebug("    InputOnly: %s, visible: %s, direct rendered: %s",
+               yn[cw->propertyCache()->isInputOnly()],
                yn[cw->windowVisible()], yn[cw->isDirectRendered()]);
         qDebug("    window type: %s, is app: %s, needs decoration: %s",
                wintypes[cw->propertyCache()->windowType()],
