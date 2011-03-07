@@ -90,13 +90,13 @@ int main(int argc, char *argv[])
     // to $plugindir later.
     int testPlugin;
     const QStringList &args = app.arguments();
-    app.prepareEvents();
-    app.redirectWindows();
     for (testPlugin = 1; testPlugin < args.length(); testPlugin++)
         if (!args[testPlugin].isEmpty() && args[testPlugin][0] != '-')
             break;
     app.loadPlugins(testPlugin < args.length() ? args[testPlugin] : QString(),
                     "/usr/lib/mcompositor");
 
+    app.prepareEvents();
+    app.redirectWindows();
     return app.exec();
 }
