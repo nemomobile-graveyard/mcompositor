@@ -108,6 +108,8 @@ public:
     void showOverlayWindow(bool show);
     void enableRedirection(bool emit_signal);
     void setExposeDesktop(bool exposed);
+    void fixZValues();
+    void sendSyntheticVisibilityEventsForOurBabies();
     void checkStacking(bool force_visibility_check,
                        Time timestamp = CurrentTime);
     void checkInputFocus(Time timestamp = CurrentTime);
@@ -201,7 +203,7 @@ public slots:
     void restoreHandler(MCompositeWindow *window);
     void closeHandler(MCompositeWindow *window);
     
-    void onDesktopActivated(MCompositeWindow*);
+    void onAnimationsFinished(MCompositeWindow*);
     void exposeSwitcher();
     
     void displayOff(bool display_off);
