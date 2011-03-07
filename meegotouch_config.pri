@@ -6,7 +6,7 @@ INCLUDEPATH += $$M_INSTALL_HEADERS
 
 # Check for testability features, should they be compiled in or not ?
 
-isEqual(TESTABILITY,"on") {
+!isEqual(TESTABILITY,"off") {
     DEFINES += WINDOW_DEBUG
 }
 
