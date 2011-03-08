@@ -92,7 +92,6 @@ private:
     MEscapeButtonPanel *escapeButtonPanel;
     MNavigationBar *navigationBar;
     MStatusBar *statusBar;
-    unsigned statusBarHeight;
     MMessageBox *messageBox;
     Window managed_window;
     QRect availableRect; // available area for the managed window
