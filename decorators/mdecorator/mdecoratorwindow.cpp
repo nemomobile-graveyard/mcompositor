@@ -218,7 +218,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
       escapeButtonPanel(0),
       navigationBar(0),
       statusBar(0),
-      statusBarHeight(0),
       messageBox(0),
       managed_window(0),
       menuVisible(false)
@@ -245,22 +244,14 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
         }
         if (!statusBar) {
             statusBar = dynamic_cast<MStatusBar*>(item);
-            if (statusBar) {
-                // We can't believe statusBar.geometry() because it
-                // includes some unwanted margins.  Get straight the
-                // constant if available.
-                MDeviceProfile *dev = MDeviceProfile::instance();
-                QSettings ini("/usr/share/themes/base/meegotouch/constants.ini",
-                              QSettings::IniFormat);
-                QString mm = ini.value("Sizes/HEIGHT_STATUSBAR").toString();
-                if (mm.endsWith("mm"))
-                    statusBarHeight = dev->mmToPixels(atoi(mm.toLatin1().constData()));
+            if (statusBar)
                 continue;
-            }
         }
     }
 
-    if (!homeButtonPanel || !navigationBar || !statusBar)
+    // Check for presence of homeButtonPanel and navigationBar,
+    // statusBar can be NULL
+    if (!homeButtonPanel || !navigationBar)
         qFatal("Meego elements not found");
 
     homeButtonPanel = new MHomeButtonPanel();
@@ -326,7 +317,7 @@ void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w,
         if (isOnDisplay())
             // We can start showing it, otherwise wait.
             enterDisplayEvent();
-    } else
+    } else if (statusBar)
         sceneManager()->appearSceneWindowNow(statusBar);
 }
 
@@ -457,13 +448,15 @@ void MDecoratorWindow::setOnlyStatusbar(bool mode, bool temporary)
 void MDecoratorWindow::hideEverything()
 {
     setOnlyStatusbar(true, true);
-    sceneManager()->disappearSceneWindowNow(statusBar);
+    if (statusBar)
+        sceneManager()->disappearSceneWindowNow(statusBar);
 }
 
 void MDecoratorWindow::restoreEverything()
 {
     setOnlyStatusbar(requested_only_statusbar);
-    sceneManager()->appearSceneWindowNow(statusBar);
+    if (statusBar)
+        sceneManager()->appearSceneWindowNow(statusBar);
 }
 
 void MDecoratorWindow::screenRotated(const M::Orientation &orientation)
@@ -484,15 +477,18 @@ void MDecoratorWindow::setInputRegion()
         region = fs;
     } else {
         // Decoration includes the status bar, and possibly other elements.
-        QRect sbrect = statusBar->geometry().toRect();
-        if (statusBarHeight)
-            sbrect.setHeight(statusBarHeight);
+        QRect sbrect;
+        if (statusBar) {
+            sbrect = statusBar->sceneBoundingRect().toRect();
+            sbrect.setHeight(statusBar->property("sharedPixmapHeight").toInt());
+        }
         region = sbrect;
+
         if (!only_statusbar) {
-            region += navigationBar->geometry().toRect();
-            region += homeButtonPanel->geometry().toRect();
+            region += navigationBar->sceneBoundingRect().toRect();
+            region += homeButtonPanel->sceneBoundingRect().toRect();
             if (escapeButtonPanel)
-                region += escapeButtonPanel->geometry().toRect();
+                region += escapeButtonPanel->sceneBoundingRect().toRect();
         }
 
         // The coordinates we receive from libmeegotouch are rotated
