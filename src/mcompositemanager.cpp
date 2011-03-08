@@ -3551,7 +3551,7 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
 
     // own the window so we could kill it if we want to.
     enableCompositing();
-    deco->showQueryDialog(w);
+    deco->showQueryDialog(w, true);
     dirtyStacking(false);
 
     // We need to activate the window as well with instructions to decorate
