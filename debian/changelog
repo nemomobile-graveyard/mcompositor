@@ -1,8 +1,38 @@
-mcompositor (0.8.6-1~unreleased) unstable; urgency=low
+mcompositor (0.8.6-1) unstable; urgency=low
 
-  * :)
+  * Simplify decorator handling and fix some bugs in it
+  * fix bug in RAISE_MATCHING
+  * Add new Meego stacking levels 7-10 due to new special windows.
+  * fix "windowctl R" -- argument array index was wrong for the desired orientation
+  * Fixes: NB#226821 - Incorrect title on dialog when Contacts does not respond
+  * Refactor code that is common in EGL/GLX backends into mtexturepixmapitem_p.cpp
+  * fix damage event listening when screen is lit + simplify enableCompositing
+  * avoid direct rendering desktop when it's not needed
+  * listen to _MEEGOTOUCH_DECORATOR_WINDOW changes
+  * Massage the code to get rid of configure_reqs hash + improve Python tests
+  * Fixes: BMC#11128
+  * Revert "adjust number of damage events we wait from 2 to 1"
+  * Fixes: NB#233756 - decorator's MNavigationBar is visible after selecting 'no' in "jammed" dialog when application is put to sleep
+  * make WINDOW_DEBUG the default
+  * fix infinitely looping RAISE_MATCHING
+  * order transients above the window they are transient during roughSort()
+  * decorator and deadapp dialog fixes
+  * make decorator and query dialog animations smoother
+  * implement "[un]hung" remote controller commands
+  * simplify MDecorator and MDecoratorWindow
+  * optimize decoratorRectChanged()
+  * don't let ConfigureEvent:s interfere with animations
+  * don't draw the decorator of a transitioning window
+  * say goodbye to MRmiServer and MRmiClient
+  * prevent flashing of remapped windows
+  * don't leave the desktop redirected
+  * make test20b uninsignificant
+  * correct dependencies for mcompositor-dev
+  * New: Mcompositor will now provide current app window orientation angle as a conte xt property (for NB#226585)
+  * Fixes: BMC#13622 - systemui statusbar handling
+  * enables BMC#12753, BMC#11531
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 22 Feb 2011 15:46:57 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 08 Mar 2011 15:08:22 +0200
 
 mcompositor (0.8.5-1) unstable; urgency=low
 
