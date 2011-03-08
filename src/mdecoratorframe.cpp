@@ -98,8 +98,13 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
     this->no_resize = no_resize;
     this->only_statusbar = only_statusbar;
 
-    if (client == cw)
+    if (client == cw) {
+        if (cw && show_dialog)
+            // Time to @show_dialog again.
+            sendManagedWindowId(show_dialog);
         return;
+    }
+
     if (client)
         disconnect(client, SIGNAL(destroyed()), this, SLOT(destroyClient()));
     client = cw;
