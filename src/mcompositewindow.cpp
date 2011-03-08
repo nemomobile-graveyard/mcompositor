@@ -314,9 +314,9 @@ bool MCompositeWindow::showWindow()
         // NB#180628 - some stupid apps are listening for visibilitynotifies.
         // Well, all of the toolkit anyways
         setWindowObscured(false);
-        // Meegotouch apps draw their window or the default background with
-        // the first damage
-        waiting_for_damage = 1;
+        // waiting for two damage events seems to work for Meegotouch apps
+        // at least, for the rest, there is a timeout
+        waiting_for_damage = 2;
         resize_expected = false;
         damage_timer->setInterval(500);
         damage_timer->start();
