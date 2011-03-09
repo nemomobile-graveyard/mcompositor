@@ -4079,6 +4079,15 @@ const QHash<Window, MWindowPropertyCache*>& MCompositeManager::propCaches() cons
     return d->prop_caches;
 }
 
+bool MCompositeManager::isEgl()
+{
+#ifdef GLES2_VERSION
+    return true;
+#else
+    return false;
+#endif
+}
+
 void MCompositeManager::setGLWidget(QGLWidget *glw)
 {
     d->glwidget = glw;

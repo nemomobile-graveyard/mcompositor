@@ -69,13 +69,12 @@ int main(int argc, char *argv[])
 
     QGLWidget *w = new QGLWidget(fmt);
     w->setAttribute(Qt::WA_PaintOutsidePaintEvent);
-#ifndef GLES2_VERSION
-    QPalette p = w->palette();
-    p.setColor(QPalette::Background, QColor(Qt::black));
-    w->setPalette(p);
-    w->update();
-#endif
-    
+    if (!app.isEgl()) {
+        QPalette p = w->palette();
+        p.setColor(QPalette::Background, QColor(Qt::black));
+        w->setPalette(p);
+        w->update();
+    }
     w->setAutoFillBackground(false);
     w->setMinimumSize(QApplication::desktop()->width(),
                       QApplication::desktop()->height());
