@@ -31,6 +31,7 @@ mcompositor (0.8.6-1) unstable; urgency=low
   * New: Mcompositor will now provide current app window orientation angle as a conte xt property (for NB#226585)
   * Fixes: BMC#13622 - systemui statusbar handling
   * enables BMC#12753, BMC#11531
+  * Fixes: NB#231337 - MDecorator slows down rendering performance
 
  -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 08 Mar 2011 15:08:22 +0200
 
