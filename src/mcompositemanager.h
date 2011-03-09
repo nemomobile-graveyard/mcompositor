@@ -63,6 +63,9 @@ public:
      */
     void prepareEvents();
 
+    //! GLES2_VERSION or not
+    static bool isEgl();
+
     /*! Specify the QGLWidget used by the QGraphicsView to draw the items on
      * the screen.
      *
