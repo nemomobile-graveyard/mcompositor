@@ -4,22 +4,22 @@
 <context>
     <name></name>
     <message id="qtn_reco_app_not_responding">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="366"/>
+        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="365"/>
         <source></source>
         <translation>%1 sucks</translation>
     </message>
     <message id="qtn_reco_close_app_question">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="373"/>
+        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="372"/>
         <source></source>
         <translation>Do you want to close it?</translation>
     </message>
     <message id="qtn_comm_command_yes">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="381"/>
+        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="380"/>
         <source></source>
         <translation>Aje</translation>
     </message>
     <message id="qtn_comm_command_no">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="383"/>
+        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="382"/>
         <source></source>
         <translation>Oh, no!</translation>
     </message>
