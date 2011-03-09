@@ -753,6 +753,7 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
         // that we can't reuse it, even if a window with the same XID is
         // created before @item is actually destroyed.
     } else {
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
         // We got a destroy event from a framed window (or a window that was
         // never mapped)
         FrameData fd = framed_windows.value(e->window);
@@ -760,6 +761,7 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
             framed_windows.remove(e->window);
             delete fd.frame;
         }
+#endif // ENABLE_BROKEN_SIMPLEWINDOWFRAME
         if (prop_caches.contains(e->window)) {
             delete prop_caches.value(e->window);
             prop_caches.remove(e->window);
@@ -1064,6 +1066,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         if (deco->managedWindow() == e->window)
             dirtyStacking(false); // reset decorator's managed window
     } else {
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
         // We got an unmap event from a framed window
         FrameData fd = framed_windows.value(e->window);
         if (!fd.frame)
@@ -1076,6 +1079,9 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         framed_windows.remove(e->window);
         XUngrabServer(QX11Info::display());
         delete fd.frame;
+#else // ! ENABLE_BROKEN_SIMPLEWINDOWFRAME
+        return;
+#endif
     }
     updateWinList();
 
@@ -1364,8 +1370,9 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         setWindowState(e->window, NormalState);
     if (needDecoration(pc)) {
         if (!MDecoratorFrame::instance()->decoratorItem()) {
-#if 0 /* FIXME/TODO: this does NOT work when mdecorator starts after the first
-         decorated window is shown. See NB#196194 */
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
+         /* FIXME/TODO: this does NOT work when mdecorator starts
+          * after the first decorated window is shown. See NB#196194. */
             if (!pc->isInputOnly())
                 XAddToSaveSet(QX11Info::display(), e->window);
             // it will be non-toplevel, so mask needs to be set here
@@ -1413,7 +1420,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             frame->show();
 
             XSync(QX11Info::display(), False);
-#else
+#else // ! ENABLE_BROKEN_SIMPLEWINDOWFRAME
             qWarning("%s: mdecorator hasn't started yet", __func__);
 #endif
         }
@@ -2147,6 +2154,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     wpc->setBeingMapped(false);
     wpc->setIsMapped(true);
 
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
     FrameData fd = framed_windows.value(win);
     if (fd.frame) {
         QRect a = wpc->realGeometry();
@@ -2165,6 +2173,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         XSendEvent(QX11Info::display(), c.event, True, StructureNotifyMask,
                    (XEvent *)&c);
     }
+#endif // ENABLE_BROKEN_SIMPLEWINDOWFRAME
 
     MCompAtoms::Type wtype = wpc->windowType();
     // simple stacking model legacy code...
@@ -2319,7 +2328,6 @@ static bool should_be_pinged(MCompositeWindow *cw)
 void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
 {
     MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
-    FrameData fd = framed_windows.value(event->window);
 
     if (event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
         MWindowPropertyCache *pc = prop_caches.value(event->window, 0);
@@ -2345,9 +2353,12 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         } else if (event->window != stack[DESKTOP_LAYER])
             setExposeDesktop(false);
 
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
+        FrameData fd = framed_windows.value(event->window);
         if (fd.frame)
             setWindowState(fd.frame->managedWindow(), NormalState);
         else
+#endif // ENABLE_BROKEN_SIMPLEWINDOWFRAME
             setWindowState(event->window, NormalState);
         if (event->window == stack[DESKTOP_LAYER]) {
             // Mark normal applications on top of home Iconic to make our
@@ -2523,6 +2534,7 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
     // TODO: (work for more)
     // Handle minimize request coming from a managed window itself,
     // if there are any
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
     FrameData fd = framed_windows.value(window->window());
     if (fd.frame) {
         setWindowState(fd.frame->managedWindow(), IconicState);
@@ -2530,6 +2542,7 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
         if (i)
             i->iconify();
     }
+#endif // ENABLE_BROKEN_SIMPLEWINDOWFRAME
     if (window->isMapped()) {
         // set for roughSort()
         setWindowState(window->window(), IconicState);
@@ -2821,9 +2834,12 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
             Window window = ((XReparentEvent*)event)->window;
             Window new_parent = ((XReparentEvent*)event)->parent;
             MWindowPropertyCache *pc = prop_caches.value(window);
+            bool framed = false;
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
+            framed = framed_windows.contains(window);
+#endif
             if (new_parent != pc->parentWindow()) {
-                if (new_parent != QX11Info::appRootWindow() &&
-                    !framed_windows.contains(window)) {
+                if (new_parent != QX11Info::appRootWindow() && !framed) {
                     // if new parent is not root/frame, forget about the window
                     if (!pc->isInputOnly()
                         && pc->parentWindow() != QX11Info::appRootWindow())
@@ -3801,6 +3817,7 @@ void MCompositeManager::dumpState(const char *heading)
             XFree(name);
     }
 
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
     if (!d->framed_windows.isEmpty()) {
         QHash<Window, MCompositeManagerPrivate::FrameData>::const_iterator fwit;
 
@@ -3811,6 +3828,7 @@ void MCompositeManager::dumpState(const char *heading)
                    fwit->parentWindow, fwit->mapped ? "yes" : "no");
     } else
         qDebug("framed_windows: <None>");
+#endif // ENABLE_BROKEN_SIMPLEWINDOWFRAME
 
     // Which windows are in the property cache?
     line = "with property cache:";
