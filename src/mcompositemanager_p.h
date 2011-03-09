@@ -157,7 +157,9 @@ public:
         Window                parentWindow;
         bool mapped;
     };
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
     QHash<Window, FrameData> framed_windows;
+#endif
     QHash<Window, MWindowPropertyCache*> prop_caches;
     QMultiHash<int, MCompositeManagerExtension* > m_extensions;
 

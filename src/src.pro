@@ -36,7 +36,6 @@ HEADERS += \
     mcompositewindow.h \
     mwindowpropertycache.h \
     mcompositemanager.h \
-    msimplewindowframe.h \
     mcompositemanager_p.h \
     mdevicestate.h \
     mcompatoms_p.h \
@@ -54,15 +53,12 @@ SOURCES += \
     mcompositewindow.cpp \
     mwindowpropertycache.cpp \
     mcompositemanager.cpp \
-    msimplewindowframe.cpp \
     mdevicestate.cpp \
     mdecoratorframe.cpp \
     mcompositemanagerextension.cpp \
     mcompositewindowshadereffect.cpp \
     mcurrentwindoworientationprovider.cpp \
     mcompositewindowanimation.cpp
-
-RESOURCES = tools.qrc
 
 CONFIG += release link_pkgconfig
 PKGCONFIG += contextsubscriber-1.0 contextprovider-1.0
