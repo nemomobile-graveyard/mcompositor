@@ -1,137 +1,59 @@
 #!/usr/bin/make -f
-# -*- makefile -*-
-# Uncomment this to turn on verbose mode.
-export DH_VERBOSE=1
-
-DEBDIR = ..
-CFLAGS = -Wall -Werror -g
 
 comma :=,
 empty :=
 space := $(empty) $(empty)
+build_options := $(subst $(comma),$(space),$(DEB_BUILD_OPTIONS))
+mcompositor_version = $(shell sed -ne 's/.*(//;s/).*//;p;q' debian/changelog)
 
-
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O0
+parallel_build := $(patsubst parallel=%,-j%,$(filter parallel=%,$(build_options)))
+ifneq ($(filter notestability,$(build_options)),)
+	qmake_options += TESTABILITY=off
 else
-	CFLAGS += -O2
+	qmake_options += TESTABILITY=on
 endif
-
-ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
-    INSTALL_PROGRAM += -s
-endif
-
-TMP_BUILD_OPTS = $(subst $(comma),$(space),$(DEB_BUILD_OPTIONS))
-
-ifneq (,$(filter parallel=%,$(TMP_BUILD_OPTS)))
-         NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(TMP_BUILD_OPTS)))
-         PARALLEL_MAKEFLAGS += -j$(NUMJOBS)
-endif
-
-QMAKE_OPTIONS = COV_OPTION=off 
-BASENAME_ORIGIN = $(shell cat .git/config | grep url | sed 's/.*\///')
-ifeq (mtests,$(BASENAME_ORIGIN))
-	QMAKE_OPTIONS = COV_OPTION=on
-endif
-
-ifneq (,$(findstring notestability,$(DEB_BUILD_OPTIONS)))
-	QMAKE_OPTIONS += TESTABILITY=off
-else
-    QMAKE_OPTIONS += TESTABILITY=on
-endif
-
-
-# shared library versions, option 1
-version=0.1.0
-major=0
-
-configure: configure-stamp
-configure-stamp:
-	dh_testdir
-
-	qmake -r $(QMAKE_OPTIONS)
-
-	touch configure-stamp
-
-
-build: build-stamp
-build-stamp: configure-stamp 
-	dh_testdir
-
-	make  $(PARALLEL_MAKEFLAGS)
-
-	touch build-stamp
 
 clean:
 	dh_testdir
 	dh_testroot
-
 	rm -f build-stamp configure-stamp
-
-	make  $(PARALLEL_MAKEFLAGS) clean || true
-	rm -f lib/*
-	rm -rf .obj	
-
+	-make clean
 	dh_clean 
+
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	qmake -r $(qmake_options)
+	touch configure-stamp
+
+build: build-stamp
+build-stamp: configure-stamp 
+	dh_testdir
+	make $(parallel_build)
+	touch build-stamp
 
 install: build
 	dh_testdir
 	dh_testroot
 	dh_clean -k 
 	dh_installdirs
+	INSTALL_ROOT=$(CURDIR)/debian/tmp make install
 
-	# Add here commands to install the package into debian/tmp
-
-	#mcompositor package
-	INSTALL_ROOT=$(CURDIR)/debian/tmp make  $(PARALLEL_MAKEFLAGS) install
-
-	#mcompositor-doc package
-	#make  $(PARALLEL_MAKEFLAGS) doc
-	#mkdir -p ${CURDIR}/debian/tmp/usr/share/doc/mcompositor/api
-	#cp -r doc/html/*  ${CURDIR}/debian/tmp/usr/share/doc/mcompositor/api/
-	install -m 644 -D -p $(CURDIR)/translations/recovery.ts \
-                             $(CURDIR)/debian/tmp/usr/share/doc/mcompositor-l10n-engineering-english/recovery.ts
-
-# Build architecture-independent files here.
 binary-indep: build install
-# We have nothing to do by default.
 
-# Build architecture-dependent files here.
 binary-arch: build install
 	dh_testdir
 	dh_testroot
-#	dh_installchangelogs 
-#	dh_installdocs
 	dh_install --sourcedir=debian/tmp -v 
-#	dh_installexamples
-#	dh_install
-#	dh_installmenu
-#	dh_installdebconf	
-#	dh_installlogrotate
-#	dh_installemacsen
-#	dh_installpam
-#	dh_installmime
-#	dh_installinit
-#	dh_installcron
-#	dh_installinfo
-#	dh_installman
-	dh_link
+	dh_installdocs
 	dh_strip --dbg-package=mcompositor-dbg
-	dh_compress
 	dh_fixperms
-#	dh_perl
-#	dh_python
-	dh_makeshlibs -V
+	dh_makeshlibs -V 'mcompositor (= $(mcompositor_version))'
 	dh_installdeb
-	dh_shlibdeps
+	dh_shlibdeps -- --warnings=0
 	dh_gencontrol
 	dh_md5sums
-	dh_builddeb --destdir=$(DEBDIR)
+	dh_builddeb
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install configure
-
-# aegis deps
-PACKAGE_TARGETS :=  $(foreach pkg,$(DEB_ALL_PACKAGES),binary/$(pkg))
-$(PACKAGE_TARGETS)::
-[ ! -f debian/$(notdir $@).aegis ] || aegis-deb-add -control debian/$(notdir $@)/DEBIAN/control .. debian/$(notdir $@).aegis=_aegis

@@ -129,7 +129,7 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         if (cw->isWindowTransitioning() || visible.intersects(r)
             || cw->type() == MCompositeWindowGroup::Type) {
             if (size >= 9)
-                to_paint.resize(to_paint.size()+1);
+                to_paint.resize((unsigned)to_paint.size()+1);
             to_paint[size++] = i;
             if (cw->propertyCache()->windowTypeAtom()
                                          == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))

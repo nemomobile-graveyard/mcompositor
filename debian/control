@@ -2,36 +2,36 @@ Source: mcompositor
 Section: x11
 Priority: extra
 Maintainer: Abdiel Janulgue <abdiel.janulgue@nokia.com>
-Build-Depends: debhelper (>= 5), libqt4-dev (>= 4.7), libmeegotouch-dev, libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libgl-dev [i386], libgl1 [i386], libqt4-opengl-dev, libxrender-dev, libxcomposite-dev, libxdamage-dev, libxtst-dev, libxi-dev, mce-dev [arm armel], libcontextsubscriber-dev, libcontextprovider-dev, pkg-config, aegis-builder (>= 1.4), test-definition, libx11-dev, libx11-xcb-dev, libxcb-render0-dev, libxext-dev, libxcb-shape0-dev, libxrandr-dev
+Build-Depends: debhelper (>= 5), libqt4-dev (>= 4.7), libmeegotouch-dev, libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libgl-dev [i386], libgl1 [i386], libqt4-opengl-dev, libxrender-dev, libxcomposite-dev, libxdamage-dev, libxtst-dev, libxi-dev, mce-dev [arm armel], libcontextsubscriber-dev, libcontextprovider-dev, pkg-config, test-definition, libx11-dev, libx11-xcb-dev, libxcb-render0-dev, libxext-dev, libxcb-shape0-dev, libxrandr-dev
 Standards-Version: 3.9.1
 
 Package: mcompositor
 Replaces: duicompositor
 Conflicts: duicompositor
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, libgles2-sgx-img [arm armel]
 Description: MeeGo Touch UI Compositing Window Manager
- MeeGo Touch UI Compositing Window Manager
  
 Package: mcompositor-dbg
+Section: debug
 Architecture: any
-Depends: mcompositor (=${binary:Version})
+Depends: mcompositor (= ${binary:Version})
 Description: MeeGo Touch UI Compositing Window Manager debug symbols
- MeeGo Touch UI Compositor debug symbols
 
 Package: mcompositor-dev
 Architecture: any
-Depends: mcompositor (=${Source-Version}), libqt4-dev (>= 4.7), libx11-dev, libx11-xcb-dev, libxext-dev, libxdamage-dev, libxcb-render0-dev, libxcb-shape0-dev
+Depends: mcompositor (= ${Source-Version}), libqt4-dev (>= 4.7), libx11-dev, libx11-xcb-dev, libxext-dev, libxdamage-dev, libxcb-render0-dev, libxcb-shape0-dev
 Description: MeeGo Touch UI Compositing Window Manager header files
  MeeGo Touch UI Compositor header files for plugins.
 
 Package: mcompositor-utils
 Architecture: any
 Depends: ${shlibs:Depends}, mcetools, gconf2, aegis-dss-tools [arm armel]
+Suggests: python
 Description: commandline tools for testing mcompositor
 
 Package: mcompositor-functional-tests
-Architecture: any
+Architecture: all
 Depends: mcompositor, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils (>= 0.5.26), x11-utils, mcompositor-utils
 XB-Maemo-CI-Packages: mcompositor
 XB-Maemo-CI-Stage: fast
@@ -39,6 +39,6 @@ Description: mcompositor functional testcases
 
 Package: mcompositor-l10n-engineering-english
 Section: devel
-Architecture: any
+Architecture: all
 Enhances: mcompositor
 Description: Engineering English translations for mcompositor

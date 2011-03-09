@@ -222,7 +222,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
       managed_window(0),
       menuVisible(false)
 {
-    locale.addTranslationPath(TRANSLATION_INSTALLDIR);
     locale.installTrCatalog("recovery");
     locale.setDefault(locale);
 
