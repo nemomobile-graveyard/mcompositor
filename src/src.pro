@@ -2,20 +2,22 @@ include(../meegotouch_config.pri)
 
 contains(QT_CONFIG, opengles2) {
      message("building Makefile for EGL/GLES2 version")
+     DEFINES += GLES2_VERSION
      SOURCES += mtexturepixmapitem_egl.cpp mcompositewindowgroup.cpp
      HEADERS += mcompositewindowgroup.h
      publicHeaders.files +=  mcompositewindowgroup.h
 } else {
-     # Qt wasn't built with EGL/GLES2 support but EGL is present
-     # ensure we still use the EGL back-end 
      exists($$QMAKE_INCDIR_OPENGL/EGL) {
+         # Qt was not built with EGL/GLES2 support but if EGL is present
+         # ensure we still use the EGL back-end.
          message("building Makefile for EGL/GLES2 version")
+         DEFINES += GLES2_VERSION
          SOURCES += mtexturepixmapitem_egl.cpp
          LIBS += -lEGL
-     } 
-     # Otherwise use GLX backend
-     else {
+     } else {
+         # Otherwise use GLX backend.
          message("building Makefile for GLX version")
+         DEFINES += DESKTOP_VERSION
          SOURCES += mtexturepixmapitem_glx.cpp
      }
 } 
@@ -26,7 +28,7 @@ DEPENDPATH += .
 QT += dbus
 
 # Input
-INCLUDEPATH += ../decorators/libdecorator/
+INCLUDEPATH += ../decorators/libdecorator
 HEADERS += \
     mtexturepixmapitem.h \
     mtexturepixmapitem_p.h \
@@ -63,8 +65,7 @@ SOURCES += \
 RESOURCES = tools.qrc
 
 CONFIG += release link_pkgconfig
-PKGCONFIG += contextsubscriber-1.0 \
-             contextprovider-1.0
+PKGCONFIG += contextsubscriber-1.0 contextprovider-1.0
 QT += core gui opengl
 
 # TODO: refactor the headers to exclude private stuff

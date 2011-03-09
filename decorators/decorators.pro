@@ -1,15 +1,6 @@
 TEMPLATE = subdirs
-#temporary disable
-CONFIG+=ordered
-SUBDIRS += \
-    sub_lib \
-    sub_decorator \
-
-sub_lib.subdir=libdecorator
-
-sub_decorator.depends=sub_lib
-sub_decorator.subdir=mdecorator
-
+CONFIG += ordered
+SUBDIRS += libdecorator mdecorator
 
 check.target = check 
 check.CONFIG = recursive

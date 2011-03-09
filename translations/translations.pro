@@ -11,3 +11,7 @@ FILES = $$SOURCEDIR/decorators/mdecorator/mdecoratorwindow.cpp
 updateeets.input = FILES
 updateeets.clean = nothing
 QMAKE_EXTRA_COMPILERS -= dummy
+
+updateeets.files = $$ENGINEERING_ENGLISH
+updateeets.path = /usr/share/doc/mcompositor-l10n-engineering-english
+INSTALLS += updateeets

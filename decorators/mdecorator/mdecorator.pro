@@ -1,7 +1,7 @@
 include(../../meegotouch_config.pri)
 TEMPLATE = app
-DEPENDPATH += .
-INCLUDEPATH += . ../libdecorator
+DEPENDPATH += ../libdecorator
+INCLUDEPATH += ../libdecorator
 CONFIG += meegotouch release
 QT += opengl dbus
 
