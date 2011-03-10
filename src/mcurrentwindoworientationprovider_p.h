@@ -12,7 +12,6 @@ public:
 
     ContextProvider::Service service;
     ContextProvider::Property property;
-    unsigned currentWindowOrientationAngle;
 
     MCurrentWindowOrientationProvider* q_ptr;
 };
