@@ -1731,6 +1731,8 @@ void MCompositeManagerPrivate::setCurrentApp(MCompositeWindow *cw,
                     XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
     current_app = w;
     emit currentAppChanged(current_app);
+    if (!cw)
+        cw = COMPOSITE_WINDOW(w);
     if (cw)
         orientationProvider.update(cw->propertyCache());
 

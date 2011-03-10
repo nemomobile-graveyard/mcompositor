@@ -8,10 +8,8 @@
 
 MCurrentWindowOrientationProviderPrivate::MCurrentWindowOrientationProviderPrivate() :
         service(QDBusConnection::SessionBus, "org.maemo.mcompositor.context"),
-        property(service, "/Screen/CurrentWindow/OrientationAngle"),
-        currentWindowOrientationAngle(0)
+        property(service, "/Screen/CurrentWindow/OrientationAngle")
 {
-    property.setValue(currentWindowOrientationAngle);
 }
 
 MCurrentWindowOrientationProvider::MCurrentWindowOrientationProvider():
@@ -21,17 +19,8 @@ MCurrentWindowOrientationProvider::MCurrentWindowOrientationProvider():
     d->q_ptr = this;
 }
 
-MCurrentWindowOrientationProvider::~MCurrentWindowOrientationProvider()
-{
-    delete d_ptr;
-}
-
 void MCurrentWindowOrientationProvider::update(MWindowPropertyCache *pc)
 {
     Q_D(MCurrentWindowOrientationProvider);
-
-    if (d->currentWindowOrientationAngle != pc->orientationAngle()) {
-        d->currentWindowOrientationAngle = pc->orientationAngle();
-        d->property.setValue(d->currentWindowOrientationAngle);
-    }
+    d->property.setValue(pc->orientationAngle());
 }
