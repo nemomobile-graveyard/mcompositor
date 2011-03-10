@@ -1,10 +1,14 @@
 TEMPLATE = subdirs
-include(../shared.pri)
+#temporary disable
 CONFIG+=ordered
+SUBDIRS += \
+    sub_lib \
+    sub_decorator \
 
+sub_lib.subdir=libdecorator
 
-addSubDirs(libdecorator)
-addSubDirs(mdecorator, libdecorator)
+sub_decorator.depends=sub_lib
+sub_decorator.subdir=mdecorator
 
 
 check.target = check 
