@@ -62,13 +62,16 @@ protected:
     {   
         if (newState == QAbstractAnimation::Running && 
             oldState == QAbstractAnimation::Stopped) {
-            if (parent->targetWindow()) {
-                parent->ensureAnimationVisible();
+            parent->ensureAnimationVisible();
+            if (parent->targetWindow())
                 parent->targetWindow()->beginAnimation();
-            }
+            if (parent->targetWindow2())
+                parent->targetWindow2()->beginAnimation();
         } else if (newState == QAbstractAnimation::Stopped) {
             if (parent->targetWindow())
                 parent->targetWindow()->endAnimation();
+            if (parent->targetWindow2())
+                parent->targetWindow2()->endAnimation();
         }
         return QParallelAnimationGroup::updateState(newState, oldState);
     }
@@ -80,7 +83,8 @@ class MCompositeWindowAnimationPrivate
 {
 public:
     MCompositeWindowAnimationPrivate(MCompositeWindowAnimation* animation)
-        :pending_animation(MCompositeWindowAnimation::NoAnimation)
+        : crossfade(0),
+          pending_animation(MCompositeWindowAnimation::NoAnimation)
     {
         scale = new QPropertyAnimation(animation);
         scale->setPropertyName("scale");
@@ -99,26 +103,27 @@ public:
         scalepos->addAnimation(position);
         scalepos->addAnimation(opacity);
         
-        QObject::connect(scalepos, SIGNAL(finished()), animation, SLOT(finalizeState()));
+        QObject::connect(scalepos, SIGNAL(finished()), animation,
+                         SLOT(finalizeState()));
     }
 
     void setTargetWindow(MCompositeWindow* window)
     {
-        if (scalepos && position && opacity) {
+        if (scale && position && opacity) {
             scale->setTargetObject(window);
             position->setTargetObject(window);
             opacity->setTargetObject(window);
         }
     }
 
-    QPointer<MCompositeWindow> target_window;
+    QPointer<MCompositeWindow> target_window, target_window2;
     QPointer<QPropertyAnimation> scale;
     QPointer<QPropertyAnimation> position;
     QPointer<QPropertyAnimation> opacity;
-    McParallelAnimation* scalepos;
+    McParallelAnimation* scalepos, *crossfade;
     MCompositeWindowAnimation::AnimationType pending_animation;
 };
-    
+
 MCompositeWindowAnimation::MCompositeWindowAnimation(QObject* parent)
     :QObject(parent),
      d_ptr(new MCompositeWindowAnimationPrivate(this))
@@ -167,6 +172,12 @@ MCompositeWindow* MCompositeWindowAnimation::targetWindow() const
 {
     Q_D(const MCompositeWindowAnimation);
     return d->target_window;
+}
+
+MCompositeWindow* MCompositeWindowAnimation::targetWindow2() const
+{
+    Q_D(const MCompositeWindowAnimation);
+    return d->target_window2;
 }
 
 // Exposed animation properties
@@ -251,6 +262,28 @@ void MCompositeWindowAnimation::windowRestored()
     animationGroup()->start();
 }
 
+void MCompositeWindowAnimation::crossFadeTo(MCompositeWindow *cw)
+{
+    Q_D(MCompositeWindowAnimation);
+
+    if (d->crossfade)
+        delete d->crossfade;
+    d->crossfade = new McParallelAnimation(this);
+
+    QPropertyAnimation *op = new QPropertyAnimation(this);
+    op->setTargetObject(cw);
+    op->setEasingCurve(QEasingCurve::Linear);
+    op->setPropertyName("opacity");
+    op->setDuration(250);
+    op->setStartValue(0);
+    op->setEndValue(1);
+    d->crossfade->addAnimation(op);
+
+    d->target_window2 = cw;
+
+    d->crossfade->setDirection(QAbstractAnimation::Forward);
+}
+
 void MCompositeWindowAnimation::startTransition()
 {        
     Q_D(MCompositeWindowAnimation);
@@ -272,18 +305,26 @@ void MCompositeWindowAnimation::startTransition()
         windowRestored();
         d->pending_animation = NoAnimation;
         break;
+    case CrossFade:
+        if (targetWindow2())
+            targetWindow2()->show();
+        d->crossfade->start();
+        d->pending_animation = NoAnimation;
+        break;
     default:  break;
     }
 }
 
 void MCompositeWindowAnimation::ensureAnimationVisible()
 {
-    if (!targetWindow())
-        return; 
- 
     // Always ensure the animation is REALLY visible. Z-values get corrected 
     // later at checkStacking if needed
-    targetWindow()->setZValue(((MCompositeManager *) qApp)->d->stacking_list.size()+1);
+    if (targetWindow())
+        targetWindow()->setZValue(
+              ((MCompositeManager*)qApp)->d->stacking_list.size() + 1);
+    if (targetWindow2())
+        targetWindow2()->setZValue(
+              ((MCompositeManager*)qApp)->d->stacking_list.size() + 2);
 }
 
 // plays the animation group;

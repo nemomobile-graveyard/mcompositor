@@ -27,6 +27,7 @@
 #include <QPixmap>
 #include <QTimer>
 #include <QDir>
+#include <QPointer>
 
 #include <X11/Xutil.h>
 #include <X11/Xlib.h>
@@ -191,6 +192,8 @@ public:
     void dirtyStacking(bool force_visibility_check, Time t = CurrentTime);
     void pingTopmost();
     MSplashScreen *splash;
+    QPointer<MCompositeWindow> waiting_damage;
+    int waiting_ndamage;
 
 signals:
     void compositingEnabled();

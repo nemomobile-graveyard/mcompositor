@@ -1095,20 +1095,17 @@ bool MWindowPropertyCache::readSplashProperty()
     r = xcb_get_property_reply(xcb_conn, c, 0);
     if (r) {
         int len = xcb_get_property_value_length(r);
-        if (len >= 3 + 4 /* 3 separators + 4 non-empty items */) {
+        if (len >= 4 + 3 /* 4 separators + 3 non-empty items */) {
             QByteArray a((const char*)xcb_get_property_value(r), len);
-            while (a.endsWith('\0'))
-                a.chop(1);
             QList<QByteArray> l = a.split('\0');
-            if (l.size() < 4)
+            if (l.size() < 5)
                 qWarning("_MEEGO_SPLASH_SCREEN has only %d items", l.size());
             else {
                 splash_pid = l.at(0).toUInt();
                 splash_wm_class = l.at(1).data();
                 splash_portrait = l.at(2).data();
                 splash_landscape = l.at(3).data();
-                if (l.size() >= 5)
-                    splash_pixmap = l.at(4).toUInt();
+                splash_pixmap = l.at(4).toUInt();
                 ret = true;
             }
         }
