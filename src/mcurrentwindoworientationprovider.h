@@ -17,7 +17,7 @@ public:
 
 private:
     Q_DECLARE_PRIVATE(MCurrentWindowOrientationProvider)
-    QScopedPointer<MCurrentWindowOrientationProviderPrivate> d_ptr;
+    MCurrentWindowOrientationProviderPrivate* d_ptr;
 };
 
 #endif // MCURRENTWINDOWORIENTATIONPROVIDER_H
