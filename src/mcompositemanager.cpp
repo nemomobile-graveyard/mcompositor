@@ -116,14 +116,14 @@ static QString dumpWindows(const QList<Window> &wins);
 
 // Enable to see the decisions of compareWindows().
 #if 0
-# define SORTING(isLess)                            \
+# define SORTING(isLess, STR)                            \
     do {                                            \
-        STACKING("0x%lx %s 0x%lx",                  \
-               w_a, isLess ? "<" : "\\<", w_b);     \
+        STACKING(STR " 0x%lx %s 0x%lx",                  \
+               w_a, isLess ? "<" : ">", w_b);     \
         return isLess;                              \
     } while (0)
 #else
-# define SORTING(isLess)                            return isLess
+# define SORTING(isLess, STR)                            return isLess
 #endif
 
 // Enable to see what and why getTopmostApp() chooses
@@ -1088,7 +1088,10 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     for (int i = 0; i < TOTAL_LAYERS; ++i)
         if (stack[i] == e->window) stack[i] = 0;
 
-    dirtyStacking(false);
+    // Force visibility check because the unmapped window may not have been
+    // in the prev_stacked_mapped list of checkStacking(), causing skipping
+    // the visibility calculation when this window is unmapped.
+    dirtyStacking(true);
 }
 
 void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
@@ -1269,7 +1272,7 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
 
     /*qDebug() << __func__ << "CONFIGURE REQUEST FOR:" << e->window
         << e->x << e->y << e->width << e->height << "above/mode:"
-        << e->above << e->detail;*/
+        << e->above << e->detail << (e->value_mask & CWStackMode);*/
 
     configureWindow(pc, e);
     MCompositeWindow *i = COMPOSITE_WINDOW(e->window);
@@ -1366,7 +1369,13 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     const XWMHints &h = pc->getWMHints();
     if ((h.flags & StateHint) && (h.initial_state == IconicState))
         setWindowState(e->window, IconicState);
-    else
+    else if (pc->stackedUnmapped()) {
+        Window d = stack[DESKTOP_LAYER];
+        if (d && stacking_list.indexOf(d) > stacking_list.indexOf(e->window))
+            setWindowState(e->window, IconicState);
+        else
+            setWindowState(e->window, NormalState);
+    } else
         setWindowState(e->window, NormalState);
     if (needDecoration(pc)) {
         if (!MDecoratorFrame::instance()->decoratorItem()) {
@@ -1425,111 +1434,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 #endif
         }
     }
-}
-
-// Raise @pc's window together with its transiency tree to the top of
-// @stacking list.  @parent_idx is expected to be the index in the list
-// of the window of @pc.
-bool MCompositeManagerPrivate::raiseWithTransients(MWindowPropertyCache *pc,
-                                    int parent_idx, QList<int> *anewpos)
-{
-    int nprev;
-    QList<int> *newpos;
-
-    if (!pc)
-        return true;
-
-    // @newpos is a list of @stacking_list indices which should be topped.
-    // If it contains [ @i1, @i2, ..., @in ] then [ @stacking_list[@i1],
-    // @stacking_list[@i2], ..., @stacking_list[@in] ] will be the tail
-    // of the list when we have finished.
-    //
-    // @nprev is the number of elements already in @newpos.  It is used
-    // for error recovery, when we encounter a transiency cycle.
-    if (!anewpos) {
-        // Non-recursive call.
-        newpos = new QList<int>;
-        nprev = 0;
-    } else {
-        // Recursive call.
-        newpos = anewpos;
-        nprev = newpos->size();
-    }
-
-    // @stcking_list[@parent_idx] -> top of the stack
-    Q_ASSERT(parent_idx == stacking_list.indexOf(pc->winId()));
-    newpos->push_front(parent_idx);
-
-    // @isok denotes whether the caller should stop iterating, because
-    // the callee found a better root of window hierarchy.  This can
-    // only happen if we were asked to raise a transiency cycle, but
-    // checkStacking() didn't gave us the lowest-stacked element of
-    // the cycle, for example if [@w1, @w2] is the stack and we had
-    // been asked to raise @w2.  Then we would restack needlessly,
-    // which we seek to avoid.
-    bool isok = true;
-    for (QList<Window>::const_iterator it = pc->transientWindows().begin();
-         it != pc->transientWindows().end(); ++it) {
-        int idx = stacking_list.indexOf(*it);
-        if (idx < 0)
-            continue;
-        if (newpos->contains(idx)) {
-            // Transiency loop.  Having seen @idx means we are transient for it,
-            // but if we are stacked lower we make for a better root of the
-            // hierarchy.
-            if (parent_idx < idx) {
-                // Undo all positionings not done by us.
-                isok = false;
-                for (; nprev > 0; nprev--)
-                    newpos->pop_back();
-            } else
-                // We already have a new position for @idx.
-                continue;
-        }
-
-        if (!raiseWithTransients(prop_caches.value(*it), idx, newpos)) {
-            // Callee found a new root, stop what we're doing.
-            isok = false;
-            break;
-        }
-    }
-
-    // If it was a recursive call we're finished.
-    if (anewpos)
-        return isok;
-
-    // Change @stacking_list according to @newpos.  The new position
-    // of @stacking_list[@newpos[0]] is length(@stacking_list)-1,
-    // @stacking_list[@newpos[1]] goes to length(@stacking_list)-2,
-    // and so on.
-    Q_ASSERT(newpos->size() > 0);
-    QList<int>::iterator it = newpos->begin();
-    for (int new_idx = stacking_list.size() - 1; ; new_idx--) {
-        bool moved = false;
-        int old_idx = *it;
-        if (old_idx != new_idx) {
-            Q_ASSERT(new_idx >= 0);
-            STACKING_MOVE(old_idx, new_idx);
-            stacking_list.move(old_idx, new_idx);
-            moved = true;
-        }
-
-        if (++it == newpos->end())
-            break;
-        if (!moved)
-            // No need to update @newpos indices.
-            continue;
-
-        // Since we have moved @stacking_list[@old_idx] all windows above
-        // drop down by one index.  Update @newpos according to this.
-        for (QList<int>::iterator ot = it; ot != newpos->end(); ++ot)
-            if (*ot > old_idx)
-                (*ot)--;
-    }
-
-    // The new @stacking_list is ready.
-    delete newpos;
-    return true;
 }
 
 static Bool timestamp_predicate(Display *display, XEvent *xevent, XPointer arg)
@@ -1764,7 +1668,7 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
     Window duihome = stack[DESKTOP_LAYER];
     int last_i = stacking_list.size() - 1, covering_i = 0;
 
-    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+    for (int i = last_i; i >= 0; --i) {
          Window w = stacking_list.at(i);
          if (w == stack[DESKTOP_LAYER]) {
              covering_i = i;
@@ -1840,23 +1744,6 @@ static int xrestackwindows_error_handler(Display *dpy, XErrorEvent *err)
     return 0;
 }
 
-#define RAISE_MATCHING(X) \
-do { \
-    int last = last_i; \
-    for (int i = 0; i <= last && i < last_i; ) { \
-        Window w = stacking_list[i]; \
-        MWindowPropertyCache *pc = prop_caches.value(w); \
-        if (pc && (X)) { \
-            Window next = i < last ? stacking_list[i+1] : None; \
-	    raiseWithTransients(pc, i); \
-            /* don't raised windows ever again */ \
-            last -= stacking_list.size() - stacking_list.indexOf(w); \
-            i = next ? stacking_list.indexOf(next) : last_i; \
-        } else \
-            ++i; \
-    } \
-} while (0)
-
 /* Go through stacking_list and verify that it is in order.
  * If it isn't, reorder it and call XRestackWindows.
  * NOTE: stacking_list needs to be reversed before giving it to
@@ -1872,100 +1759,9 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         stacking_timer.stop();
         stacking_timeout_timestamp = CurrentTime;
     }
-    Window active_app = 0, duihome = stack[DESKTOP_LAYER];
+    Window duihome = stack[DESKTOP_LAYER];
     int last_i = stacking_list.size() - 1;
-    bool desktop_up = false, fs_app = false;
-    int app_i = -1;
     MDecoratorFrame *deco = MDecoratorFrame::instance();
-    MCompositeWindow *aw = 0;
-
-    active_app = getTopmostApp(&app_i);
-    if (!active_app || app_i < 0) {
-        desktop_up = true;
-    } else {
-        aw = COMPOSITE_WINDOW(active_app);
-        if (aw) {
-            // getTopmostApp() can return a transient now
-            Window parent = getLastVisibleParent(aw->propertyCache());
-            if (parent) {
-                active_app = parent;
-                aw = COMPOSITE_WINDOW(parent);
-                app_i = stacking_list.indexOf(active_app);
-            }
-            fs_app = FULLSCREEN_WINDOW(aw->propertyCache());
-        }
-    }
-
-    /* raise active app with its transients, or duihome if
-     * there is no active application */
-    STACKING("checkStacking: desktop_up: %d, active_app: 0x%lx, app_i: %d",
-             desktop_up, active_app, app_i);
-    if (!desktop_up && active_app && app_i >= 0 && aw) {
-	/* raise application windows belonging to the same group */
-	XID group;
-	if ((group = aw->propertyCache()->windowGroup())) {
-	    for (int i = 0; i < app_i; ) {
-            MWindowPropertyCache *pc = prop_caches.value(
-                                                   stacking_list.at(i), 0);
-            if (pc && pc->windowState() != IconicState
-                && pc->isAppWindow()
-                && pc->windowGroup() == group) {
-                STACKING_MOVE(i, last_i);
-                safe_move(stacking_list, i, last_i);
-	             /* active_app was moved, update the index */
-	             app_i = stacking_list.indexOf(active_app);
-		     /* TODO: transients */
-		 } else ++i;
-	    }
-	}
-
-	/* raise with transients recursively */
-        raiseWithTransients(aw->propertyCache(), app_i);
-    }
-
-    /* raise docks if either the desktop is up or the application is
-     * non-fullscreen */
-    if (desktop_up || !active_app || app_i < 0 || !aw || !fs_app)
-        RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                       pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK));
-    else if (active_app && aw && deco->decoratorItem() &&
-             deco->managedWindow() == active_app) {
-        // no dock => decorator starts from (0,0)
-        MWindowPropertyCache *pc = deco->decoratorItem()->propertyCache();
-        if (pc->realGeometry().x() != 0 || pc->realGeometry().y() != 0)
-            XMoveWindow(QX11Info::display(), pc->winId(), 0, 0);
-    }
-    /* raise all system-modal dialogs */
-    RAISE_MATCHING(!getLastVisibleParent(pc)
-                    && MODAL_WINDOW(pc) &&
-                    pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG));
-    /* Meego layers 1-3: lock screen, ongoing call etc. */
-    for (unsigned int level = 1; level < 4; ++level)
-         RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                        pc->windowState() != IconicState
-                        && pc->meegoStackingLayer() == level);
-    /* raise all keep-above flagged, input methods and Meego layer 4
-     * (incoming call), at the same time preserving their mapping order */
-    RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                   !pc->isDecorator() &&
-                   pc->windowState() != IconicState &&
-        (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
-         pc->meegoStackingLayer() == 4
-         || pc->isOverrideRedirect() ||
-         pc->netWmState().contains(ATOM(_NET_WM_STATE_ABOVE))));
-    // Meego layer 5
-    RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                   pc->meegoStackingLayer() == 5
-                   && pc->windowState() != IconicState);
-    /* raise all non-transient notifications (transient ones were already
-     * handled above) */
-    RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                   pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION));
-    // Meego layer 6-10
-    for (unsigned int level = 6; level <= 10; ++level)
-         RAISE_MATCHING(!getLastVisibleParent(pc) &&
-                        pc->windowState() != IconicState
-                        && pc->meegoStackingLayer() == level);
 
     int top_decorated_i;
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
@@ -2011,6 +1807,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             stacking_list.move(deco_i, 0);
         }
     }
+    roughSort();
 
     // properties and focus are updated only if there was a change in the
     // order of mapped windows or mappedness
@@ -2467,6 +2264,9 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 safe_move(stacking_list, stacking_list.indexOf(stack[DESKTOP_LAYER]),
                                    lower_i - 1);
 
+                // set it Iconic in case lowerHandler() is not called at all
+                setWindowState(i->window(), IconicState);
+
                 // Delayed transition is only available on platforms
                 // that have selective compositing. This is triggered
                 // when windows are rendered off-screen
@@ -2522,11 +2322,8 @@ void MCompositeManagerPrivate::setWindowStateForTransients(
     for (int i = 0; i < pc->transientWindows().size(); ++i) {
         MWindowPropertyCache *p = prop_caches.value(
                                        pc->transientWindows().at(i), 0);
-        if (p && p->isMapped()) {
+        if (p && p->isMapped())
             setWindowState(p->winId(), state);
-            if (!p->transientWindows().isEmpty())
-                setWindowStateForTransients(p, state);
-        }
     }
 }
 
@@ -2548,8 +2345,6 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
     if (window->isMapped()) {
         // set for roughSort()
         setWindowState(window->window(), IconicState);
-        MWindowPropertyCache *pc = window->propertyCache();
-        setWindowStateForTransients(pc, IconicState);
         roughSort();
     }
 
@@ -2570,8 +2365,15 @@ void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
     MCompositeWindow *to_stack;
     if (!last || !(to_stack = COMPOSITE_WINDOW(last)))
         to_stack = window;
-    setWindowState(to_stack->window(), NormalState);
-    setWindowStateForTransients(to_stack->propertyCache(), NormalState);
+    if (to_stack->propertyCache()->stackedUnmapped()) {
+        Window d = stack[DESKTOP_LAYER];
+        if (d && stacking_list.indexOf(d) >
+                 stacking_list.indexOf(to_stack->window()))
+            setWindowState(to_stack->window(), IconicState);
+        else
+            setWindowState(to_stack->window(), NormalState);
+    } else
+        setWindowState(to_stack->window(), NormalState);
 
     // FIXME: call these for the whole transiency chain
     window->setNewlyMapped(false);
@@ -2581,7 +2383,8 @@ void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
     if (window != to_stack)
         to_stack->setUntransformed();
 
-    positionWindow(to_stack->window(), true);
+    if (!to_stack->propertyCache()->stackedUnmapped())
+        positionWindow(to_stack->window(), true);
 
     /* the animation is finished, compositing needs to be reconsidered */
     dirtyStacking(false);
@@ -2699,15 +2502,21 @@ void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
 void MCompositeManagerPrivate::setWindowState(Window w, int state)
 {
     MWindowPropertyCache *pc = prop_caches.value(w, 0);
-    if (pc && pc->windowState() == state)
+    if (pc && pc->windowState() == state) {
+        if (state != WithdrawnState && !pc->transientWindows().isEmpty())
+            setWindowStateForTransients(pc, state);
         return;
+    }
     else if (pc && (!pc->isMapped() && !pc->beingMapped())
              && (state == NormalState || state == IconicState)) {
         // qWarning("%s: window 0x%lx is in wrong state", __func__, w);
         return;
-    } else if (pc)
+    } else if (pc) {
         // cannot wait for the property change notification
         pc->setWindowState(state);
+        if (state != WithdrawnState && !pc->transientWindows().isEmpty())
+            setWindowStateForTransients(pc, state);
+    }
 
     CARD32 d[2];
     d[0] = state;
@@ -3087,6 +2896,48 @@ static Atom isSpecial(MWindowPropertyCache *pc, int layer, Atom type)
     return cmgr->getLastVisibleParent(pc) ? None : type;
 }
 
+
+// -1: pc_a is pc_b's ancestor; 1: pc_b is pc_a's ancestor; 0: no relation
+static int transiencyRelation(MWindowPropertyCache *pc_a,
+                              MWindowPropertyCache *pc_b)
+{
+    Window parent;
+    bool pc_a_seen;
+    MWindowPropertyCache *tmp, *pc_p;
+    MCompositeManager *m = (MCompositeManager*)qApp;
+
+    // if they are in the same circle => return 0
+    pc_a_seen = false;
+    for (tmp = pc_b; (parent = tmp->transientFor())
+                      && (pc_p = m->propCaches().value(parent, 0)); tmp = pc_p)
+        if (pc_p == pc_a)
+            // We still need to verify pc_a and pc_b are not in circle.
+            pc_a_seen = true;    
+        else if (pc_p == pc_b) {
+            if (pc_a_seen)
+                return 0;
+            break;
+        }
+    if (pc_a_seen)
+        // pc_a is an ancestor of pc_b
+        return -1;
+
+    // pc_b could be in a circle, and it may be pc_a's ancestor
+    for (tmp = pc_a; (parent = tmp->transientFor())
+                     && (pc_p = m->propCaches().value(parent, 0)); tmp = pc_p)
+        if (pc_p == pc_b)
+            // pc_b is an ancestor of pc_a
+            return 1;
+       else if (pc_p == pc_a)
+           // pc_a is in a transiency loop, which doesn't contain pc_b
+           return 0;
+
+    // pc_a and pc_b are unrelated
+    return 0;
+}
+
+static QList<Window> old_order;
+
 // Internal qStableSort() comparator.  The desired rough order of
 // @stacking_list roughly is:
 //
@@ -3112,7 +2963,7 @@ static bool compareWindows(Window w_a, Window w_b)
     // no item is less than itself.
     Q_ASSERT(w_a != w_b);
     if (w_a == w_b)
-        SORTING(false);
+        SORTING(false, "SAME");
 
     MCompositeManager *cmgr = (MCompositeManager*)qApp;
     // If we don't know about either of the windows let them in peace
@@ -3120,29 +2971,35 @@ static bool compareWindows(Window w_a, Window w_b)
     MWindowPropertyCache *pc_a = cmgr->propCaches().value(w_a, 0);
     MWindowPropertyCache *pc_b = cmgr->propCaches().value(w_b, 0);
     if (!pc_a || !pc_b)
-        SORTING(false);
+        SORTING(false, "NO PC");
 
     // Mind decorators.  Lone decorators should go below everything else,
     // otherwise it's sorted above its managed window.
     if (pc_a->isDecorator())
         // @pc_a is a lone decorator or @pc_b happens to be
         // its managed window.
-        SORTING( compareDecorator(pc_b));
+        SORTING( compareDecorator(pc_b), "DECO");
     else if (pc_b->isDecorator())
         // Likewise.
-        SORTING(!compareDecorator(pc_a));
+        SORTING(!compareDecorator(pc_a), "DECO");
 
-    // Iconic/withdrawn/unmanaged windows...
-    if (pc_a->windowState() != NormalState) {
-        if (pc_b->windowState() == NormalState)
-            // ...go below NormalState windows ...
-            SORTING(true);
-        else
-            // ... otherwise we don't care.
-            SORTING(false);
-    } else if (pc_b->windowState() != NormalState)
-        // @pc_a is NormalState, @pc_b is not.
-        SORTING(false);
+    // Compare WM_STATEs of mapped windows
+    if (pc_a->isMapped() && pc_b->isMapped()) {
+        if (pc_a->windowState() != NormalState) {
+            if (pc_b->windowState() == NormalState)
+                // ...go below NormalState windows ...
+                SORTING(true, "STATE");
+            else
+                // ... otherwise we don't care.
+                SORTING(false, "STATE");
+        } else if (pc_b->windowState() != NormalState)
+            // @pc_a is NormalState, @pc_b is not.
+            SORTING(false, "STATE");
+    // Use old order when either/both are unmapped
+    } else if (old_order.indexOf(w_a) < old_order.indexOf(w_b))
+        SORTING(true, "OLD");
+    else
+        SORTING(false, "OLD");
 
     // Both @pc_a and @pc_b are in NormalState.
     // Sort the desktop below all NormalState windows.
@@ -3150,10 +3007,10 @@ static bool compareWindows(Window w_a, Window w_b)
     //  Answer: to be consistent even if both windows are desktops.)
     type_b = pc_b->windowTypeAtom();
     if (type_b == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
-        SORTING(false);
+        SORTING(false, "DESK");
     type_a = pc_a->windowTypeAtom();
     if (type_a == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
-        SORTING(true);
+        SORTING(true, "DESK");
 
     // Order transient windows below what they are transient for.
     // Since the sorting algorithm can infer that if trfor(@a) == @b
@@ -3166,17 +3023,42 @@ static bool compareWindows(Window w_a, Window w_b)
     // undeterministic.
     if (pc_b->transientFor() == w_a && pc_a->transientFor() != w_b)
       // @pc_b is transient for @pc_a, so it must be above it.
-      SORTING(true);
+      SORTING(true, "TR");
+    else if (pc_a->transientFor() == w_b && pc_b->transientFor() != w_a)
+      // @pc_a is transient for @pc_b, so it must be above it.
+      // NOTE: this test is necessary to avoid later tests returning true
+      SORTING(false, "TR");
+    else if (pc_b->transientFor() || pc_a->transientFor()) {
+      // NOTE: if you touch this, check that test08.py and test21.py pass.
+      int rel = transiencyRelation(pc_a, pc_b);
+      if (rel < 0)
+          // w_a is w_b's ancestor
+          SORTING(true, "TR(anc.)");
+      else if (rel > 0)
+          // w_b is w_a's ancestor
+          SORTING(false, "TR(anc.)");
+    }
 
-    // Compare by stacking layers.
+    // Compare by Meego stacking layers. Transients use the parent's layer.
+    // NOTE: if you touch this, check that test21.py passes.
+    Window parent;
     layer = pc_a->meegoStackingLayer();
-    int rel = layer - pc_b->meegoStackingLayer();
+    if (!layer && (parent = cmgr->getLastVisibleParent(pc_a))) {
+        MWindowPropertyCache *pc_p = cmgr->propCaches().value(parent, 0);
+        if (pc_p) layer = pc_p->meegoStackingLayer();
+    }
+    int blayer = pc_b->meegoStackingLayer();
+    if (!blayer && (parent = cmgr->getLastVisibleParent(pc_b))) {
+        MWindowPropertyCache *pc_p = cmgr->propCaches().value(parent, 0);
+        if (pc_p) blayer = pc_p->meegoStackingLayer();
+    }
+    int rel = layer - blayer;
     if (rel < 0)
         // @pc_a has lower stacking layer
-        SORTING(true);
+        SORTING(true, "MEEGO");
     else if (rel > 0)
         // @pc_a has greater stacking layer
-        SORTING(false);
+        SORTING(false, "MEEGO");
     // They're in the same layer.
 
     // Order notifications, input windows and system-modal dialogs.
@@ -3192,33 +3074,36 @@ static bool compareWindows(Window w_a, Window w_b)
         if (type_a != type_b) {
             if (type_b == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
                 // type_a == None || dialog || input
-                SORTING(true);
+                SORTING(true, "BANNER");
             if (type_a == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
                 // type_b == None || dialog || input
-                SORTING(false);
+                SORTING(false, "BANNER");
             if (type_b == ATOM(_NET_WM_WINDOW_TYPE_INPUT))
                 // type_a == None || dialog
-                SORTING(true);
+                SORTING(true, "INPUT");
             if (type_a == ATOM(_NET_WM_WINDOW_TYPE_INPUT))
                 // type_b == None || dialog
-                SORTING(false);
+                SORTING(false, "INPUT");
             if (type_b == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
                 // type_a == None
-                SORTING(true);
+                SORTING(true, "DLG");
             if (type_a == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
                 // type_b == None
-                SORTING(false);
+                SORTING(false, "DLG");
         }
     }
 
-    // Either @pc_a is transient for @pc_b or they are transient
-    // for each other, or they are not in direct relationship,
-    // or they are not in any relationship at all.
-    SORTING(false);
+    // They didn't have any differential characteristic -- we need to
+    // resort to the old order to know when to return true/false
+    if (old_order.indexOf(w_a) < old_order.indexOf(w_b))
+        SORTING(true, "OLD");
+    else
+        SORTING(false, "OLD");
 }
 
 void MCompositeManagerPrivate::roughSort()
 {
+    old_order = stacking_list;
     // Use a stable sorting algorithm to ensure roughSort() is invariant,
     // ie. that it keeps the order unless it is necessary to change.
     STACKING("sorting stack [%s]",
