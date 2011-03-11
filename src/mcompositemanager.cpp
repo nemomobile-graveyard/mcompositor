@@ -30,6 +30,7 @@
 #include "mcurrentwindoworientationprovider.h"
 #include "mcompositordebug.h"
 #include "msplashscreen.h"
+#include "mcompositewindowanimation.h"
 
 #include <QX11Info>
 #include <QByteArray>
@@ -742,6 +743,10 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
          * http://www.opengl.org/registry/specs/OML/glx_swap_method.txt */
         item->updateWindowPixmap(0, 0, e->timestamp);
         item->damageReceived();
+        if (splash && item == waiting_damage && !--waiting_ndamage) {
+            enableCompositing(); // emits a signal to start the animation
+            waiting_damage = 0;
+        }
     }
 }
 
@@ -775,11 +780,14 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 
 void MCompositeManagerPrivate::splashTimeout()
 {
+    if (!splash) return;
     splash->hide();
     prop_caches.remove(splash->window());
     removeWindow(splash->window());
     splash->deleteLater();
     splash = 0;
+    waiting_damage = 0;
+    waiting_ndamage = 0;
     glwidget->update();
     dirtyStacking(false);
 }
@@ -812,7 +820,9 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
             stacking_list.append(splash->window());
             roughSort();
             splash->setZValue(stacking_list.indexOf(splash->window()));
+            splash->setNewlyMapped(false);
             addItem(splash);
+            emit windowBound(splash);
             splash->showWindow();
             dirtyStacking(false);
         }
@@ -972,6 +982,8 @@ bool MCompositeManagerPrivate::haveMappedWindow() const
 // stacking order sensitive logic
 bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 {
+    if (splash)
+        return false;
     static const QRegion fs_r(0, 0,
                     ScreenOfDisplay(QX11Info::display(),
                         DefaultScreen(QX11Info::display()))->width,
@@ -2072,7 +2084,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             }
         } else {
             item->setNewlyMapped(false);
-            item->setVisible(true);
+            if (!splash || !splash->matches(pc))
+                item->setVisible(true);
         }
         goto stack_and_return;
     }
@@ -2098,7 +2111,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             }
         } else {
             item->setNewlyMapped(false);
-            item->setVisible(true);
+            if (!splash || !splash->matches(pc))
+                item->setVisible(true);
         }
 
         // the current decorated window got mapped
@@ -2150,9 +2164,13 @@ stack_and_return:
             roughSort();
         }
     }
-    if (splash && splash->matches(pc))
-        // TODO: cross-fade animation
-        splashTimeout();
+    if (splash && splash->matches(pc)) {
+        splash->windowAnimator()->crossFadeTo(item);
+        splash->windowAnimator()->deferAnimation(
+                                       MCompositeWindowAnimation::CrossFade);
+        waiting_damage = item;
+        waiting_ndamage = 1;
+    }
 
     dirtyStacking(false);
 }
@@ -3241,7 +3259,8 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
         // texture was already updated above
         MDecoratorFrame::instance()->setDecoratorItem(item);
     } else if (!device_state->displayOff())
-        item->setVisible(true);
+        if (!splash || !splash->matches(pc))
+            item->setVisible(true);
 
     dirtyStacking(false);
 
@@ -3451,7 +3470,8 @@ void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
 
 void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
 {
-    if (device_state->displayOff() || MCompositeWindow::hasTransitioningWindow())
+    if (splash || device_state->displayOff()
+        || MCompositeWindow::hasTransitioningWindow())
         return;
     if (!compositing && forced == NO_FORCED)
         return;

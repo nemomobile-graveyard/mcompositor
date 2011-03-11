@@ -65,6 +65,12 @@ public:
     QRectF boundingRect() const;
     bool matches(MWindowPropertyCache *pc) const;
 
+    void endAnimation();
+    void beginAnimation();
+
+private slots:
+    void iconified();
+
 private:
     unsigned int pid;
     QString wm_class;
@@ -73,6 +79,7 @@ private:
     unsigned int pixmap;
     QPixmap *q_pixmap;
     QTimer timer;
+    bool fade_animation;
 };
 
 #endif
