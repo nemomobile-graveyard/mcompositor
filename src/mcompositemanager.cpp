@@ -365,6 +365,8 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
         if (!priv->device_state->ongoingCall()
             && MDecoratorFrame::instance()->managedWindow() == window) {
             MDecoratorFrame::instance()->setManagedWindow(0);
+            STACKING("positionWindow 0x%lx -> bottom",
+                     MDecoratorFrame::instance()->winId());
             priv->positionWindow(MDecoratorFrame::instance()->winId(), false);
         }
         if (pc->isMapped())
@@ -528,12 +530,13 @@ static void kill_window(Window window)
 
 static void safe_move(QList<Window>& winlist, int from, int to)
 {
-    int slsize = winlist.size();
-    if( (from == to) || (from < 0) || (from >= slsize) ||
-        (to < 0) || (to >= slsize) )
+    if (from == to)
         return;
-
-    winlist.move(from,to);
+    int slsize = winlist.size();
+    if ((0 <= from && from < slsize) && (0 <= to && to < slsize))
+        winlist.move(from,to);
+    else
+        qWarning("safe_move(%d -> %d); nwins=%d", from, to, slsize);
 }
 
 MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
@@ -1180,10 +1183,13 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
             }
         } else {
             Window parent = pc->transientFor();
-            if (parent)
+            if (parent) {
+                STACKING("positionWindow 0x%lx -> top", parent);
                 positionWindow(parent, true);
-            else
+            } else {
+                STACKING("positionWindow 0x%lx -> top",e-> window);
                 positionWindow(e->window, true);
+            }
         }
     } else if (win_i >= 0 && e->detail == Below
                && (e->value_mask & CWStackMode)) {
@@ -1209,10 +1215,12 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
                 MWindowPropertyCache *ppc = prop_caches.value(parent, 0);
                 if (ppc && ppc->isMapped())
                     setWindowState(parent, IconicState);
+                STACKING("positionWindow 0x%lx -> bottom", parent);
                 positionWindow(parent, false);
             } else {
                 if (pc->isMapped())
                     setWindowState(e->window, IconicState);
+                STACKING("positionWindow 0x%lx -> bottom", e->window);
                 positionWindow(e->window, false);
             }
         }
@@ -1353,8 +1361,10 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
                 deco->setManagedWindow(cw, true, true);
             else
                 deco->setManagedWindow(cw);
-        } else
+        } else {
+            STACKING("positionWindow 0x%lx -> bottom", e->window);
             positionWindow(e->window, false);
+        }
         return;
     }
 
@@ -2086,6 +2096,7 @@ stack_and_return:
     } else if (pc->alwaysMapped() > 0 ||
                ((h.flags & StateHint) && h.initial_state == IconicState)) {
         setWindowState(win, IconicState);
+        STACKING("positionWindow 0x%lx -> bottom", win);
         positionWindow(win, false);
         stacked = true;
     }
@@ -2096,8 +2107,10 @@ stack_and_return:
         activateWindow(win, CurrentTime, false, stacked);
     else {
         // desktop is stacked below the active application
-        if (!stacked)
+        if (!stacked) {
+            STACKING("positionWindow 0x%lx -> bottom", win);
             positionWindow(win, false);
+        }
         if (win == stack[DESKTOP_LAYER]) {
             // lower always mapped windows below the desktop
             for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
@@ -2387,8 +2400,10 @@ void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
     if (window != to_stack)
         to_stack->setUntransformed();
 
-    if (!to_stack->propertyCache()->stackedUnmapped())
+    if (!to_stack->propertyCache()->stackedUnmapped()) {
+        STACKING("positionWindow 0x%lx -> top", to_stack->window());
         positionWindow(to_stack->window(), true);
+    }
 
     /* the animation is finished, compositing needs to be reconsidered */
     dirtyStacking(false);
@@ -2427,17 +2442,22 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
             MWindowPropertyCache *to_stack = pc;
             if (last) to_stack = prop_caches.value(last, 0);
             // move it to the correct position in the stack
+            STACKING("positionWindow 0x%lx -> top", to_stack->winId());
             positionWindow(to_stack->winId(), true);
         }
         // possibly set decorator
         dirtyStacking(false);
     } else if (pc->isDecorator()) {
         // if decorator crashes and reappears, stack it to bottom, raise later
-        if (!stacked)
+        if (!stacked) {
+            STACKING("positionWindow 0x%lx -> bottom", w);
             positionWindow(w, false);
+        }
     } else if (w == stack[DESKTOP_LAYER]) {
-        if (!stacked)
+        if (!stacked) {
+            STACKING("positionWindow 0x%lx -> top", w);
             positionWindow(w, true);
+        }
     } else if (pc->isMapped())
         checkInputFocus(timestamp);
 
