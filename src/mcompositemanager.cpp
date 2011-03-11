@@ -1973,16 +1973,23 @@ void MCompositeManagerPrivate::stackingTimeout()
 // check if there is a categorically higher mapped window than pc
 bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
 {
-    if (stack[DESKTOP_LAYER]) {
+    // Ignore initial_state == IconicState if the client stacked the window
+    // somewhere, then only skip if it's below the desktop (which is still
+    // not correct but better than nothing).
+    if (stack[DESKTOP_LAYER] && !pc->stackedUnmapped()) {
         const XWMHints &h = pc->getWMHints();
         if ((h.flags & StateHint) && h.initial_state == IconicState)
             return true;
     }
+    bool above = false; // is the window above the desktop?
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         MWindowPropertyCache *tmp;
         Window w = stacking_list.at(i);
+        if (w == pc->winId())
+            above = true;
         if (w && w == stack[DESKTOP_LAYER])
-            return false;
+            // skip the animation if the window is below the desktop
+            return !above;
         if (!(tmp = prop_caches.value(w, 0)) || tmp->isInputOnly()
             || tmp == pc || !tmp->isMapped() || tmp->isDecorator())
             continue;
