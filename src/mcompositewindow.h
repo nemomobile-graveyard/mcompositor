@@ -349,20 +349,21 @@ public slots:
      */
     void startDialogReappearTimer();
     
-private slots:
+protected slots:
 
      /*!
       * This internal slot is called whenever a start of window animation 
       * occurs. This is an atomic operation. 
       */
-    void beginAnimation(); 
+    virtual void beginAnimation(); 
     
     /*!
       * This internal slot is called whenever the window has finished 
       * animating its effects
       */
-     void endAnimation();
+    virtual void endAnimation();
 
+private slots:
 
     /*! Called internally to update how this item looks when the transitions
       are done

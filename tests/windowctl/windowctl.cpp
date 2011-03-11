@@ -997,6 +997,12 @@ static bool old_main(QStringList& args, QString& stdOut)
 				8, PropModeReplace, (unsigned char*)name,
 				sizeof(name));
 	}
+	/* set WM_CLASS */
+	{
+                XClassHint *c = XAllocClassHint();
+                c->res_name = c->res_class = (char*)"windowctl";
+                XSetClassHint(dpy, w, c);
+	}
 
         // listen to root window damage
         XDamageCreate(dpy, DefaultRootWindow(dpy), XDamageReportRawRectangles);

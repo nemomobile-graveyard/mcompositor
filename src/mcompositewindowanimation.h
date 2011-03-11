@@ -38,7 +38,8 @@ class MCompositeWindowAnimation: public QObject
         Showing,
         Closing,
         Iconify,
-        Restore
+        Restore,
+        CrossFade
     };
     
     MCompositeWindowAnimation(QObject* parent = 0);
@@ -46,6 +47,7 @@ class MCompositeWindowAnimation: public QObject
 
     void setTargetWindow(MCompositeWindow* window); 
     MCompositeWindow* targetWindow() const;
+    MCompositeWindow* targetWindow2() const;
     AnimationType pendingAnimation() const;
     void start();
     void pause();
@@ -60,6 +62,7 @@ class MCompositeWindowAnimation: public QObject
     virtual void windowClosed();
     virtual void windowIconified();
     virtual void windowRestored();    
+    void crossFadeTo(MCompositeWindow *cw);    
     void deferAnimation(AnimationType type);
     void ensureAnimationVisible();
     
