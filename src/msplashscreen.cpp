@@ -23,13 +23,10 @@
 #include "mdevicestate.h"
 #include "mcompositewindowanimation.h"
 
-// needed because prop caches and window objects are found based on window IDs
-#define FAKE_WINDOW_ID (Window)-1
-
 MSplashPropertyCache *MSplashPropertyCache::singleton;
 
 MSplashPropertyCache::MSplashPropertyCache()
-    : MWindowPropertyCache(FAKE_WINDOW_ID)
+    : MWindowPropertyCache(0)
 {
 }
 MSplashPropertyCache *MSplashPropertyCache::get()
@@ -49,7 +46,7 @@ bool MSplashPropertyCache::event(QEvent *e)
 MSplashScreen::MSplashScreen(unsigned int splash_pid, const QString &wmclass,
                              const QString &splash_p, const QString &splash_l,
                              unsigned int splash_pixmap)
-    : MTexturePixmapItem(FAKE_WINDOW_ID, MSplashPropertyCache::get()),
+    : MTexturePixmapItem(0, MSplashPropertyCache::get()),
       pid(splash_pid),
       wm_class(wmclass),
       portrait_file(splash_p),
@@ -58,6 +55,15 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid, const QString &wmclass,
       q_pixmap(0),
       fade_animation(false)
 {
+    Display *dpy = QX11Info::display();
+    win_id = XCreateWindow(dpy, RootWindow(dpy, 0), 0, 0,
+                           ScreenOfDisplay(dpy, DefaultScreen(dpy))->width,
+                           ScreenOfDisplay(dpy, DefaultScreen(dpy))->height,
+                           0, CopyFromParent,
+                           InputOnly, CopyFromParent, 0, 0);
+    XStoreName(dpy, win_id, "MSplashScreen");
+    XMapWindow(dpy, win_id);
+
     MCompositeManager *m = (MCompositeManager*)qApp;
     if (!pixmap) {
         if (!splash_l.size())
@@ -90,6 +96,7 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid, const QString &wmclass,
 
 MSplashScreen::~MSplashScreen()
 {
+    XDestroyWindow(QX11Info::display(), win_id);
     // NOTE: if pixmap was provided to us, MTexturePixmapItemPrivate frees it.
     // TODO: signal switcher that we freed it
 
