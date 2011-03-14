@@ -1856,7 +1856,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             STACKING("XRestackWindows() failed, retry later");
             dirtyStacking(false);
         } else {
-            prev_stacked_mapped = only_mapped;
             prev_stacked = stacking_list;
             restacked = true;
         }
@@ -1877,6 +1876,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                         XA_WINDOW, 32, PropModeReplace,
                         (unsigned char *)no_decors.toVector().data(),
                         no_decors.size());
+        prev_stacked_mapped = only_mapped;
     }
     if (mapped_order_changed || changed_properties) {
         if (!device_state->displayOff())
