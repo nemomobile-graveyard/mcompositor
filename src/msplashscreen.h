@@ -61,6 +61,7 @@ public:
 
     ~MSplashScreen();
 
+    Qt::HANDLE window() const { return win_id; }
     Pixmap windowPixmap() const { return pixmap; }
     QRectF boundingRect() const;
     bool matches(MWindowPropertyCache *pc) const;
@@ -80,6 +81,7 @@ private:
     QPixmap *q_pixmap;
     QTimer timer;
     bool fade_animation;
+    Window win_id;
 };
 
 #endif

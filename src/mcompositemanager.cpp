@@ -812,7 +812,6 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
                 splash = 0;
                 return;
             }
-            // it has a fake window ID
             windows[splash->window()] = splash;
             prop_caches[splash->window()] = splash->propertyCache();
             setWindowState(splash->window(), NormalState);
@@ -2007,6 +2006,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     }
     // NOTE: we send synthetic MapNotifys from redirectWindows()
     if (win == localwin || win == localwin_parent || win == close_button_win
+        || (splash && win == splash->window())
         || win == home_button_win || e->event != QX11Info::appRootWindow())
         return;
 
