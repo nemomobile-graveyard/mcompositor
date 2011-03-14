@@ -75,7 +75,7 @@ public:
      */
     virtual ~MCompositeWindow();
 
-    Qt::HANDLE window() const { return win_id; }
+    virtual Qt::HANDLE window() const { return win_id; }
 
     // Reimplemented to defer deleteLater()s until transitions are over.
     virtual bool event(QEvent *);
