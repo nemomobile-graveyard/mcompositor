@@ -16,8 +16,9 @@ public:
     void update(MWindowPropertyCache *pc);
 
 private:
+    Q_DISABLE_COPY(MCurrentWindowOrientationProvider);
     Q_DECLARE_PRIVATE(MCurrentWindowOrientationProvider)
-    MCurrentWindowOrientationProviderPrivate* d_ptr;
+    QScopedPointer<MCurrentWindowOrientationProviderPrivate> d_ptr;
 };
 
 #endif // MCURRENTWINDOWORIENTATIONPROVIDER_H

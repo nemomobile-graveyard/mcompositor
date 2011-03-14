@@ -7,9 +7,14 @@
 #include <QDBusConnection>
 
 MCurrentWindowOrientationProviderPrivate::MCurrentWindowOrientationProviderPrivate() :
-        service(QDBusConnection::SessionBus, "org.maemo.mcompositor.context"),
-        property(service, "/Screen/CurrentWindow/OrientationAngle")
+    service(QDBusConnection::SessionBus, "org.maemo.mcompositor.context"),
+    property(service, "/Screen/CurrentWindow/OrientationAngle")
 {
+}
+
+MCurrentWindowOrientationProvider::~MCurrentWindowOrientationProvider()
+{
+    // keep QScopedPointer happy
 }
 
 MCurrentWindowOrientationProvider::MCurrentWindowOrientationProvider():
@@ -17,11 +22,6 @@ MCurrentWindowOrientationProvider::MCurrentWindowOrientationProvider():
 {
     Q_D(MCurrentWindowOrientationProvider);
     d->q_ptr = this;
-}
-
-MCurrentWindowOrientationProvider::~MCurrentWindowOrientationProvider()
-{
-    delete d_ptr;
 }
 
 void MCurrentWindowOrientationProvider::update(MWindowPropertyCache *pc)
