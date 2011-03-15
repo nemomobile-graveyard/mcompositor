@@ -1,8 +1,14 @@
-mcompositor (0.8.7-1~unreleased) unstable; urgency=low
+mcompositor (0.8.7-2) unstable; urgency=low
 
-  * :)
+  * skipStartupAnim() if the window is below the desktop
+  * update _NET_CLIENT_LIST_STACKING correctly
+  * Fixes: NB#234891 - Status menu opens on second tap from application level
+  * Fixes: NB#234886 - New text message window opens in background
+  * Fixes: NB#234906 - 234906 [REG] Device gets frozen to user input after receiving notification after screen orientation change
+  * build without broken MSimpleWindowFrame
+  * clean up qmake and debian files
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 08 Mar 2011 15:10:17 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 15 Mar 2011 15:05:47 +0200
 
 mcompositor (0.8.6-1) unstable; urgency=low
 
