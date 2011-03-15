@@ -1,4 +1,4 @@
-mcompositor (0.8.7-2) unstable; urgency=low
+mcompositor (0.8.6-2) unstable; urgency=low
 
   * skipStartupAnim() if the window is below the desktop
   * update _NET_CLIENT_LIST_STACKING correctly
