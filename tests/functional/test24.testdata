@@ -1,0 +1,18 @@
+CaseName="verify_low_power_mode_support"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that low-power mode windows are supported.
+
+- Test steps
+	- ensure the display is on
+        - show ARGB application window
+        - check that the window is composited
+        - set _MEEGO_LOW_POWER_MODE=1 on the window
+        - check that the window is not composited
+        - turn the display off
+        - check that the window is not composited
+        - set _MEEGO_LOW_POWER_MODE=0 on the window
+        - check that the window is composited
+        - set _MEEGO_LOW_POWER_MODE=1 on the window
+- Post-conditions
+	- check that the window is not composited\n"

@@ -123,6 +123,7 @@ void MWindowPropertyCache::init()
     wmhints = XAllocWMHints();
     attrs = 0;
     meego_layer = 0;
+    low_power_mode = 0;
     window_state = -1;
     window_type = MCompAtoms::INVALID;
     parent_window = QX11Info::appRootWindow();
@@ -192,6 +193,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                                XCB_ATOM_WINDOW));
     addRequest(SLOT(meegoStackingLayer()),
                requestProperty(MCompAtoms::_MEEGO_STACKING_LAYER,
+                               XCB_ATOM_CARDINAL));
+    addRequest(SLOT(lowPowerMode()),
+               requestProperty(MCompAtoms::_MEEGO_LOW_POWER_MODE,
                                XCB_ATOM_CARDINAL));
     addRequest(SLOT(windowTypeAtom()),
                requestProperty(MCompAtoms::_NET_WM_WINDOW_TYPE,
@@ -544,6 +548,24 @@ unsigned int MWindowPropertyCache::meegoStackingLayer()
     return meego_layer;
 }
 
+unsigned int MWindowPropertyCache::lowPowerMode()
+{
+    QLatin1String me(SLOT(lowPowerMode()));
+    if (is_valid && requests[me]) {
+        xcb_get_property_cookie_t c = { requests[me] };
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        replyCollected(me);
+        low_power_mode = 0;
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                low_power_mode = *((CARD32*)xcb_get_property_value(r));
+            free(r);
+        }
+    }
+    return low_power_mode;
+}
+
 /*!
  * Used for special windows that should not be minimised/iconified.
  */
@@ -674,6 +696,9 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
             m->d->positionWindow(window, true);
         }
         return true;
+    } else if (e->atom == ATOM(_MEEGO_LOW_POWER_MODE)) {
+        addRequest(SLOT(lowPowerMode()),
+                   requestProperty(e->atom, XCB_ATOM_CARDINAL));
     } else if (e->atom == ATOM(_MEEGOTOUCH_CUSTOM_REGION)) {
         emit customRegionChanged(this);
     } else if (e->atom == ATOM(WM_NAME)) {
