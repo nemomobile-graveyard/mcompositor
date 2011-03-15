@@ -85,7 +85,7 @@ public:
 		        bool disableCompositing = true,
                         bool stacked = false);
     void updateWinList();
-    void setWindowState(Window , int);
+    void setWindowState(Window, int, int level = 0);
     void setWindowDebugProperties(Window w);
     void iconifyApps();
     void positionWindow(Window w, bool on_top);
@@ -128,7 +128,8 @@ public:
     bool needDecoration(MWindowPropertyCache *pc);
     bool skipStartupAnim(MWindowPropertyCache *pc);
     MCompositeWindow *getHighestDecorated(int *index = 0);
-    void setWindowStateForTransients(MWindowPropertyCache *pc, int state);
+    void setWindowStateForTransients(MWindowPropertyCache *pc, int state,
+                                     int level = 0);
     
     void roughSort();
     void setCurrentApp(MCompositeWindow *cw, bool restacked);
