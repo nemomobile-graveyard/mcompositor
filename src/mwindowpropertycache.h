@@ -170,6 +170,11 @@ public slots:
     //! Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 10].
     unsigned int meegoStackingLayer();
 
+    //! Returns value of _MEEGO_LOW_POWER_MODE. The value is 0 or 1. Allows
+    //  switching off compositing for any window type, and special handling
+    //  when the display is off.
+    unsigned int lowPowerMode();
+
     //! Returns the value of _MEEGOTOUCH_ORIENTATION_ANGLE.
     unsigned orientationAngle();
 
@@ -254,7 +259,7 @@ private:
     QRect home_button_geom, close_button_geom;
     XWMHints *wmhints;
     xcb_get_window_attributes_reply_t *attrs;
-    unsigned meego_layer;
+    unsigned meego_layer, low_power_mode;
     int window_state;
     QVector<Atom> type_atoms;
     MCompAtoms::Type window_type;

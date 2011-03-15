@@ -118,8 +118,10 @@ static QString dumpWindows(const QList<Window> &wins);
 #if 0
 # define SORTING(isLess, STR)                            \
     do {                                            \
-        STACKING(STR " 0x%lx %s 0x%lx",                  \
-               w_a, isLess ? "<" : ">", w_b);     \
+        STACKING(STR " 0x%lx(%c) %s 0x%lx(%c)",                  \
+               w_a, pc_a->isMapped() ? 'M' : 'U', \
+                        isLess ? "<" : ">", w_b, \
+                    pc_b->isMapped() ? 'M' : 'U');     \
         return isLess;                              \
     } while (0)
 #else
@@ -200,6 +202,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_MSTATUSBAR_GEOMETRY",
         "_MEEGOTOUCH_CUSTOM_REGION",
         "_MEEGOTOUCH_ORIENTATION_ANGLE",
+        "_MEEGO_LOW_POWER_MODE",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
@@ -781,6 +784,14 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         return;
     pc = prop_caches.value(e->window);
 
+    if (e->atom == ATOM(_MEEGO_LOW_POWER_MODE)) {
+        pc->propertyEvent(e);
+        // check if compositing needs to be switched on/off
+        if (!possiblyUnredirectTopmostWindow() && !compositing)
+            enableCompositing();
+        return;
+    }
+
     if (pc->propertyEvent(e) && pc->isMapped()) {
         changed_properties = true; // property change can affect stacking order
         if (pc->isDecorator())
@@ -951,9 +962,10 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         if (cw->isClosing())
             // this window is unmapped and has unmap animation going on
             return false;
-        if (cw->isMapped() && (cw->propertyCache()->hasAlpha()
-                               || cw->needDecoration()
-                               || cw->propertyCache()->isDecorator()
+        if (cw->isMapped() && !cw->propertyCache()->lowPowerMode()
+            && (cw->propertyCache()->hasAlpha()
+                || cw->needDecoration()
+                || cw->propertyCache()->isDecorator()
             // FIXME: implement direct rendering for shaped windows
             || !fs_r.subtracted(cw->propertyCache()->shapeRegion()).isEmpty()))
             // this window prevents direct rendering
@@ -1706,7 +1718,8 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
         MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
         if (!cw || !cw->isMapped() || !cw->propertyCache()) continue;
         if (device_state->displayOff()) {
-            cw->setWindowObscured(true);
+            if (!cw->propertyCache()->lowPowerMode())
+                cw->setWindowObscured(true);
             // setVisible(false) is not needed because updates are frozen
             // and for avoiding NB#174346
             if (duihome && i >= home_i)
@@ -3009,8 +3022,10 @@ static bool compareWindows(Window w_a, Window w_b)
     // qSort() should know better, but if it doesn't, tell it that
     // no item is less than itself.
     Q_ASSERT(w_a != w_b);
-    if (w_a == w_b)
-        SORTING(false, "SAME");
+    if (w_a == w_b) {
+        STACKING("0x%lx == 0x%lx", w_a, w_b);
+        return false;
+    }
 
     MCompositeManager *cmgr = (MCompositeManager*)qApp;
     // If we don't know about either of the windows let them in peace
