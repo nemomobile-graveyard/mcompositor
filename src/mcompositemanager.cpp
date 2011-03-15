@@ -2402,14 +2402,19 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
 
 // set all mapped transients of pc to either Normal or Iconic
 void MCompositeManagerPrivate::setWindowStateForTransients(
-                                        MWindowPropertyCache *pc, int state)
+                                        MWindowPropertyCache *pc,
+                                        int state, int level)
 {
+    if (level > 10) {
+        qWarning() << __func__ << "too deep recursion, give up";
+        return;
+    }
     Q_ASSERT(state == NormalState || state == IconicState);
     for (int i = 0; i < pc->transientWindows().size(); ++i) {
         MWindowPropertyCache *p = prop_caches.value(
                                        pc->transientWindows().at(i), 0);
         if (p && p->isMapped())
-            setWindowState(p->winId(), state);
+            setWindowState(p->winId(), state, level + 1);
     }
 }
 
@@ -2592,12 +2597,12 @@ void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
     }
 }
 
-void MCompositeManagerPrivate::setWindowState(Window w, int state)
+void MCompositeManagerPrivate::setWindowState(Window w, int state, int level)
 {
     MWindowPropertyCache *pc = prop_caches.value(w, 0);
     if (pc && pc->windowState() == state) {
         if (state != WithdrawnState && !pc->transientWindows().isEmpty())
-            setWindowStateForTransients(pc, state);
+            setWindowStateForTransients(pc, state, level);
         return;
     }
     else if (pc && (!pc->isMapped() && !pc->beingMapped())
@@ -2608,7 +2613,7 @@ void MCompositeManagerPrivate::setWindowState(Window w, int state)
         // cannot wait for the property change notification
         pc->setWindowState(state);
         if (state != WithdrawnState && !pc->transientWindows().isEmpty())
-            setWindowStateForTransients(pc, state);
+            setWindowStateForTransients(pc, state, level);
     }
 
     if (pc && pc->isVirtual())
