@@ -3091,10 +3091,27 @@ static bool compareWindows(Window w_a, Window w_b)
             // @pc_a is NormalState, @pc_b is not.
             SORTING(false, "STATE");
     // Use old order when either/both are unmapped
-    } else if (old_order.indexOf(w_a) < old_order.indexOf(w_b))
-        SORTING(true, "OLD");
-    else
-        SORTING(false, "OLD");
+    } else {
+        // take mapped transient parent into account if there is one
+        // (Ideally the parent's attributes would be checked, for the case
+        // that the parent's old position is not good, but for simple raises
+        // and activations this should work.)
+        Window p_a, p_b;
+        p_a = pc_a->isMapped() ? cmgr->getLastVisibleParent(pc_a) : 0;
+        p_b = pc_b->isMapped() ? cmgr->getLastVisibleParent(pc_b) : 0;
+        if (p_a || p_b) {
+            if (!p_a) p_a = w_a;
+            if (!p_b) p_b = w_b;
+            if (old_order.indexOf(p_a) < old_order.indexOf(p_b))
+                SORTING(true, "TRp");
+            else
+                SORTING(false, "TRp");
+        }
+        if (old_order.indexOf(w_a) < old_order.indexOf(w_b))
+            SORTING(true, "OLD");
+        else
+            SORTING(false, "OLD");
+    }
 
     // Both @pc_a and @pc_b are in NormalState.
     // Sort the desktop below all NormalState windows.
@@ -3132,6 +3149,21 @@ static bool compareWindows(Window w_a, Window w_b)
       else if (rel > 0)
           // w_b is w_a's ancestor
           SORTING(false, "TR(anc.)");
+      // take mapped transient parent into account if there is one
+      // (Ideally the parent's attributes would be checked, for the case
+      // that the parent's old position is not good, but for simple raises
+      // and activations this should work.)
+      Window p_a, p_b;
+      p_a = cmgr->getLastVisibleParent(pc_a);
+      p_b = cmgr->getLastVisibleParent(pc_b);
+      if (p_a || p_b) {
+          if (!p_a) p_a = w_a;
+          if (!p_b) p_b = w_b;
+          if (old_order.indexOf(p_a) < old_order.indexOf(p_b))
+              SORTING(true, "TRp");
+          else
+              SORTING(false, "TRp");
+      }
     }
 
     // Compare by Meego stacking layers. Transients use the parent's layer.
