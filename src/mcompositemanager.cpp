@@ -3069,7 +3069,7 @@ static QList<Window> old_order;
 // the decorator, possibly also window groups and dock windows.
 static bool compareWindows(Window w_a, Window w_b)
 {
-    int layer;
+    float layer;
     Atom type_a, type_b;
 
     // qSort() should know better, but if it doesn't, tell it that
@@ -3193,13 +3193,15 @@ static bool compareWindows(Window w_a, Window w_b)
     if (!layer && (parent = cmgr->getLastVisibleParent(pc_a))) {
         MWindowPropertyCache *pc_p = cmgr->propCaches().value(parent, 0);
         if (pc_p) layer = pc_p->meegoStackingLayer();
-    }
-    int blayer = pc_b->meegoStackingLayer();
+    } else if (!layer && pc_a->windowType() == MCompAtoms::NOTIFICATION)
+        layer = 5.5;
+    float blayer = pc_b->meegoStackingLayer();
     if (!blayer && (parent = cmgr->getLastVisibleParent(pc_b))) {
         MWindowPropertyCache *pc_p = cmgr->propCaches().value(parent, 0);
         if (pc_p) blayer = pc_p->meegoStackingLayer();
-    }
-    int rel = layer - blayer;
+    } else if (!blayer && pc_b->windowType() == MCompAtoms::NOTIFICATION)
+        blayer = 5.5;
+    float rel = layer - blayer;
     if (rel < 0)
         // @pc_a has lower stacking layer
         SORTING(true, "MEEGO");
