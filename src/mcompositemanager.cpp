@@ -2248,8 +2248,17 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                 if (needComp)
                     enableCompositing();
             }
-        } else if (event->window != stack[DESKTOP_LAYER])
+        } else if (event->window != stack[DESKTOP_LAYER]) {
+            // unless we redirect the desktop we run the risk of using trash
+            // in the animation because nothing is drawn there and the buffer
+            // contents is undefined
+            MCompositeWindow *d = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
+            if (d && ((MTexturePixmapItem *)d)->isDirectRendered()) {
+                ((MTexturePixmapItem *)d)->enableRedirectedRendering();
+                setWindowDebugProperties(d->window());
+            }
             setExposeDesktop(false);
+        }
 
 #ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
         FrameData fd = framed_windows.value(event->window);
