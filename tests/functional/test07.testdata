@@ -5,10 +5,12 @@ CaseDescription="Check that TYPE_NOTIFICATION window is stacked above applicatio
 dialogs and input windows.
 
 - Test steps
+        - create and show window on Meego level 6
 	- create and show notification window
 	- create and show application window
 	- create and show dialog window
 	- create and show TYPE_INPUT window
+        - create and show window on Meego level 5
 - Post-conditions
 	- Notification window is stacked above application, dialog and input
-	  window\n"
+	  window, but below the Meego level 6 window\n"
