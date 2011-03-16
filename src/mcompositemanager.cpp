@@ -2377,13 +2377,13 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 safe_move(stacking_list, stacking_list.indexOf(stack[DESKTOP_LAYER]),
                                    lower_i - 1);
 
-                // set it Iconic in case lowerHandler() is not called at all
-                setWindowState(i->window(), IconicState);
-
                 // Delayed transition is only available on platforms
                 // that have selective compositing. This is triggered
                 // when windows are rendered off-screen
-                i->iconify(i->propertyCache()->iconGeometry(), needComp);
+                if (!i->iconify(i->propertyCache()->iconGeometry(), needComp))
+                    // signal will not come, set it iconic now
+                    setWindowState(i->window(), IconicState);
+
                 if (needComp)
                     enableCompositing();
                 if (i->needDecoration())
