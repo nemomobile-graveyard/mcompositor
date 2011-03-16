@@ -164,14 +164,14 @@ void MCompositeWindow::setThumbMode(bool mode)
 }
 
 /* This is a delayed animation. Actual animation is triggered
- * when startTransition() is called
+ * when startTransition() is called. Returns true if signal will come.
  */
-void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
+bool MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
 {
     if (iconify_state == ManualIconifyState) {
         setIconified(true);
         window_status = Normal;
-        return;
+        return false;
     }
 
     if (window_status != MCompositeWindow::Closing)
@@ -189,7 +189,9 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
         else
             animator->windowIconified();
         window_status = Normal;
+        return true;
     }
+    return false;
 }
 
 void MCompositeWindow::setUntransformed()

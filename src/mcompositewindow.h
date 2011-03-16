@@ -99,9 +99,9 @@ public:
 
     /*!
      * Iconify window with animation. If deferAnimation is set to true
-     * call startTransition() manually.
+     * call startTransition() manually. Returns true if signal will come.
     */
-    void iconify(const QRectF &iconGeometry = QRectF(),
+    bool iconify(const QRectF &iconGeometry = QRectF(),
                  bool deferAnimation = false);
 
     /*!
