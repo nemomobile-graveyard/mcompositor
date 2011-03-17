@@ -1,3 +1,9 @@
+mcompositor (0.8.8-1~unreleased) unstable; urgency=low
+
+  * :)
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Thu, 17 Mar 2011 23:35:43 +0200
+
 mcompositor (0.8.7-1) unstable; urgency=low
 
   * fix regression with notification window stacking and test better for it
