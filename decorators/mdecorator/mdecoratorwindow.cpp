@@ -377,10 +377,8 @@ void MDecoratorWindow::createQueryDialog()
     text->setAlignment(Qt::AlignCenter);
     layout->addItem(text);
     messageBox->centralWidget()->setLayout(layout);
-    MButtonModel *yes = messageBox->addButton(qtTrId("qtn_comm_command_yes"),
-                                              M::AcceptRole);
-    MButtonModel *no = messageBox->addButton(qtTrId("qtn_comm_command_no"),
-                                             M::RejectRole);
+    MButtonModel *yes = messageBox->addButton(M::YesButton);
+    MButtonModel *no = messageBox->addButton(M::NoButton);
     connect(yes, SIGNAL(clicked()), this, SLOT(yesButtonClicked()));
     connect(no, SIGNAL(clicked()), this, SLOT(noButtonClicked()));
 }
