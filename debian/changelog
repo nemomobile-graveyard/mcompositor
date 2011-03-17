@@ -1,8 +1,11 @@
-mcompositor (0.8.7-1~unreleased) unstable; urgency=low
+mcompositor (0.8.7-1) unstable; urgency=low
 
-  * :)
+  * fix regression with notification window stacking and test better for it
+  * Fixes: NB#230979 - Need a way to keep on painting the window contents in low power mode
+  * redirect desktop when a window is topped
+  * give names to the zombie-application-dialog buttons
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 15 Mar 2011 17:12:43 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Thu, 17 Mar 2011 23:33:12 +0200
 
 mcompositor (0.8.6-2) unstable; urgency=low
 
