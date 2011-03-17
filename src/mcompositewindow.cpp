@@ -243,7 +243,7 @@ void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
     MCompositeManager *p = (MCompositeManager *) qApp;
     short new_value = obscured ? 1 : 0;
     if ((new_value == window_obscured && !newly_mapped)
-        || (!obscured && p->displayOff()))
+        || (!obscured && p->displayOff() && !pc->lowPowerMode()))
         return;
     window_obscured = new_value;
 

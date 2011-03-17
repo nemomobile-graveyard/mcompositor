@@ -786,6 +786,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 
     if (e->atom == ATOM(_MEEGO_LOW_POWER_MODE)) {
         pc->propertyEvent(e);
+        dirtyStacking(true, e->time); // visibility notify
         // check if compositing needs to be switched on/off
         if (!possiblyUnredirectTopmostWindow() && !compositing)
             enableCompositing();
@@ -1720,6 +1721,8 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
         if (device_state->displayOff()) {
             if (!cw->propertyCache()->lowPowerMode())
                 cw->setWindowObscured(true);
+            else
+                cw->setWindowObscured(false);
             // setVisible(false) is not needed because updates are frozen
             // and for avoiding NB#174346
             if (duihome && i >= home_i)
@@ -2115,6 +2118,8 @@ stack_and_return:
         Window d = stack[DESKTOP_LAYER];
         if (d && stacking_list.indexOf(d) > stacking_list.indexOf(win))
             setWindowState(win, IconicState);
+        else
+            setWindowState(win, NormalState);
     } else if (pc->alwaysMapped() > 0 ||
                ((h.flags & StateHint) && h.initial_state == IconicState)) {
         setWindowState(win, IconicState);
