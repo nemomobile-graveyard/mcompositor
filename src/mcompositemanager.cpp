@@ -1390,15 +1390,15 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
     pc->setBeingMapped(true); // don't disable compositing & allow setting state
     const XWMHints &h = pc->getWMHints();
-    if ((h.flags & StateHint) && (h.initial_state == IconicState))
-        setWindowState(e->window, IconicState);
-    else if (pc->stackedUnmapped()) {
+    if (pc->stackedUnmapped()) {
         Window d = stack[DESKTOP_LAYER];
         if (d && stacking_list.indexOf(d) > stacking_list.indexOf(e->window))
             setWindowState(e->window, IconicState);
         else
             setWindowState(e->window, NormalState);
-    } else
+    } else if ((h.flags & StateHint) && (h.initial_state == IconicState))
+        setWindowState(e->window, IconicState);
+    else
         setWindowState(e->window, NormalState);
     if (needDecoration(pc)) {
         if (!MDecoratorFrame::instance()->decoratorItem()) {
