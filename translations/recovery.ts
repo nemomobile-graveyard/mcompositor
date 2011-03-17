@@ -14,14 +14,12 @@
         <translation>Do you want to close it?</translation>
     </message>
     <message id="qtn_comm_command_yes">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="380"/>
         <source></source>
-        <translation>Aje</translation>
+        <translation type="obsolete">Aje</translation>
     </message>
     <message id="qtn_comm_command_no">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="382"/>
         <source></source>
-        <translation>Oh, no!</translation>
+        <translation type="obsolete">Oh, no!</translation>
     </message>
 </context>
 </TS>
