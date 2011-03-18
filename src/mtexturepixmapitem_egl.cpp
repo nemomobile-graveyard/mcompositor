@@ -25,7 +25,7 @@
 #include <QRect>
 #include <QGLContext>
 #include <QX11Info>
-#include <vector>
+#include <QVector>
 
 #include <X11/Xlib.h>
 #include <X11/extensions/Xcomposite.h>
@@ -45,27 +45,21 @@ static EGLint attribs[] = { EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE };
 class EglTextureManager
 {
 public:
-    // TODO: this should be dynamic
-    // use QCache instead like Qt's GL backend
-    static const int sz = 20;
 
     EglTextureManager() {
-        glGenTextures(sz, tex);
-        for (int i = 0; i < sz; i++)
-            textures.push_back(tex[i]);
+        genTextures(20);
     }
 
     ~EglTextureManager() {
-        glDeleteTextures(sz, tex);
+        int sz = all_tex.size();
+        glDeleteTextures(sz, all_tex.constData());
     }
 
     GLuint getTexture() {
-        if (textures.empty()) {
-            qWarning("Empty texture stack");
-            return 0;
-        }
-        GLuint ret = textures.back();
-        textures.pop_back();
+        if (free_tex.empty())
+            genTextures(10);
+        GLuint ret = free_tex.back();
+        free_tex.pop_back();
         return ret;
     }
 
@@ -74,11 +68,20 @@ public:
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 0, GL_RGBA,
                      GL_UNSIGNED_BYTE, 0);
-        textures.push_back(texture);
+        free_tex.push_back(texture);
+    }
+private:
+
+    void genTextures(int n) {
+        GLuint tex[n + 1];
+        glGenTextures(n, tex);
+        for (int i = 0; i < n; i++) {
+            free_tex.push_back(tex[i]);
+            all_tex.push_back(tex[i]);
+        }
     }
 
-    GLuint tex[sz+1];
-    std::vector<GLuint> textures;
+    QVector<GLuint> free_tex, all_tex;
 };
 
 class EglResourceManager
