@@ -6,6 +6,16 @@ CaseDescription="Check that selective compositing works in most important cases.
 - Test steps
 	- start test app
 	- check that test app is not composited
+        - show an input window transient for the test app
+        - check that test app is composited but the input window is not
+        - unmap the input window
+        - check that test app is not composited
+        - map a new input window and set the transiency after mapping
+        - check that test app is composited but the input window is not
+        - remove transiency and lower the input window
+        - check that test app is not composited
+        - set the input window transient again
+        - check that test app is composited but the input window is not
 	- show a normal (non-fullscreen) application window
 	- check that application is composited (due to the decorator)
 	- iconify the application by raising desktop
