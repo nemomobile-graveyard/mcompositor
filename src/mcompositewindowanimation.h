@@ -45,7 +45,7 @@ class MCompositeWindowAnimation: public QObject
     MCompositeWindowAnimation(QObject* parent = 0);
     virtual ~MCompositeWindowAnimation();
 
-    void setTargetWindow(MCompositeWindow* window); 
+    virtual void setTargetWindow(MCompositeWindow* window); 
     MCompositeWindow* targetWindow() const;
     MCompositeWindow* targetWindow2() const;
     AnimationType pendingAnimation() const;

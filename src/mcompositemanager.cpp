@@ -202,6 +202,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_MSTATUSBAR_GEOMETRY",
         "_MEEGOTOUCH_CUSTOM_REGION",
         "_MEEGOTOUCH_ORIENTATION_ANGLE",
+        "_MEEGOTOUCH_NET_WM_WINDOW_TYPE_SHEET",
         "_MEEGO_SPLASH_SCREEN",
         "_MEEGO_LOW_POWER_MODE",
 
@@ -734,6 +735,7 @@ bool MCompositeManagerPrivate::needDecoration(MWindowPropertyCache *pc)
             && t != MCompAtoms::INPUT
             && t != MCompAtoms::DOCK
             && t != MCompAtoms::NO_DECOR_DIALOG
+            && t != MCompAtoms::SHEET
             && (!getLastVisibleParent(pc) || t == MCompAtoms::DIALOG));
 }
 
@@ -3552,7 +3554,8 @@ void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
         MCompositeWindow *tp = COMPOSITE_WINDOW(w);
         if (tp && tp->isValid() && tp->isDirectRendered() && tp->propertyCache()
             && (tp->propertyCache()->isMapped()
-                || tp->propertyCache()->beingMapped()))
+                || tp->propertyCache()->beingMapped()
+                || tp->isClosing()))
             ((MTexturePixmapItem *)tp)->enableRedirectedRendering();
         setWindowDebugProperties(w);
     }
