@@ -147,8 +147,10 @@ void MCompositeWindowAnimation::setTargetWindow(MCompositeWindow* window)
 
     // never override a sheet 
     if ((window->propertyCache()->windowType() == MCompAtoms::SHEET)
-        && !qobject_cast<MSheetAnimation *>(this))
+        && !qobject_cast<MSheetAnimation *>(this)) {
+        deleteLater();
         return;
+    }
     
     // replace the old animator if there is one
     if (window->animator && (window->animator != this))
