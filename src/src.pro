@@ -46,7 +46,8 @@ HEADERS += \
     mcompmgrextensionfactory.h \
     mcurrentwindoworientationprovider.h \
     mcurrentwindoworientationprovider_p.h \
-    mcompositewindowanimation.h
+    mcompositewindowanimation.h \
+    msheetanimation.h
 
 SOURCES += \
     mtexturepixmapitem_p.cpp \
@@ -60,7 +61,8 @@ SOURCES += \
     mcompositemanagerextension.cpp \
     mcompositewindowshadereffect.cpp \
     mcurrentwindoworientationprovider.cpp \
-    mcompositewindowanimation.cpp
+    mcompositewindowanimation.cpp \
+    msheetanimation.cpp
 
 CONFIG += release link_pkgconfig
 PKGCONFIG += contextsubscriber-1.0 contextprovider-1.0
@@ -74,7 +76,8 @@ publicHeaders.files += mcompositewindow.h \
                       mwindowpropertycache.h \
                       mcompatoms_p.h \
                       mcompmgrextensionfactory.h \
-                      mcompositewindowanimation.h
+                      mcompositewindowanimation.h \
+                      msheetanimation.h
 publicHeaders.path = $$M_INSTALL_HEADERS/mcompositor
 INSTALLS += publicHeaders
 
