@@ -852,6 +852,13 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         if (pc->isDecorator())
             // in case decorator's transiency changes, make us update the value
             pc->transientFor();
+        // if transient, ensure that it has the same state as the parent
+        Window p;
+        if (e->atom == ATOM(WM_TRANSIENT_FOR) &&
+            (p = getLastVisibleParent(pc))) {
+            MWindowPropertyCache *p_pc = prop_caches.value(p, 0);
+            if (p_pc) setWindowState(e->window, p_pc->windowState());
+        }
         dirtyStacking(false, e->time);
         MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
         if (cw && !cw->isNewlyMapped()) {
