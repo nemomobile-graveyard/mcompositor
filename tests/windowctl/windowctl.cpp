@@ -695,7 +695,8 @@ static bool old_main(QStringList& args, QString& stdOut)
 		      SubstructureNotifyMask | PropertyChangeMask);
 
 	/*printf ("argc == %d, argv[1] = '%s'\n", argc, argv[1]);*/
-	for (char *p = args.at(0).toAscii().data(); *p; ++p) {
+        QByteArray tmp = args.at(0).toAscii();
+	for (char *p = tmp.data(); *p; ++p) {
 		const char *command;
 		if (*p == 'a') {
 			argb = 1;
