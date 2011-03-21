@@ -31,6 +31,7 @@ public:
         DESKTOP,
         NORMAL,
         DIALOG,
+        SHEET,
         NO_DECOR_DIALOG,
         FRAMELESS,
         DOCK,
@@ -101,6 +102,7 @@ public:
         _MEEGOTOUCH_MSTATUSBAR_GEOMETRY,
         _MEEGOTOUCH_CUSTOM_REGION,
         _MEEGOTOUCH_ORIENTATION_ANGLE,
+        _MEEGOTOUCH_NET_WM_WINDOW_TYPE_SHEET,
         _MEEGO_SPLASH_SCREEN,
         _MEEGO_LOW_POWER_MODE,
 

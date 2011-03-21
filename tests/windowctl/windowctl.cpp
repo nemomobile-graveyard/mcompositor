@@ -686,7 +686,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         WIN_H = DisplayHeight(dpy, DefaultScreen(dpy));
 
         win_type_atom = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
-	/*trans_for_atom = XInternAtom(dpy, "WM_TRANSIENT_FOR", False);*/
+	trans_for_atom = XInternAtom(dpy, "WM_TRANSIENT_FOR", False);
 	workarea_atom = XInternAtom(dpy, "_NET_WORKAREA", False);
 
         /* receive MapNotifys and UnmapNotifys for root's children,
@@ -695,7 +695,8 @@ static bool old_main(QStringList& args, QString& stdOut)
 		      SubstructureNotifyMask | PropertyChangeMask);
 
 	/*printf ("argc == %d, argv[1] = '%s'\n", argc, argv[1]);*/
-	for (char *p = args.at(0).toAscii().data(); *p; ++p) {
+        QByteArray tmp = args.at(0).toAscii();
+	for (char *p = tmp.data(); *p; ++p) {
 		const char *command;
 		if (*p == 'a') {
 			argb = 1;

@@ -5,6 +5,16 @@
 #* Test steps
 #  * start test app
 #  * check that test app is not composited
+#  * show an input window transient for the test app
+#  * check that test app is composited but the input window is not
+#  * unmap the input window
+#  * check that test app is not composited
+#  * map a new input window and set the transiency after mapping
+#  * check that test app is composited but the input window is not
+#  * remove transiency and lower the input window
+#  * check that test app is not composited
+#  * set the input window transient again
+#  * check that test app is composited but the input window is not
 #  * show a normal (non-fullscreen) application window
 #  * check that application is composited (due to the decorator)
 #  * iconify the application by raising desktop
@@ -37,52 +47,79 @@ if home_win == 0:
   print 'FAIL: desktop not found'
   sys.exit(1)
 
-# check that test app is not redirected
 ret = 0
-fd = os.popen('windowstack v')
-s = fd.read(5000)
-for l in s.splitlines():
-  if re.search("%s " % app_win, l.strip()) and re.search(' dir.', l.strip()):
-    break
-  elif re.search("%s " % app_win, l.strip()) and \
-       re.search(' redir.', l.strip()):
-    print 'FAIL: test app is redirected'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
+def check_redir(w, str, story):
+  global ret
+  print 'Test:', story
+  fd = os.popen('windowstack v')
+  s = fd.read(5000)
+  for l in s.splitlines():
+    if re.match("%s " % w, l.strip()) and re.search(str, l.strip()):
+      break
+    elif re.match("%s " % w, l.strip()):
+      print 'Test "%s" FAILED' % story
+      print 'Failed stack:\n', s
+      ret = 1
+      break
+
+# check that test app is not redirected
+check_redir(app_win, ' dir.', 'test app is not redirected')
+
+# map an input window that is transient to the test app window
+input_win = os.popen('windowctl i %s' % app_win).readline().strip()
+time.sleep(1)
+
+# check that the test app is not redirected but not the input window
+check_redir(app_win, ' redir.', 'test app with VKB is redirected')
+check_redir(input_win, ' dir.', 'input window is not redirected')
+
+# unmap the input window
+os.popen('windowctl U %s' % input_win)
+time.sleep(1)
+
+# check that test app is not redirected
+check_redir(app_win, ' dir.', 'test app is not redirected 2')
+
+# map a new input window and set the transiency after mapping
+input_win = os.popen('windowctl i').readline().strip()
+time.sleep(1)
+os.popen('windowctl t %s %s' % (input_win, app_win))
+time.sleep(1)
+
+# check that the test app is not redirected but not the input window
+check_redir(app_win, ' redir.', 'test app with VKB is redirected 2')
+check_redir(input_win, ' dir.', 'input window is not redirected 2')
+
+# remove transiency and lower the input window
+os.popen('windowctl T %s' % input_win)
+os.popen('windowctl L %s None' % input_win)
+time.sleep(1)
+
+# check that test app is not redirected
+check_redir(app_win, ' dir.', 'test app is not redirected 3')
+
+# set the input window transient again
+os.popen('windowctl t %s %s' % (input_win, app_win))
+time.sleep(1)
+
+# check that the test app is not redirected but not the input window
+check_redir(app_win, ' redir.', 'test app with VKB is redirected 3')
+check_redir(input_win, ' dir.', 'input window is not redirected 3')
 
 # map new decorated application window
 fd = os.popen('windowctl n')
 old_win = fd.readline().strip()
 time.sleep(2)
+
 # check that the application is redirected
-fd = os.popen('windowstack v')
-s = fd.read(5000)
-for l in s.splitlines():
-  if re.search("%s " % old_win, l.strip()) and re.search(' redir.', l.strip()):
-    break
-  elif re.search("%s " % old_win, l.strip()) and \
-       re.search(' dir.', l.strip()):
-    print 'FAIL: old_win is not redirected'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
+check_redir(old_win, ' redir.', 'decorated app is redirected')
 
 # raise home
 os.popen('windowctl A %s' % home_win)
-time.sleep(3)
+time.sleep(2)
+
 # check that duihome is not redirected
-fd = os.popen('windowstack v')
-s = fd.read(5000)
-for l in s.splitlines():
-  if re.search("%s " % home_win, l.strip()) and re.search(' dir.', l.strip()):
-    break
-  elif re.search("%s " % home_win, l.strip()) and \
-       re.search(' redir.', l.strip()):
-    print 'FAIL: desktop is redirected'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
+check_redir(home_win, ' dir.', 'desktop is not redirected')
 
 # map an LMT-looking application window and quickly kill it
 fd = os.popen('windowctl nk')
@@ -94,34 +131,16 @@ os.popen('kill %s' % pid)
 time.sleep(1)
 
 # check that desktop is not redirected
-fd = os.popen('windowstack v')
-s = fd.read(5000)
-for l in s.splitlines():
-  if re.search("%s " % home_win, l.strip()) and re.search(' dir.', l.strip()):
-    break
-  elif re.search("%s " % home_win, l.strip()) and \
-       re.search(' redir.', l.strip()):
-    print 'FAIL: desktop is redirected after aborted animation'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
+check_redir(home_win, ' dir.',
+            'desktop is not redirected after aborted animation')
 
 # map new non-decorated application with alpha
 fd = os.popen('windowctl akn')
 new_win = fd.readline().strip()
 time.sleep(2)
+
 # check that new_win is redirected
-fd = os.popen('windowstack v')
-s = fd.read(5000)
-for l in s.splitlines():
-  if re.search("%s " % new_win, l.strip()) and re.search(' redir.', l.strip()):
-    break
-  elif re.search("%s " % new_win, l.strip()) and \
-       re.search(' dir.', l.strip()):
-    print 'FAIL: RGBA app is not redirected'
-    print 'Failed stack:\n', s
-    ret = 1
-    break
+check_redir(new_win, ' redir.', 'RGBA app is redirected')
 
 # cleanup
 os.popen('pkill windowctl')
@@ -129,6 +148,5 @@ time.sleep(1)
 
 if os.system('/usr/bin/gconftool-2 --type bool --set /desktop/meego/notifications/previews_enabled true'):
   print 'cannot re-enable notifications'
-
 
 sys.exit(ret)
