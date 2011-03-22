@@ -829,6 +829,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
             splash->setZValue(stacking_list.indexOf(splash->window()));
             splash->setNewlyMapped(false);
             addItem(splash);
+            enableCompositing();
             emit windowBound(splash);
             splash->showWindow();
             dirtyStacking(false);
