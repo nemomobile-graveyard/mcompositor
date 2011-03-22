@@ -145,6 +145,7 @@ public:
     void setWindowState(Window, int);
     const QList<Window> &stackingList() const;
     Window getLastVisibleParent(MWindowPropertyCache *pc) const;
+    Time getServerTime() const;
 
     // called with the answer to mdecorator's dialog
     void queryDialogAnswer(unsigned int window, bool yes_answer);

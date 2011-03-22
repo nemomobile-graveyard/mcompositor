@@ -90,6 +90,7 @@ public:
 
     QRect brect;
     QRegion damageRegion;
+    QTimer damageRetryTimer;
     qreal angle;
 
     MTexturePixmapItem *item;
