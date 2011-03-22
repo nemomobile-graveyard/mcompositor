@@ -1535,7 +1535,7 @@ static Bool timestamp_predicate(Display *display, XEvent *xevent, XPointer arg)
     return False;
 }
 
-static Time get_server_time()
+Time MCompositeManager::getServerTime() const
 {
     XEvent xevent;
     long data = 0;
@@ -1581,7 +1581,7 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
     // timestamp is needed because Qt could set the focus some cases (i.e.
     // startup and XEmbed)
     if (timestamp == CurrentTime)
-        timestamp = get_server_time();
+        timestamp = ((MCompositeManager*)qApp)->getServerTime();
 #if 0 // disabled due to bugs in applications (e.g. widgetsgallery)
     MCompositeWindow *cw = windows.value(w);
     if (cw && cw->supportedProtocols().indexOf(ATOM(WM_TAKE_FOCUS)) != -1) {

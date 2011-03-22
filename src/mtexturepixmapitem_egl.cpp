@@ -150,6 +150,10 @@ void MTexturePixmapItem::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
     d->saveBackingStore();
+    d->damageRetryTimer.setSingleShot(true);
+    d->damageRetryTimer.setInterval(0);
+    connect(&d->damageRetryTimer, SIGNAL(timeout()),
+            SLOT(updateWindowPixmapProxy()));
 }
 
 MTexturePixmapItem::MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
@@ -246,7 +250,7 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
     // When a window is in transitioning limit the number of updates
     // to @limit/@expiry miliseconds.
     const unsigned expiry = 1000;
-    const int      limit  =   10;
+    const int      limit  =   30;
 
     if (hasTransitioningWindow()) {
         // Limit the number of damages we're willing to process if we're
@@ -257,12 +261,15 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
             while (d->pastDamages->size() > 0
                    && d->pastDamages->first() + expiry < when)
                 d->pastDamages->removeFirst();
-            if (d->pastDamages->size() >= limit)
-                // Too many damages in the given timeframe, throttle.
+            if (d->pastDamages->size() >= limit) {
+                // Too many damages in the given timeframe, postpone.
+                if (!d->damageRetryTimer.isActive())
+                    d->damageRetryTimer.start();
                 return;
+            }
         } else
             d->pastDamages = new QList<Time>;
-        // Can afford this damage, but recoed when we received it,
+        // Can afford this damage, but record when we received it,
         // so to know when to forget about them.
         d->pastDamages->append(when);
     } else if (d->pastDamages) {
@@ -270,6 +277,7 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
         delete d->pastDamages;
         d->pastDamages = NULL;
     }
+    d->damageRetryTimer.stop();
 
     // we want to update the pixmap even if the item is not visible because
     // certain animations require up-to-date pixmap (alternatively we could mark

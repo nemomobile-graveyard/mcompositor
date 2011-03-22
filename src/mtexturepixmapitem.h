@@ -115,6 +115,9 @@ private:
     friend class MCompositeWindowShaderEffect;
     friend class MCompositeWindowGroupPrivate;
     friend class MCompositeWindowGroup;
+
+private slots:
+    void updateWindowPixmapProxy();
 };
 
 #endif // DUIGLXTEXTUREPIXMAPITEM_H
