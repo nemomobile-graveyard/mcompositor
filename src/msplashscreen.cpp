@@ -118,7 +118,7 @@ QRectF MSplashScreen::boundingRect() const
 
 bool MSplashScreen::matches(MWindowPropertyCache *pc) const
 {
-    if (pc->wmClass()[0] == wm_class)
+    if (!pc->wmClass()[0].compare(wm_class, Qt::CaseInsensitive))
         return true;
     return false;
 }
