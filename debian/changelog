@@ -1,3 +1,9 @@
+mcompositor (0.8.9-1~unreleased) unstable; urgency=low
+
+  * :)
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 22 Mar 2011 14:21:45 +0200
+
 mcompositor (0.8.8-1) unstable; urgency=low
 
   * Fixes: NB#238080 - Use after free in test mcompositor/tests/windowctl/windowctl.c pp
