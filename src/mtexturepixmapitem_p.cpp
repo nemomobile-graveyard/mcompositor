@@ -591,6 +591,11 @@ void MTexturePixmapPrivate::resize(int w, int h)
     brect.setHeight(h);
 }
 
+void MTexturePixmapItem::updateWindowPixmapProxy()
+{
+    updateWindowPixmap(0, 0, ((MCompositeManager*)qApp)->getServerTime());
+}
+
 bool MTexturePixmapItem::isDirectRendered() const
 {
     return d->direct_fb_render;
