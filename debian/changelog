@@ -1,8 +1,16 @@
-mcompositor (0.8.8-1~unreleased) unstable; urgency=low
+mcompositor (0.8.8-1) unstable; urgency=low
 
-  * :)
+  * Fixes: NB#238080 - Use after free in test mcompositor/tests/windowctl/windowctl.c pp
+  * Improve test12.py to test for self-composited VKB and fix "windowctl T"
+  * Mark iconic later if we have animation on WM_CHANGE_STATE=IconicState message.
+  * eliminate some Makefile warnings from libdecorator
+  * Simplify creating complex animation structures for windows
+  * Ensure event preparation and redirection of windows happen only after a plugin was loaded.
+  * Fixes: NB#231177 - Enabler: Compositor Splash Screen Support 
+  * Implement cross-fade using the new animation framework + more
+  * Create an input-only window for MSplashScreen to eat input
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Thu, 17 Mar 2011 23:35:43 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 22 Mar 2011 14:16:33 +0200
 
 mcompositor (0.8.7-1) unstable; urgency=low
 
