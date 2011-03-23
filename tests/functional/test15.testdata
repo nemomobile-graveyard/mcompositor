@@ -13,5 +13,13 @@ CaseDescription="Check that synthetic VisibilityNotifys are generated.
 	- show a decorated window
 	- verify that it's unobscured
 	- show a decorated window
+        - verify that the lower decorated window is obscured
+        - show an ARGB window
+        - verify that the decorated window below is not obscured
+        - force the ARGB window opaque
+        - verify that the decorated window below is obscured
+        - undo the forcing
+        - verify that the decorated window below is not obscured
+        - unmap the ARGB window, set _MEEGOTOUCH_OPAQUE_WINDOW=1, then re-map
 - Post-conditions
-	- verify that the lower decorated window is obscured\n"
+	- verify that the decorated window below is obscured\n"

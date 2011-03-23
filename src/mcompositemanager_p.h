@@ -64,10 +64,6 @@ class MCompositeManagerPrivate: public QObject
 {
     Q_OBJECT
 public:
-    enum ForcingLevel {
-        NO_FORCED = 0,
-        FORCED
-    };
 
     MCompositeManagerPrivate(QObject *p);
     ~MCompositeManagerPrivate();
@@ -204,7 +200,6 @@ public slots:
 
     void gotHungWindow(MCompositeWindow *window, bool is_hung);
     void enableCompositing();
-    void disableCompositing(ForcingLevel forced = NO_FORCED);
 
     void lowerHandler(MCompositeWindow *window);
     void restoreHandler(MCompositeWindow *window);

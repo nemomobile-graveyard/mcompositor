@@ -138,7 +138,8 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
 
         // subtract opaque regions
         if (!cw->isWindowTransitioning()
-            && !cw->propertyCache()->hasAlpha() 
+            && (!cw->propertyCache()->hasAlpha()
+                || cw->propertyCache()->opaqueWindow())
             && cw->opacity() == 1.0
             && !cw->group()) // window is not renderered off-screen)
             visible -= r;

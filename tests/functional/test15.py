@@ -12,8 +12,16 @@
 #  * show a decorated window
 #  * verify that it's unobscured
 #  * show a decorated window
-#* Post-conditions
 #  * verify that the lower decorated window is obscured
+#  * show an ARGB window
+#  * verify that the decorated window below is not obscured
+#  * force the ARGB window opaque
+#  * verify that the decorated window below is obscured
+#  * undo the forcing
+#  * verify that the decorated window below is not obscured
+#  * unmap the ARGB window, set _MEEGOTOUCH_OPAQUE_WINDOW=1, then re-map
+#* Post-conditions
+#  * verify that the decorated window below is obscured
 
 import os, re, sys, time
 
@@ -65,6 +73,36 @@ win4 = fd.readline().strip()
 time.sleep(2)
 check_visi(win3, ' OBS. ')
 check_visi(win4, ' UNOBS. ')
+
+# map ARGB window
+fd = os.popen('windowctl eakn')
+argb_win = fd.readline().strip()
+time.sleep(1)
+check_visi(win4, ' UNOBS. ')
+check_visi(argb_win, ' UNOBS. ')
+
+# force the ARGB window opaque
+os.popen("xprop -id %s -f _MEEGOTOUCH_OPAQUE_WINDOW 32c "
+         "-set _MEEGOTOUCH_OPAQUE_WINDOW 1" % argb_win)
+time.sleep(1)
+check_visi(win4, ' OBS. ')
+check_visi(argb_win, ' UNOBS. ')
+
+# undo that
+os.popen("xprop -id %s -f _MEEGOTOUCH_OPAQUE_WINDOW 32c "
+         "-set _MEEGOTOUCH_OPAQUE_WINDOW 0" % argb_win)
+time.sleep(1)
+check_visi(win4, ' UNOBS. ')
+check_visi(argb_win, ' UNOBS. ')
+
+# unmap the ARGB window, set _MEEGOTOUCH_OPAQUE_WINDOW=1, then re-map
+os.popen('windowctl U %s' % argb_win)
+os.popen("xprop -id %s -f _MEEGOTOUCH_OPAQUE_WINDOW 32c "
+         "-set _MEEGOTOUCH_OPAQUE_WINDOW 1" % argb_win)
+os.popen('windowctl M %s' % argb_win)
+time.sleep(1)
+check_visi(win4, ' OBS. ')
+check_visi(argb_win, ' UNOBS. ')
 
 # cleanup
 os.popen('pkill windowctl')
