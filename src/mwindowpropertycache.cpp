@@ -116,6 +116,7 @@ xcb_connection_t *MWindowPropertyCache::xcb_conn;
 void MWindowPropertyCache::init()
 {
     transient_for = None,
+    invoked_by = None,
     has_alpha = -1;
     global_alpha = 255;
     video_global_alpha = -1;
@@ -190,6 +191,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                                XCB_ATOM_CARDINAL));
     addRequest(SLOT(transientFor()),
                requestProperty(XCB_ATOM_WM_TRANSIENT_FOR,
+                               XCB_ATOM_WINDOW));
+    addRequest(SLOT(invokedBy()),
+               requestProperty(MCompAtoms::_MEEGOTOUCH_WM_INVOKED_BY,
                                XCB_ATOM_WINDOW));
     addRequest(SLOT(meegoStackingLayer()),
                requestProperty(MCompAtoms::_MEEGO_STACKING_LAYER,
@@ -438,6 +442,24 @@ Window MWindowPropertyCache::transientFor()
     return transient_for;
 }
 
+Window MWindowPropertyCache::invokedBy()
+{
+    QLatin1String me(SLOT(invokedBy()));
+    if (is_valid && requests[me]) {
+        xcb_get_property_cookie_t c = { requests[me] };
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        replyCollected(me);
+        invoked_by = None;
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(Window))
+                invoked_by = *((Window*)xcb_get_property_value(r));
+            free(r);
+        }
+    }
+    return invoked_by;    
+}
+
 int MWindowPropertyCache::cannotMinimize()
 {
     QLatin1String me(SLOT(cannotMinimize()));
@@ -631,6 +653,10 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
             if (p) p->transients.removeAll(window);
         }
         addRequest(me, requestProperty(e->atom, XCB_ATOM_WINDOW));
+        return true;
+    } else if (e->atom == ATOM(_MEEGOTOUCH_WM_INVOKED_BY)) {
+        addRequest(SLOT(invokedBy()),
+                   requestProperty(e->atom, XCB_ATOM_WINDOW));
         return true;
     } else if (e->atom == ATOM(_MEEGOTOUCH_ALWAYS_MAPPED)) {
         addRequest(SLOT(alwaysMapped()),

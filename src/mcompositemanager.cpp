@@ -203,6 +203,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_CUSTOM_REGION",
         "_MEEGOTOUCH_ORIENTATION_ANGLE",
         "_MEEGOTOUCH_NET_WM_WINDOW_TYPE_SHEET",
+        "_MEEGOTOUCH_WM_INVOKED_BY",
         "_MEEGO_SPLASH_SCREEN",
         "_MEEGO_LOW_POWER_MODE",
 
@@ -2148,7 +2149,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
 #endif
         if (!pc->alwaysMapped() && e->send_event == False
             && (!splash || !splash->matches(pc))
-            && !pc->isInputOnly() && item->isAppWindow()
+            && !pc->isInputOnly() 
+            && (item->isAppWindow() || pc->invokedBy() != None)
             && !skipStartupAnim(pc)) {
             if (!item->showWindow()) {
                 item->setNewlyMapped(false);
