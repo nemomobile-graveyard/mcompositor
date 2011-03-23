@@ -168,7 +168,6 @@ public:
 
 public slots:
     void enableCompositing(bool forced = false);
-    void disableCompositing();
 
     /*!
      * Invoke to show the desktop window, possibly with switcher contents

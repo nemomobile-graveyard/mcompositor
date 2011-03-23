@@ -206,6 +206,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_WM_INVOKED_BY",
         "_MEEGO_SPLASH_SCREEN",
         "_MEEGO_LOW_POWER_MODE",
+        "_MEEGOTOUCH_OPAQUE_WINDOW",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
@@ -1003,8 +1004,6 @@ bool MCompositeManagerPrivate::haveMappedWindow() const
     return false;
 }
 
-// TODO: merge this with disableCompositing() so that in the end we have
-// stacking order sensitive logic
 bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 {
     if (splash)
@@ -1030,10 +1029,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         if (cw->isClosing())
             // this window is unmapped and has unmap animation going on
             return false;
-        if (cw->isMapped() && !cw->propertyCache()->lowPowerMode()
-            && (cw->propertyCache()->hasAlpha()
-                || cw->needDecoration()
-                || cw->propertyCache()->isDecorator()
+        if (cw->isMapped() && (cw->needsCompositing()
             // FIXME: implement direct rendering for shaped windows
             || !fs_r.subtracted(cw->propertyCache()->shapeRegion()).isEmpty()))
             // this window prevents direct rendering
@@ -1056,7 +1052,11 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             return false;
     }
     if (!haveMappedWindow()) {
-        disableCompositing(FORCED);
+        if (splash || device_state->displayOff()
+            || MCompositeWindow::hasTransitioningWindow())
+            return false;
+        showOverlayWindow(false);
+        compositing = false;
         return true;
     }
 
@@ -1769,7 +1769,7 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
          MWindowPropertyCache *pc = 0;
          if (cw && cw->isMapped())
              pc = cw->propertyCache();
-         if (cw && cw->isMapped() && !pc->hasAlpha() &&
+         if (cw && cw->isMapped() && (!pc->hasAlpha() || pc->opaqueWindow()) &&
              !pc->isDecorator() && !cw->hasTransitioningWindow() &&
              // allow input windows to composite their app, see NB#223280
              pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
@@ -1972,7 +1972,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             pingTopmost();
         checkInputFocus(timestamp);
     }
-    if (mapped_order_changed || force_visibility_check)
+    if (mapped_order_changed || force_visibility_check || changed_properties)
         sendSyntheticVisibilityEventsForOurBabies();
     // current app has different semantics from getTopmostApp and pure isAppWindow
     MCompositeWindow *set_as_current_app = 0;
@@ -2101,9 +2101,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             && windows_as_mapped.indexOf(win) == -1)
             windows_as_mapped.append(win);
     }
-    // Compositing is always assumed to be enabled at this point if a window
-    // has alpha channels
-    if (!compositing && (pc && pc->hasAlpha()))
+    if (!compositing && item->needsCompositing())
         enableCompositing();
 
     if (item && pc) {
@@ -2143,7 +2141,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             return;
         pc = item->propertyCache();
 #ifdef WINDOW_DEBUG
-        if (debug_mode && pc->hasAlpha())
+        if (debug_mode && item->needsCompositing())
             qDebug() << "Composition overhead (new pixmap):"
                      << overhead_measure.elapsed();
 #endif
@@ -3578,47 +3576,6 @@ void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
         emit compositingEnabled();        
 }
 
-void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
-{
-    if (splash || device_state->displayOff()
-        || MCompositeWindow::hasTransitioningWindow())
-        return;
-    if (!compositing && forced == NO_FORCED)
-        return;
-
-    // we could still have existing decorator on-screen.
-    // ensure we don't accidentally disturb it
-    for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
-         it != windows.end(); ++it) {
-        MCompositeWindow *i  = it.value();
-        if (i->propertyCache()->isDecorator())
-            continue;
-        if (i->windowVisible() && (i->propertyCache()->hasAlpha()
-                                   || i->needDecoration()))
-            return;
-    }
-
-#ifdef GLES2_VERSION
-    showOverlayWindow(false);
-#endif
-
-    for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
-            it != windows.end(); ++it) {
-        MCompositeWindow *tp  = it.value();
-        // checks above fail. somehow decorator got in. stop it at this point
-        if (!tp->propertyCache()->isDecorator() && !tp->isIconified()
-            && !tp->propertyCache()->hasAlpha())
-            ((MTexturePixmapItem *)tp)->enableDirectFbRendering();
-        setWindowDebugProperties(it.key());
-    }
-
-#ifndef GLES2_VERSION
-    showOverlayWindow(false);
-#endif
-
-    compositing = false;
-}
-
 void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
 {
     MDecoratorFrame *deco = MDecoratorFrame::instance();
@@ -4208,11 +4165,6 @@ void MCompositeManager::enableCompositing(bool forced)
 {
     Q_UNUSED(forced)
     d->enableCompositing();
-}
-
-void MCompositeManager::disableCompositing()
-{
-    d->disableCompositing();
 }
 
 bool MCompositeManager::isCompositing()

@@ -189,6 +189,11 @@ public:
     bool needDecoration() const;
 
     /*!
+     * Returns true if this window needs compositing
+     */
+    bool needsCompositing() const;
+
+    /*!
      * Sets whether this window is decorated or not
      */
     void setDecorated(bool decorated);

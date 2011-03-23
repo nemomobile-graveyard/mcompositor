@@ -106,6 +106,7 @@ public:
         _MEEGOTOUCH_WM_INVOKED_BY,
         _MEEGO_SPLASH_SCREEN,
         _MEEGO_LOW_POWER_MODE,
+        _MEEGOTOUCH_OPAQUE_WINDOW,
 
 #ifdef WINDOW_DEBUG
         _M_WM_INFO,
