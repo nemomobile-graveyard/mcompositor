@@ -313,9 +313,12 @@ bool MCompositeWindow::showWindow()
         q_fadeIn();
         return true;
     }
+
     // defer putting this window in the _NET_CLIENT_LIST
     // only after animation is done to prevent the switcher from rendering it
-    if (!isAppWindow() || !pc || !pc->is_valid
+    if (!pc 
+        || !pc->is_valid
+        || (!isAppWindow() && pc->invokedBy() == None)
         // isAppWindow() returns true for system dialogs
         || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
         return false;
@@ -424,7 +427,7 @@ void MCompositeWindow::closeWindowAnimation()
     if ((pc->windowType() != MCompAtoms::SHEET) &&
         (!pc || !pc->is_valid || window_status == Closing
         || pc->isInputOnly() || pc->isOverrideRedirect()
-        || !windowPixmap() || !isAppWindow()
+        || !windowPixmap() || (!isAppWindow() && pc->invokedBy() == None)
         // isAppWindow() returns true for system dialogs
         || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)
         || propertyCache()->windowState() == IconicState
@@ -432,7 +435,6 @@ void MCompositeWindow::closeWindowAnimation()
         return;
     }
     
-
     window_status = Closing; // animating, do not disturb
     
     MCompositeManager *p = (MCompositeManager *) qApp;
