@@ -24,5 +24,11 @@ CaseDescription="Check that selective compositing works in most important cases.
         - try to close it before the animation ends
         - check that desktop is not composited
 	- show a non-decorated RGBA application window
+        - check that compositing is on (because the topmost window is RGBA)
+        - set _MEEGOTOUCH_OPAQUE_WINDOW=1 on it
+        - check that compositing is off
+        - set _MEEGOTOUCH_OPAQUE_WINDOW=0 on it
+        - check that compositing is on (because the topmost window is RGBA)
+        - unmap it, set _MEEGOTOUCH_OPAQUE_WINDOW=1, then re-map
 - Post-conditions
-	- check that compositing is on (because the topmost window is RGBA)\n"
+	- check that compositing is off\n"

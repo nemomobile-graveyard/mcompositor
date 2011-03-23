@@ -120,6 +120,7 @@ void MWindowPropertyCache::init()
     attrs = 0;
     meego_layer = 0;
     low_power_mode = 0;
+    opaque_window = 0;
     prestarted = false;
     window_state = -1;
     window_type = MCompAtoms::INVALID;
@@ -193,6 +194,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                                XCB_ATOM_CARDINAL));
     addRequest(SLOT(lowPowerMode()),
                requestProperty(MCompAtoms::_MEEGO_LOW_POWER_MODE,
+                               XCB_ATOM_CARDINAL));
+    addRequest(SLOT(opaqueWindow()),
+               requestProperty(MCompAtoms::_MEEGOTOUCH_OPAQUE_WINDOW,
                                XCB_ATOM_CARDINAL));
     addRequest(SLOT(prestartedApp()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_PRESTARTED,
@@ -568,6 +572,24 @@ unsigned int MWindowPropertyCache::lowPowerMode()
     return low_power_mode;
 }
 
+unsigned int MWindowPropertyCache::opaqueWindow()
+{
+    QLatin1String me(SLOT(opaqueWindow()));
+    if (is_valid && requests[me]) {
+        xcb_get_property_cookie_t c = { requests[me] };
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        replyCollected(me);
+        opaque_window = 0;
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                opaque_window = *((CARD32*)xcb_get_property_value(r));
+            free(r);
+        }
+    }
+    return opaque_window;
+}
+
 bool MWindowPropertyCache::prestartedApp()
 {
     QLatin1String me(SLOT(prestartedApp()));
@@ -722,6 +744,10 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     } else if (e->atom == ATOM(_MEEGO_LOW_POWER_MODE)) {
         addRequest(SLOT(lowPowerMode()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
+    } else if (e->atom == ATOM(_MEEGOTOUCH_OPAQUE_WINDOW)) {
+        addRequest(SLOT(opaqueWindow()),
+                   requestProperty(e->atom, XCB_ATOM_CARDINAL));
+        return true;  // check if compositing mode needs to change
     } else if (e->atom == ATOM(_MEEGOTOUCH_CUSTOM_REGION)) {
         emit customRegionChanged(this);
     } else if (e->atom == ATOM(WM_NAME)) {

@@ -639,6 +639,17 @@ bool MCompositeWindow::needDecoration() const
     return need_decor;
 }
 
+bool MCompositeWindow::needsCompositing() const
+{
+    if (!pc || (!pc->is_valid && !pc->isVirtual()))
+        return false;
+    if (need_decor || (pc->isDecorator() && !pc->opaqueWindow()))
+        return true;
+    if (!pc->opaqueWindow() && !pc->lowPowerMode() && pc->hasAlpha())
+        return true;
+    return false;
+}
+
 void MCompositeWindow::setDecorated(bool decorated)
 {
     need_decor = decorated;
