@@ -156,6 +156,8 @@ public:
     }
 
     void initVertices(QGLWidget *glwidget) {
+        width = glwidget->width();
+        height = glwidget->height();
         texCoords[0] = 0.0f; texCoords[1] = 1.0f;
         texCoords[2] = 0.0f; texCoords[3] = 0.0f;
         texCoords[4] = 1.0f; texCoords[5] = 0.0f;
@@ -165,14 +167,14 @@ public:
         texCoordsInv[4] = 1.0f; texCoordsInv[5] = 1.0f;
         texCoordsInv[6] = 1.0f; texCoordsInv[7] = 0.0f;
 
-        projMatrix[0][0] =  2.0 / glwidget->width(); projMatrix[1][0] =  0.0;
-        projMatrix[2][0] =  0.0;                   projMatrix[3][0] = -1.0;
-        projMatrix[0][1] =  0.0;                   projMatrix[1][1] = -2.0 / glwidget->height();
-        projMatrix[2][1] =  0.0;                   projMatrix[3][1] =  1.0;
-        projMatrix[0][2] =  0.0;                   projMatrix[1][2] =  0.0;
-        projMatrix[2][2] = -1.0;                   projMatrix[3][2] =  0.0;
-        projMatrix[0][3] =  0.0;                   projMatrix[1][3] =  0.0;
-        projMatrix[2][3] =  0.0;                   projMatrix[3][3] =  1.0;
+        projMatrix[0][0] =  2.0 / width; projMatrix[1][0] =  0.0;
+        projMatrix[2][0] =  0.0;         projMatrix[3][0] = -1.0;
+        projMatrix[0][1] =  0.0;         projMatrix[1][1] = -2.0 / height;
+        projMatrix[2][1] =  0.0;         projMatrix[3][1] =  1.0;
+        projMatrix[0][2] =  0.0;         projMatrix[1][2] =  0.0;
+        projMatrix[2][2] = -1.0;         projMatrix[3][2] =  0.0;
+        projMatrix[0][3] =  0.0;         projMatrix[1][3] =  0.0;
+        projMatrix[2][3] =  0.0;         projMatrix[3][3] =  1.0;
 
         worldMatrix[0][2] = 0.0;
         worldMatrix[1][2] = 0.0;
@@ -181,8 +183,6 @@ public:
         worldMatrix[2][2] = 1.0;
         worldMatrix[2][3] = 0.0;
         worldMatrix[3][2] = 0.0;
-        width = glwidget->width();
-        height = glwidget->height();
         glViewport(0, 0, width, height);
 
         for (int i = 0; i < ShaderTotal; i++) {
