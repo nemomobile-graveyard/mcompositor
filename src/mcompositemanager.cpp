@@ -663,7 +663,6 @@ void MCompositeManagerPrivate::prepare()
     overlay_mapped = false; // make sure we try to map it in startup
     XReparentWindow(QX11Info::display(), localwin, xoverlay, 0, 0);
     localwin_parent = xoverlay;
-    XMoveWindow(QX11Info::display(), localwin, -2, -2);
 
     XDamageQueryExtension(QX11Info::display(), &damage_event, &damage_error);
 
@@ -3517,9 +3516,9 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
     static XRectangle empty = {0, 0, 0, 0},
                       fs = {0, 0,
                             ScreenOfDisplay(QX11Info::display(),
-                                DefaultScreen(QX11Info::display()))->width + 2,
+                                DefaultScreen(QX11Info::display()))->width,
                             ScreenOfDisplay(QX11Info::display(),
-                                DefaultScreen(QX11Info::display()))->height + 2};
+                                DefaultScreen(QX11Info::display()))->height};
     if (!show && (overlay_mapped || first_call)) {
         scene()->views()[0]->setUpdatesEnabled(false);
         XShapeCombineRectangles(QX11Info::display(), xoverlay,

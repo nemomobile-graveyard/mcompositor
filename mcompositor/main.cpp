@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
     QGraphicsScene *scene = app.scene();
     QGraphicsView view(scene);
     
+    view.setFrameStyle(0);
     view.setProperty("NoMStyle", true);
     view.setUpdatesEnabled(false);
     view.setAutoFillBackground(false);
@@ -74,7 +75,6 @@ int main(int argc, char *argv[])
 
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
     view.setAttribute(Qt::WA_NoSystemBackground);
-    view.move(-2, -2);
     view.setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
     view.setOptimizationFlags(QGraphicsView::IndirectPainting);
     app.setSurfaceWindow(view.winId());
@@ -82,10 +82,10 @@ int main(int argc, char *argv[])
     view.setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     view.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     view.setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
-    view.setMinimumSize(QApplication::desktop()->width() + 2,
-                        QApplication::desktop()->height() + 2);
-    view.setMaximumSize(QApplication::desktop()->width() + 2,
-                        QApplication::desktop()->height() + 2);
+    view.setMinimumSize(QApplication::desktop()->width(),
+                        QApplication::desktop()->height());
+    view.setMaximumSize(QApplication::desktop()->width(),
+                        QApplication::desktop()->height());
 
     QGLFormat fmt;
     fmt.setSamples(0);
