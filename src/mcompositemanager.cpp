@@ -2101,7 +2101,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             && windows_as_mapped.indexOf(win) == -1)
             windows_as_mapped.append(win);
     }
-    if (!compositing && item->needsCompositing())
+    if (!compositing && item && item->needsCompositing())
         enableCompositing();
 
     if (item && pc) {
