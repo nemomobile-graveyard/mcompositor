@@ -145,19 +145,14 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
             visible -= r;
     }
     if (size > 0) {
+        glClearColor(0, 0, 0, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
         // paint from bottom to top so that blending works
         for (int i = size - 1; i >= 0; --i) {
             int item_i = to_paint[i];
             MCompositeWindow *cw = (MCompositeWindow*)items[item_i];
             painter->save();
             if (!desktop_painted) {
-                if (cw->hasTransitioningWindow()) {
-                    // clear rubbish from the root window during startup when
-                    // desktop window does not exist and we show zoom animations
-                    glClearColor(0, 0, 0, 0);
-                    glClear(GL_COLOR_BUFFER_BIT);
-                }
-                desktop_painted = true;
                 if (cw->propertyCache()->isDecorator()) {
                     // don't paint decorator on top of plain black background
                     // (see NB#182860, NB#192454)
@@ -169,6 +164,7 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
             painter->setMatrix(cw->sceneMatrix(), true);
             cw->paint(painter, &options[item_i], widget);
             painter->restore();
+            desktop_painted = true; // desktop or something else painted
         }
     }
 }
