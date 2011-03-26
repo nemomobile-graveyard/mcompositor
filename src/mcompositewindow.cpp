@@ -376,7 +376,15 @@ void MCompositeWindow::damageReceived()
     damage_timer->stop();
     waiting_for_damage = 0;
     resize_expected = false;
-    q_fadeIn();
+
+    // We're ready to take over the splash screen.
+    MCompositeWindow *splash;
+    splash = static_cast<MCompositeManager *>(qApp)->splashed(this);
+    if (splash) {
+        splash->startTransition();
+        newly_mapped = false;
+    } else
+        q_fadeIn();
 }
 
 void MCompositeWindow::resize(int, int)
