@@ -193,7 +193,6 @@ public:
     void pingTopmost();
     MSplashScreen *splash;
     QPointer<MCompositeWindow> waiting_damage;
-    int waiting_ndamage;
 
 signals:
     void compositingEnabled();
