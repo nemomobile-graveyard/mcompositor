@@ -752,10 +752,6 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
          * http://www.opengl.org/registry/specs/OML/glx_swap_method.txt */
         item->updateWindowPixmap(0, 0, e->timestamp);
         item->damageReceived();
-        if (splash && item == waiting_damage && !--waiting_ndamage) {
-            enableCompositing(); // emits a signal to start the animation
-            waiting_damage = 0;
-        }
     }
 }
 
@@ -796,7 +792,6 @@ void MCompositeManagerPrivate::splashTimeout()
     splash->deleteLater();
     splash = 0;
     waiting_damage = 0;
-    waiting_ndamage = 0;
     glwidget->update();
     dirtyStacking(false);
 }
@@ -2118,7 +2113,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         } else
             item->saveBackingStore();
         if (!pc->alwaysMapped() && e->send_event == False
-            && (!splash || !splash->matches(pc))
             && !pc->isInputOnly() && !skipStartupAnim(pc)) {
             item->setVisible(false); // keep it invisible until the animation
             item->setNewlyMapped(true);
@@ -2146,7 +2140,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
                      << overhead_measure.elapsed();
 #endif
         if (!pc->alwaysMapped() && e->send_event == False
-            && (!splash || !splash->matches(pc))
             && !pc->isInputOnly() 
             && (item->isAppWindow() || pc->invokedBy() != None)
             && !skipStartupAnim(pc)) {
@@ -2220,7 +2213,6 @@ stack_and_return:
         splash->windowAnimator()->deferAnimation(
                                        MCompositeWindowAnimation::CrossFade);
         waiting_damage = item;
-        waiting_ndamage = 1;
     }
 
     dirtyStacking(false);
@@ -3391,7 +3383,11 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
                                                == MCompAtoms::DESKTOP)
         return;
 
-    connect(this, SIGNAL(compositingEnabled()), item, SLOT(startTransition()));
+    if (item->type() != MSplashScreen::Type)
+        // Don't let the crossfade transition be triggered by compositoing,
+        // but have the splashed window kick it out explicitly when it's
+        // ready.
+        connect(this, SIGNAL(compositingEnabled()), item, SLOT(startTransition()));
     connect(item, SIGNAL(itemRestored(MCompositeWindow *)), SLOT(restoreHandler(MCompositeWindow *)));
     connect(item, SIGNAL(itemIconified(MCompositeWindow *)), SLOT(lowerHandler(MCompositeWindow *)));
     connect(item, SIGNAL(closeWindowRequest(MCompositeWindow *)),
@@ -4183,6 +4179,11 @@ void MCompositeManager::debug(const QString& d)
 bool MCompositeManager::displayOff()
 {
     return d->device_state->displayOff();
+}
+
+MCompositeWindow *MCompositeManager::splashed(MCompositeWindow *cw) const
+{
+    return d->waiting_damage == cw ? d->splash : NULL;
 }
 
 bool MCompositeManager::possiblyUnredirectTopmostWindow()

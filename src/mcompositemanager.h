@@ -128,6 +128,11 @@ public:
      */
     bool displayOff();
 
+    /*!
+     * Is a splash screen waiting for @cw?  If so, return it.
+     */
+    MCompositeWindow *splashed(MCompositeWindow *cw) const;
+
     void debug(const QString& d);
     const QHash<Window, MWindowPropertyCache*>& propCaches() const;
 
