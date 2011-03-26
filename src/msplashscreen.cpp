@@ -43,12 +43,11 @@ bool MSplashPropertyCache::event(QEvent *e)
                                 true : MWindowPropertyCache::event(e);
 }
 
-MSplashScreen::MSplashScreen(unsigned int splash_pid, const QString &wmclass,
+MSplashScreen::MSplashScreen(unsigned int splash_pid,
                              const QString &splash_p, const QString &splash_l,
                              unsigned int splash_pixmap)
     : MTexturePixmapItem(0, MSplashPropertyCache::get()),
       pid(splash_pid),
-      wm_class(wmclass),
       portrait_file(splash_p),
       landscape_file(splash_l),
       pixmap(splash_pixmap),
@@ -118,9 +117,7 @@ QRectF MSplashScreen::boundingRect() const
 
 bool MSplashScreen::matches(MWindowPropertyCache *pc) const
 {
-    if (!pc->wmClass()[0].compare(wm_class, Qt::CaseInsensitive))
-        return true;
-    return false;
+    return pc->pid() == pid;
 }
 
 void MSplashScreen::endAnimation()

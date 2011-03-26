@@ -55,7 +55,7 @@ public:
     enum { Type = UserType + 3 };
     int type() const { return Type; }
 
-    MSplashScreen(unsigned int pid, const QString &wm_class,
+    MSplashScreen(unsigned int pid,
                   const QString &splash_p, const QString &splash_l,
                   unsigned int pixmap);
 

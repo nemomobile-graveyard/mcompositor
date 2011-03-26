@@ -800,14 +800,15 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 
     if (e->atom == ATOM(_MEEGO_SPLASH_SCREEN) && e->window == wm_window
         && e->state == PropertyNewValue) {
-        if (MWindowPropertyCache::readSplashProperty()) {
+        unsigned pid, pixmap;
+        QString lscape, portrait;
+
+        if (MWindowPropertyCache::readSplashProperty(wm_window,
+                                                    pid, pixmap,
+                                                    lscape, portrait)) {
             if (splash)
                 splashTimeout();
-            splash = new MSplashScreen(MWindowPropertyCache::splashPID(),
-                                   MWindowPropertyCache::splashWMClass(),
-                                   MWindowPropertyCache::splashFilePortrait(),
-                                   MWindowPropertyCache::splashFileLandscape(),
-                                   MWindowPropertyCache::splashPixmapID());
+            splash = new MSplashScreen(pid, portrait, lscape, pixmap);
             if (!splash->windowPixmap()) {
                 // no pixmap and/or failed to load the image file
                 splash->deleteLater();

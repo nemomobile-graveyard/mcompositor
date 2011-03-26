@@ -144,6 +144,7 @@ public:
 public slots:
     bool isDecorator();
     virtual Atom windowTypeAtom();
+    unsigned pid();
 
     const XWMHints &getWMHints();
     const QRect realGeometry();
@@ -197,8 +198,6 @@ public slots:
 
     // WM_NAME
     const QString &wmName();
-    // WM_CLASS: array of two QStrings
-    const QString *wmClass();
 
 public:
     /*!
@@ -232,14 +231,12 @@ public:
     bool isAppWindow(bool include_transients = false);
 
     /*! 
-     * Following accessors are for the _MEEGO_SPLASH_SCREEN window property.
+     * Reads and breaks down the _MEEGO_SPLASH_SCREEN window property
+     * of @win.
      */
-    static bool readSplashProperty();
-    static unsigned int splashPID();
-    static const QString &splashWMClass();
-    static const QString &splashFilePortrait();
-    static const QString &splashFileLandscape();
-    static unsigned int splashPixmapID();
+    static bool readSplashProperty(Window win,
+                   unsigned &splash_pid, unsigned &splash_pixmap,
+                   QString &splash_landscape, QString &splash_portrait);
 
     /*! 
      * Is this a special property cache without a corresponding X window?
@@ -339,14 +336,9 @@ private:
     static xcb_connection_t *xcb_conn;
     static xcb_render_query_pict_formats_reply_t *pict_formats_reply;
     static xcb_render_query_pict_formats_cookie_t pict_formats_cookie;
-    static unsigned int splash_pid;
-    static QString splash_wm_class;
-    static QString splash_portrait;
-    static QString splash_landscape;
-    static unsigned int splash_pixmap;
     Damage damage_object;
     QString wm_name;
-    QString wm_class[2];
+    unsigned wm_pid;
 };
 
 // Non-deletable dummy MWindowPropertyCache.
