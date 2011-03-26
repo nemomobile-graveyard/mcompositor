@@ -307,8 +307,11 @@ void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
 {
     if (item->propertyCache()->hasAlpha() ||
         (item->opacity() < 1.0f && !item->dimmedEffect())) {
+        // Blend differently if fading in on the top of a splash screen.
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(static_cast<MCompositeManager*>(qApp)->splashed(item)
+                        ? GL_ONE : GL_SRC_ALPHA,
+                    GL_ONE_MINUS_SRC_ALPHA);
     }
     glBindTexture(GL_TEXTURE_2D, custom_tfp ? ctextureId : textureId);
 
