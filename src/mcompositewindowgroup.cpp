@@ -89,7 +89,7 @@ MCompositeWindowGroup::MCompositeWindowGroup(MTexturePixmapItem* mainWindow)
     p->scene()->addItem(this);
     
     mainWindow->d->current_window_group = this;
-    connect(mainWindow, SIGNAL(destroyed()), SLOT(deleteLater()));
+    connect(mainWindow, SIGNAL(destroyed()), SLOT(mainWindowDestroyed()));
     init();
     setZValue(mainWindow->zValue());
     stackBefore(mainWindow);
@@ -212,15 +212,20 @@ void MCompositeWindowGroup::removeChildWindow(MTexturePixmapItem* window)
 {
     Q_D(MCompositeWindowGroup);
     window->d->current_window_group = 0;
-    d->item_list.removeAll(window);
+    d->item_list.removeOne(window);
+    disconnect(window, SIGNAL(destroyed()), this, SLOT(q_removeWindow()));
+}
+
+void MCompositeWindowGroup::mainWindowDestroyed()
+{
+    Q_D(MCompositeWindowGroup);
+    d->main_window = NULL;
 }
 
 void MCompositeWindowGroup::q_removeWindow()
 {
     Q_D(MCompositeWindowGroup);
-    MTexturePixmapItem* w = qobject_cast<MTexturePixmapItem*>(sender());
-    if (w) 
-        d->item_list.removeAll(w);
+    d->item_list.removeOne(static_cast<MTexturePixmapItem*>(sender()));
 }
 
 void MCompositeWindowGroup::saveBackingStore() {}
@@ -234,7 +239,7 @@ bool MCompositeWindowGroup::isDirectRendered() const { return false; }
 QRectF MCompositeWindowGroup::boundingRect() const 
 {
     Q_D(const MCompositeWindowGroup);
-    return d->main_window->boundingRect();
+    return d->main_window ? d->main_window->boundingRect() : QRectF();
 }
 
 void MCompositeWindowGroup::paint(QPainter* painter, 
@@ -245,6 +250,8 @@ void MCompositeWindowGroup::paint(QPainter* painter,
     Q_UNUSED(options)
     Q_UNUSED(widget)
 
+    if (!d->main_window)
+        return;
     if (painter->paintEngine()->type() != QPaintEngine::OpenGL2)
         return;
 
@@ -273,7 +280,9 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
     Q_UNUSED(num)
     Q_UNUSED(t)
     Q_D(MCompositeWindowGroup);
-    
+
+    if (!d->main_window)
+        return;
     if (d->main_window->isWindowTransitioning()) {
         // updates during transitioning cause issues when texcoords_from_rect
         // is used in MTexturePixmapItemPrivate and is heavy, too

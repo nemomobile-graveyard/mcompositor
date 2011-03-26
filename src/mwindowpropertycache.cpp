@@ -600,7 +600,7 @@ unsigned int MWindowPropertyCache::opaqueWindow()
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, c, 0);
         replyCollected(me);
-        low_power_mode = 0;
+        opaque_window = 0;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
                 opaque_window = *((CARD32*)xcb_get_property_value(r));

@@ -71,6 +71,8 @@ class MCompositeWindowShaderEffect: public QObject
     friend class MCompositeWindowShaderEffectPrivate;
     /* \endcond */
 
+ private slots:
+    void compWindowDestroyed();
 };
 
 /* \cond
