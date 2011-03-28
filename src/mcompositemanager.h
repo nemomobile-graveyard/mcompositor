@@ -150,6 +150,8 @@ public:
     // called with the answer to mdecorator's dialog
     void queryDialogAnswer(unsigned int window, bool yes_answer);
 
+    Window desktopWindow() const;
+
 #ifdef WINDOW_DEBUG
     // Dump the current state of MCompositeManager and MCompositeWindow:s
     // to qDebug().  Only available if compiled with TESTABILITY=on
@@ -210,6 +212,7 @@ private:
     friend class MWindowPropertyCache;
     friend class MCompositeWindowGroup;
     friend class MSplashScreen;
+    friend class ut_Stacking;
 };
 
 #endif

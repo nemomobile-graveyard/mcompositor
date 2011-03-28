@@ -579,8 +579,8 @@ void MCompositeWindow::startPing(bool restart)
 
 void MCompositeWindow::stopPing()
 {
-    t_ping->stop();
-    t_reappear->stop();
+    if (t_ping) t_ping->stop();
+    if (t_reappear) t_reappear->stop();
 }
 
 void MCompositeWindow::startDialogReappearTimer()

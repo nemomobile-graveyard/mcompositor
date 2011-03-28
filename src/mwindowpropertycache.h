@@ -124,7 +124,7 @@ public:
      * Returns whether override_redirect flag was in XWindowAttributes at
      * object creation time.
      */
-    bool isOverrideRedirect() const {
+    virtual bool isOverrideRedirect() const {
         if (!is_valid || !attrs)
             return false;
         return attrs->override_redirect;
@@ -157,22 +157,22 @@ public slots:
     int videoGlobalAlpha();
 
     //! Returns value of TRANSIENT_FOR property.
-    Window transientFor();
+    virtual Window transientFor();
 
     //! Returns value of _MEEGOTOUCH_WM_INVOKED_BY property.
     Window invokedBy();
 
     //! Returns the first cardinal of WM_STATE of this window
-    int windowState();
+    virtual int windowState();
 
     //! Returns list of _NET_WM_STATE of the window.
-    const QList<Atom>& netWmState();
+    virtual const QList<Atom>& netWmState();
 
     //! Returns list of WM_PROTOCOLS of the window.
     const QList<Atom>& supportedProtocols();
 
     //! Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 10].
-    unsigned int meegoStackingLayer();
+    virtual unsigned int meegoStackingLayer();
 
     //! Returns value of _MEEGO_LOW_POWER_MODE. The value is 0 or 1. Allows
     //  switching off compositing for any window type, and special handling
