@@ -11,8 +11,13 @@
 #  * show a system dialog
 #  * check that the system-modal is stacked above the app and system dialog
 #  * show a non-modal dialog that is transient to the system-modal dialog
-#* Post-conditions
 #  * check that the transient dialog is stacked above the system-modal dialog
+#  * show a window with Meego level 1
+#  * check the stacking order
+#  * create few unmapped windows
+#  * show a system-modal dialog
+#* Post-conditions
+#  * check that the system-modal is stacked below the Meego level 1 window
 
 import os, re, sys, time
 
@@ -89,6 +94,28 @@ time.sleep(1)
 
 check_order([transient, sys_modal, dialog, app, home_win],
             'transient dialog stacked correctly')
+
+# show Meego level 1 window
+fd = os.popen('windowctl E 1')
+meego1 = fd.readline().strip()
+time.sleep(1)
+
+check_order([meego1, transient, sys_modal, dialog, app, home_win],
+            'Meego 1 level window stacked correctly')
+
+# create few unmapped windows
+for i in range(10):
+  id = os.popen('windowctl enk').readline().strip()
+  os.popen('windowctl U %s' % id)
+time.sleep(1)
+
+# show a system-modal
+fd = os.popen('windowctl mdk')
+sys_modal2 = fd.readline().strip()
+time.sleep(1)
+
+check_order([meego1, sys_modal2, transient, sys_modal, dialog, app, home_win],
+            'system-modal stacked below the Meego 1 level')
 
 # cleanup
 os.popen('pkill windowctl')

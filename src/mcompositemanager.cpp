@@ -890,7 +890,7 @@ Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
        if (pc == orig_pc) {
            qWarning("%s(): window 0x%lx belongs to a transiency loop!",
                     __func__, orig_pc->winId());
-           break;
+           return 0;
        }
        if (pc && pc->isMapped())
            last = parent;
@@ -2967,6 +2967,11 @@ void MCompositeManagerPrivate::removeWindow(Window w)
     if (removed > 0) updateWinList();
 }
 
+Window MCompositeManager::desktopWindow() const
+{
+    return d->stack[DESKTOP_LAYER];
+}
+
 // Determine whether a decorator should be ordered above or below @win.
 // If the answer is definite it is stored in *@cmpp and NULL is returned.
 // Otherwise the decorator should be ordered exatly like the returned window,
@@ -3000,34 +3005,6 @@ static bool compareDecorator(MWindowPropertyCache *win)
     else
         return false;
 }
-
-// Returns whether @pc in @layer of @type is special with regards to stacking.
-// Returns None for non-special cases, or NOTIFICATION, INPUT or DIALOG.
-// The returned Atom doesn't mean that @pc has that window type; it merely
-// indicates that it should be stacked like that.
-static Atom isSpecial(MWindowPropertyCache *pc, int layer, Atom type)
-{
-    if (layer < 6 && type == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
-        /* @pc is maybe a notification */;
-    else if (layer < 5 &&
-        (type == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
-         pc->isOverrideRedirect() ||
-         pc->netWmState().contains(ATOM(_NET_WM_STATE_ABOVE))))
-        // @pc is maybe input or keep-above window
-        type = ATOM(_NET_WM_WINDOW_TYPE_INPUT);
-    else if (layer == 0 && MODAL_WINDOW(pc) &&
-             type == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
-        /* @pc is maybe a system-modal dialog */;
-    else
-        // Nothing special.
-        return None;
-
-    // @pc deserves special handling only if it doesn't have
-    // a lastVisibleParent().
-    MCompositeManager *cmgr = (MCompositeManager*)qApp;
-    return cmgr->getLastVisibleParent(pc) ? None : type;
-}
-
 
 // -1: pc_a is pc_b's ancestor; 1: pc_b is pc_a's ancestor; 0: no relation
 static int transiencyRelation(MWindowPropertyCache *pc_a,
@@ -3068,6 +3045,43 @@ static int transiencyRelation(MWindowPropertyCache *pc_a,
     return 0;
 }
 
+static float getLevel(MWindowPropertyCache *pc)
+{
+    MCompositeManager *cmgr = (MCompositeManager*)qApp;
+    Window parent;
+    float layer = pc->meegoStackingLayer();
+    if (!layer && (parent = cmgr->getLastVisibleParent(pc))) {
+        MWindowPropertyCache *pc_p = cmgr->propCaches().value(parent, 0);
+        if (pc_p) layer = getLevel(pc_p);
+    } else if (!layer && pc->windowType() == MCompAtoms::NOTIFICATION
+               && !cmgr->getLastVisibleParent(pc))
+        layer = 5.5;
+    else if (!layer && !cmgr->getLastVisibleParent(pc) &&
+             (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
+              pc->isOverrideRedirect() ||
+              pc->netWmState().contains(ATOM(_NET_WM_STATE_ABOVE))))
+        layer = 4;
+    else if (!layer && !cmgr->getLastVisibleParent(pc) &&
+             pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)
+             && MODAL_WINDOW(pc))
+        layer = 0.5;
+    return layer;
+}
+
+static int compareByLevel(MWindowPropertyCache *a, MWindowPropertyCache *b)
+{
+    float alayer = getLevel(a);
+    float blayer = getLevel(b);
+    float rel = alayer - blayer;
+    if (rel < 0)
+        // @a has lower stacking layer
+        return 1;
+    else if (rel > 0)
+        // @a has greater stacking layer
+        return -1;
+    return 0;
+}
+
 static QList<Window> old_order;
 
 // Internal qStableSort() comparator.  The desired rough order of
@@ -3088,16 +3102,12 @@ static QList<Window> old_order;
 // the decorator, possibly also window groups and dock windows.
 static bool compareWindows(Window w_a, Window w_b)
 {
-    float layer;
     Atom type_a, type_b;
+    int cmp;
 
     // qSort() should know better, but if it doesn't, tell it that
     // no item is less than itself.
     Q_ASSERT(w_a != w_b);
-    if (w_a == w_b) {
-        STACKING("0x%lx == 0x%lx", w_a, w_b);
-        return false;
-    }
 
     MCompositeManager *cmgr = (MCompositeManager*)qApp;
     // If we don't know about either of the windows let them in peace
@@ -3124,32 +3134,56 @@ static bool compareWindows(Window w_a, Window w_b)
                 // ...go below NormalState windows ...
                 SORTING(true, "STATE");
             else
-                // ... otherwise we don't care.
-                SORTING(false, "STATE");
+                // ... both are iconic.
+                goto use_old_order;
         } else if (pc_b->windowState() != NormalState)
             // @pc_a is NormalState, @pc_b is not.
             SORTING(false, "STATE");
-    // Use old order when either/both are unmapped
     } else {
+        // "window state" of unmapped == whether it's below or above home
+        int s_a, s_b;
+        Window desk = cmgr->desktopWindow();
+        if (!pc_a->isMapped())
+            s_a = old_order.indexOf(desk) < old_order.indexOf(w_a) ?
+                                                NormalState : IconicState;
+        else
+            s_a = pc_a->windowState();
+        if (!pc_b->isMapped())
+            s_b = old_order.indexOf(desk) < old_order.indexOf(w_b) ?
+                                                NormalState : IconicState;
+        else
+            s_b = pc_b->windowState();
+        if (s_a == IconicState && s_b == NormalState)
+            SORTING(true, "STATE");
+        else if (s_a == NormalState && s_b == IconicState)
+            SORTING(false, "STATE");
         // take mapped transient parent into account if there is one
-        // (Ideally the parent's attributes would be checked, for the case
-        // that the parent's old position is not good, but for simple raises
-        // and activations this should work.)
         Window p_a, p_b;
         p_a = pc_a->isMapped() ? cmgr->getLastVisibleParent(pc_a) : 0;
         p_b = pc_b->isMapped() ? cmgr->getLastVisibleParent(pc_b) : 0;
         if (p_a || p_b) {
             if (!p_a) p_a = w_a;
             if (!p_b) p_b = w_b;
+            MWindowPropertyCache *ppc_a = cmgr->propCaches().value(p_a, 0);
+            MWindowPropertyCache *ppc_b = cmgr->propCaches().value(p_b, 0);
+            int cmp = compareByLevel(ppc_a, ppc_b);
+            if (cmp > 0)
+                SORTING(true, "MEEGOp");
+            else if (cmp < 0)
+                SORTING(false, "MEEGOp");
+
             if (old_order.indexOf(p_a) < old_order.indexOf(p_b))
                 SORTING(true, "TRp");
             else
                 SORTING(false, "TRp");
         }
-        if (old_order.indexOf(w_a) < old_order.indexOf(w_b))
-            SORTING(true, "OLD");
-        else
-            SORTING(false, "OLD");
+        int cmp = compareByLevel(pc_a, pc_b);
+        if (cmp > 0)
+            SORTING(true, "MEEGO");
+        else if (cmp < 0)
+            SORTING(false, "MEEGO");
+
+        goto use_old_order;
     }
 
     // Both @pc_a and @pc_b are in NormalState.
@@ -3189,15 +3223,20 @@ static bool compareWindows(Window w_a, Window w_b)
           // w_b is w_a's ancestor
           SORTING(false, "TR(anc.)");
       // take mapped transient parent into account if there is one
-      // (Ideally the parent's attributes would be checked, for the case
-      // that the parent's old position is not good, but for simple raises
-      // and activations this should work.)
       Window p_a, p_b;
       p_a = cmgr->getLastVisibleParent(pc_a);
       p_b = cmgr->getLastVisibleParent(pc_b);
       if (p_a || p_b) {
           if (!p_a) p_a = w_a;
           if (!p_b) p_b = w_b;
+          MWindowPropertyCache *ppc_a = cmgr->propCaches().value(p_a, 0);
+          MWindowPropertyCache *ppc_b = cmgr->propCaches().value(p_b, 0);
+          int cmp = compareByLevel(ppc_a, ppc_b);
+          if (cmp > 0)
+              SORTING(true, "MEEGOp");
+          else if (cmp < 0)
+              SORTING(false, "MEEGOp");
+
           if (old_order.indexOf(p_a) < old_order.indexOf(p_b))
               SORTING(true, "TRp");
           else
@@ -3207,60 +3246,14 @@ static bool compareWindows(Window w_a, Window w_b)
 
     // Compare by Meego stacking layers. Transients use the parent's layer.
     // NOTE: if you touch this, check that test21.py passes.
-    Window parent;
-    layer = pc_a->meegoStackingLayer();
-    if (!layer && (parent = cmgr->getLastVisibleParent(pc_a))) {
-        MWindowPropertyCache *pc_p = cmgr->propCaches().value(parent, 0);
-        if (pc_p) layer = pc_p->meegoStackingLayer();
-    } else if (!layer && pc_a->windowType() == MCompAtoms::NOTIFICATION)
-        layer = 5.5;
-    float blayer = pc_b->meegoStackingLayer();
-    if (!blayer && (parent = cmgr->getLastVisibleParent(pc_b))) {
-        MWindowPropertyCache *pc_p = cmgr->propCaches().value(parent, 0);
-        if (pc_p) blayer = pc_p->meegoStackingLayer();
-    } else if (!blayer && pc_b->windowType() == MCompAtoms::NOTIFICATION)
-        blayer = 5.5;
-    float rel = layer - blayer;
-    if (rel < 0)
-        // @pc_a has lower stacking layer
+    cmp = compareByLevel(pc_a, pc_b);
+    if (cmp > 0)
         SORTING(true, "MEEGO");
-    else if (rel > 0)
-        // @pc_a has greater stacking layer
+    else if (cmp < 0)
         SORTING(false, "MEEGO");
     // They're in the same layer.
 
-    // Order notifications, input windows and system-modal dialogs.
-    // We can skip it altogether if the windows' layer is too high,
-    // because for them isSpecial() will always be false.
-    if (layer < 6) {
-        type_a = isSpecial(pc_a, layer, type_a);
-        type_b = isSpecial(pc_b, layer, type_b);
-        // type_a, type_b == None || dialog || input || notification
-
-        // Skip to the next test if the windows are equally special
-        // or non-special.
-        if (type_a != type_b) {
-            if (type_b == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
-                // type_a == None || dialog || input
-                SORTING(true, "BANNER");
-            if (type_a == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
-                // type_b == None || dialog || input
-                SORTING(false, "BANNER");
-            if (type_b == ATOM(_NET_WM_WINDOW_TYPE_INPUT))
-                // type_a == None || dialog
-                SORTING(true, "INPUT");
-            if (type_a == ATOM(_NET_WM_WINDOW_TYPE_INPUT))
-                // type_b == None || dialog
-                SORTING(false, "INPUT");
-            if (type_b == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
-                // type_a == None
-                SORTING(true, "DLG");
-            if (type_a == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
-                // type_b == None
-                SORTING(false, "DLG");
-        }
-    }
-
+use_old_order:
     // They didn't have any differential characteristic -- we need to
     // resort to the old order to know when to return true/false
     if (old_order.indexOf(w_a) < old_order.indexOf(w_b))

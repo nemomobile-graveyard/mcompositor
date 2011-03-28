@@ -12,5 +12,10 @@ CaseDescription="Check that we can't raise app or system dialog over a system-mo
 	- show a system dialog
 	- check that the system-modal is stacked above the app and system dialog
         - show a non-modal dialog that is transient to the system-modal dialog
+        - check that the transient dialog is stacked above the system-modal dialog
+        - show a window with Meego level 1
+        - check the stacking order
+        - create few unmapped windows
+        - show a system-modal dialog
 - Post-conditions
-        - check that the transient dialog is stacked above the system-modal dialog\n"
+        - check that the system-modal is stacked below the Meego level 1 window\n"
