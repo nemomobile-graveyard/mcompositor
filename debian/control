@@ -37,6 +37,13 @@ XB-Maemo-CI-Packages: mcompositor
 XB-Maemo-CI-Stage: fast
 Description: mcompositor functional testcases
 
+Package: mcompositor-unit-tests
+Architecture: any
+Depends: ${shlibs:Depends}, ci-testing
+XB-Maemo-CI-Packages: mcompositor
+XB-Maemo-CI-Stage: fast
+Description: mcompositor unit tests
+
 Package: mcompositor-l10n-engineering-english
 Section: devel
 Architecture: all
