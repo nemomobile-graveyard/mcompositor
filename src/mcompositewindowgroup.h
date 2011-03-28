@@ -55,6 +55,7 @@ class MCompositeWindowGroup: public MCompositeWindow
        
  private slots:
     void q_removeWindow();
+    void mainWindowDestroyed();
 
  private:
     Q_DECLARE_PRIVATE(MCompositeWindowGroup)       

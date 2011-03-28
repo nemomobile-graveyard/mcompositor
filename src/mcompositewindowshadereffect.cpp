@@ -189,8 +189,15 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 {
     if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
         return;
+    if (comp_window == window)
+        return;
 
+    if (comp_window)
+        disconnect(comp_window, SIGNAL(destroyed()),
+                   this, SLOT(compWindowDestroyed()));
     comp_window = window;
+    connect(comp_window, SIGNAL(destroyed()), SLOT(compWindowDestroyed()));
+
     // only happens with GL. sorry n800 guys :p
 #ifdef QT_OPENGL_LIB
     window->renderer()->installEffect(this);    
@@ -203,14 +210,21 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 */
 void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
 {
-    if (window != comp_window ||
-        (!window->isValid() && (window->type() != MCompositeWindowGroup::Type)))
+    if (window != comp_window)
         return;
-
+    disconnect(comp_window, SIGNAL(destroyed()),
+               this, SLOT(compWindowDestroyed()));
     comp_window = 0;
 #ifdef QT_OPENGL_LIB
     window->renderer()->installEffect(0);    
 #endif
+}
+
+void MCompositeWindowShaderEffect::compWindowDestroyed()
+{
+    // sender() is half-destroyed, can't call any non-QObject methods on it,
+    // so rather than remofeEffect()ing it, just clear @comp_window.
+    comp_window = 0;
 }
 
 /*!
