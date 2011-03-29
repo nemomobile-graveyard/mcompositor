@@ -313,7 +313,7 @@ void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
                         ? GL_ONE : GL_SRC_ALPHA,
                     GL_ONE_MINUS_SRC_ALPHA);
     }
-    glBindTexture(GL_TEXTURE_2D, custom_tfp ? ctextureId : textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
 
     const QRegion &shape = item->propertyCache()->shapeRegion();
     // FIXME: not optimal. probably would be better to replace with 
@@ -361,7 +361,7 @@ void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
 
 void MTexturePixmapPrivate::clearTexture()
 {
-    glBindTexture(GL_TEXTURE_2D, custom_tfp ? ctextureId : textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 0, GL_RGBA,
                  GL_UNSIGNED_BYTE, 0);
 
@@ -532,7 +532,6 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
       glpixmap(0),
 #endif
       textureId(0),
-      ctextureId(0),
       custom_tfp(false),
       direct_fb_render(false), // root's children start redirected
       angle(0),
