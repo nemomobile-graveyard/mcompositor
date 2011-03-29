@@ -2120,6 +2120,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         if (!pc->alwaysMapped() && e->send_event == False
             && (!splash || !splash->matches(pc))
             && !pc->isInputOnly() && !skipStartupAnim(pc)) {
+            item->setVisible(false); // keep it invisible until the animation
             item->setNewlyMapped(true);
             if (!item->showWindow()) {
                 item->setNewlyMapped(false);
@@ -2148,6 +2149,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             && (!splash || !splash->matches(pc))
             && !pc->isInputOnly() && item->isAppWindow()
             && !skipStartupAnim(pc)) {
+            item->setVisible(false); // keep it invisible until the animation
             if (!item->showWindow()) {
                 item->setNewlyMapped(false);
                 item->setVisible(true);
