@@ -1,3 +1,9 @@
+mcompositor (0.9.0-1~unreleased) unstable; urgency=low
+
+  * :)
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 29 Mar 2011 05:33:26 +0300
+
 mcompositor (0.8.9-1) unstable; urgency=low
 
   * Fixes: NB#239947 - On second launch prestarted application window gets fully pain ted before being animated in
