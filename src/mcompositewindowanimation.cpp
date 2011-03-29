@@ -40,7 +40,6 @@
 #include <mcompositemanager_p.h>
 #include <msheetanimation.h>
 
-static QRectF fadeRect = QRectF();
 static int default_duration = 200;
 
 class McParallelAnimation: public QParallelAnimationGroup
@@ -129,12 +128,6 @@ MCompositeWindowAnimation::MCompositeWindowAnimation(QObject* parent)
     :QObject(parent),
      d_ptr(new MCompositeWindowAnimationPrivate(this))
 {
-    if (fadeRect.isEmpty()) {
-        QRectF f = QApplication::desktop()->availableGeometry();
-        fadeRect.setWidth(f.width()/2);
-        fadeRect.setHeight(f.height()/2);
-        fadeRect.moveTo(fadeRect.width()/2, fadeRect.height()/2);
-    }
 }
 
 MCompositeWindowAnimation::~MCompositeWindowAnimation()
@@ -213,17 +206,23 @@ void MCompositeWindowAnimation::windowShown()
 #define OPAQUE 1.0
 #define DIMMED 0.1
     Q_D(MCompositeWindowAnimation);
+    extern QRectF defaultIconGeometry;
 
     if (!d->target_window)
         return;
 
-    if (d->target_window->iconGeometry.isEmpty())
-        d->target_window->iconGeometry = fadeRect;
-    d->target_window->setPos(d->target_window->iconGeometry.topLeft());
+    QRectF iconGeometry;
+    if (d->target_window->propertyCache()->iconGeometry().isEmpty())
+        iconGeometry = defaultIconGeometry;
+    else
+        iconGeometry = d->target_window->propertyCache()->iconGeometry();
+    d->target_window->setPos(iconGeometry.topLeft());
     
     positionAnimation()->setEasingCurve(QEasingCurve::OutQuad);
-    positionAnimation()->setStartValue(fadeRect.topLeft());
-    positionAnimation()->setEndValue(d->target_window->origPosition);
+    positionAnimation()->setStartValue(iconGeometry.topLeft());
+    positionAnimation()->setEndValue(
+        QPointF(d->target_window->propertyCache()->realGeometry().x(),
+                d->target_window->propertyCache()->realGeometry().y()));
     scaleAnimation()->setEasingCurve(QEasingCurve::OutQuad);
     
     // TODO: use icon geometry signal

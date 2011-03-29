@@ -81,28 +81,10 @@ public:
     virtual bool event(QEvent *);
 
     /*!
-     * Saves the global state of this item. Possibly transformations and
-     * location
-     */
-    void saveState();
-
-    /*!
-     * Saves the local state of this item. Possibly transformations and
-     * location
-     */
-    void localSaveState();
-
-    /*!
-     * Sets a scale a point
-     */
-    void setScalePoint(qreal from, qreal to);
-
-    /*!
      * Iconify window with animation. If deferAnimation is set to true
      * call startTransition() manually. Returns true if signal will come.
     */
-    bool iconify(const QRectF &iconGeometry = QRectF(),
-                 bool deferAnimation = false);
+    bool iconify(bool deferAnimation = false);
 
     /*!
      * Sets whether or not the window is obscured and generates the
@@ -114,30 +96,6 @@ public:
      * Returns whether this item is iconified or not
      */
     bool isIconified() const;
-
-    /*!
-     * Destroy window with animation
-     */
-    void prettyDestroy();
-
-    /*!
-     * Turns the contents displayed in this item into a small thimbnail view
-     *
-     * \param mode Set to thumnail view if true; otherwise set as normal view
-     */
-    void setThumbMode(bool mode);
-
-    /*!
-     * Returns whether this item is scaled or not
-     */
-    bool isScaled() const;
-
-    /*!
-     * Set this item as scaled
-     *
-     * \param s Set to scaled if true; otherwise set as normal size
-     */
-    void setScaled(bool s);
 
     /*!
      * Request a Z value for this item. Useful if this window is still animating
@@ -177,7 +135,6 @@ public:
      */
     IconifyState iconifyState() const;
 
-    
     /*!
      * Sets how this window was iconified.
      */
@@ -208,8 +165,7 @@ public:
      * Restores window with animation. If deferAnimation is set to true
      * call startTransition() manually.
     */
-    void restore(const QRectF &iconGeometry = QRectF(),
-                 bool deferAnimation = false);
+    void restore(bool deferAnimation = false);
 
     /*!
      * Overrides QGraphicsItem::update() so we have complete control of item
@@ -411,11 +367,6 @@ private:
     QPointer<MWindowPropertyCache> pc;
     QPointer<MCompositeWindow> behind_window;
     QPointer<MCompositeWindowAnimation> animator;
-    bool thumb_mode;
-    //MCompWindowAnimator *anim;
-    qreal scalefrom;
-    qreal scaleto;
-    bool scaled;
     int zval;
     ulong sent_ping_timestamp;
     ulong received_ping_timestamp;
@@ -436,10 +387,6 @@ private:
     bool resize_expected;
 
     static int window_transitioning;
-
-    // location of this window's icon
-    QRectF iconGeometry;
-    QPointF origPosition;
 
     // Main ping timer
     QTimer *t_ping, *t_reappear;
