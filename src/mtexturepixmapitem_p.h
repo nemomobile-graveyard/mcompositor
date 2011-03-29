@@ -83,7 +83,6 @@ public:
     GLXPixmap glpixmap;
 #endif
     GLuint textureId;
-    GLuint ctextureId;
     static bool inverted_texture;
     bool custom_tfp;
     bool direct_fb_render;
