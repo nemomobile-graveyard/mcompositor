@@ -1,8 +1,13 @@
-mcompositor (0.8.9-1~unreleased) unstable; urgency=low
+mcompositor (0.8.9-1) unstable; urgency=low
 
-  * :)
+  * Fixes: NB#239947 - On second launch prestarted application window gets fully pain ted before being animated in
+  * ignore the initial_state of prestarted apps
+  * make crossfade seamless
+  * wait for damages of splashed apps correctly
+  * recognize splashed windows by _NET_WM_PID
+  * Fixes: NB#238573 - COREWEB: 'MWindowPropertyCache::statusbarGeometry
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 22 Mar 2011 14:21:45 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 29 Mar 2011 05:31:37 +0300
 
 mcompositor (0.8.8-1) unstable; urgency=low
 
