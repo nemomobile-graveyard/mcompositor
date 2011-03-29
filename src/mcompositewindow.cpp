@@ -34,7 +34,7 @@
 
 int MCompositeWindow::window_transitioning = 0;
 
-static QRectF fadeRect = QRectF();
+QRectF defaultIconGeometry;
 
 MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
                                    MWindowPropertyCache *mpc, 
@@ -42,9 +42,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     : QGraphicsItem(p),
       pc(mpc),
       animator(0),
-      scalefrom(1),
-      scaleto(1),
-      scaled(false),
       zval(1),
       sent_ping_timestamp(0),
       received_ping_timestamp(0),
@@ -62,7 +59,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       resize_expected(false),
       win_id(window)
 {
-    thumb_mode = false;
     if (!mpc || (mpc && !mpc->is_valid && !mpc->isVirtual())) {
         is_valid = false;
         newly_mapped = false;
@@ -72,7 +68,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     } else
         is_valid = true;
     connect(mpc, SIGNAL(iconGeometryUpdated()), SLOT(updateIconGeometry()));
-    setAcceptHoverEvents(true);
 
     // this could be configurable. But will do for now. Most WMs use 5s delay
     t_ping = new QTimer(this);
@@ -99,13 +94,13 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         setVisible(window_visible); // newly_mapped used here
     } else
         window_visible = false;
-    origPosition = QPointF(pc->realGeometry().x(), pc->realGeometry().y());
 
-    if (fadeRect.isEmpty()) {
+    if (defaultIconGeometry.isEmpty()) {
         QRectF d = QApplication::desktop()->availableGeometry();
-        fadeRect.setWidth(d.width()/2);
-        fadeRect.setHeight(d.height()/2);
-        fadeRect.moveTo(fadeRect.width()/2, fadeRect.height()/2);
+        defaultIconGeometry.setWidth(d.width() / 2);
+        defaultIconGeometry.setHeight(d.height() / 2);
+        defaultIconGeometry.moveTo(defaultIconGeometry.width() / 2,
+                                   defaultIconGeometry.height() / 2);
     }
 
     MCompositeWindowAnimation* a = new MCompositeWindowAnimation(this);
@@ -116,10 +111,6 @@ MCompositeWindow::~MCompositeWindow()
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
 
-    if (window()) {
-        stopPing();
-        t_ping = t_reappear = 0;
-    }
     endAnimation();    
     if (pc) {
         pc->damageTracking(false);
@@ -141,32 +132,10 @@ bool MCompositeWindow::blurred()
     return blur;
 }
 
-void MCompositeWindow::saveState()
-{
-    
-}
-
-void MCompositeWindow::localSaveState()
-{
-    
-}
-
-// set the scale point to actual values
-void MCompositeWindow::setScalePoint(qreal from, qreal to)
-{
-    scalefrom = from;
-    scaleto = to;
-}
-
-void MCompositeWindow::setThumbMode(bool mode)
-{
-    thumb_mode = mode;
-}
-
 /* This is a delayed animation. Actual animation is triggered
  * when startTransition() is called. Returns true if signal will come.
  */
-bool MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
+bool MCompositeWindow::iconify(bool defer)
 {
     if (iconify_state == ManualIconifyState) {
         setIconified(true);
@@ -177,9 +146,6 @@ bool MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
     if (window_status != MCompositeWindow::Closing)
         window_status = MCompositeWindow::Minimizing;
     
-    this->iconGeometry = icongeometry;
-    if (!iconified)
-        origPosition = pos();
     iconified = true;
     
     // iconify handler
@@ -202,7 +168,6 @@ void MCompositeWindow::setUntransformed()
     setVisible(true);
     setOpacity(1.0);
     setScale(1.0);
-    setScaled(false);
     iconified = false;
 }
 
@@ -255,12 +220,9 @@ void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
  */
 void MCompositeWindow::startTransition()
 {
-    if (iconified) {
-        if (iconGeometry.isNull())
-            return;
-        setWindowObscured(true);
-    }
-    if (animator->pendingAnimation()) {
+    if (iconified && pc->iconGeometry().isNull())
+        return;
+    if (animator && animator->pendingAnimation()) {
         // don't trigger irrelevant windows
         // if (animator->targetWindow() != this)
         //     animator->setTargetWindow(this);
@@ -271,26 +233,17 @@ void MCompositeWindow::startTransition()
 
 void MCompositeWindow::updateIconGeometry()
 {
-    if (!pc)
+    if (pc && pc->iconGeometry().isNull())
         return;
-    
-    iconGeometry = pc->iconGeometry();
-    if (iconGeometry.isNull())
-        return;
-    
+
     // trigger transition the second time around and update animation values
     if (iconified) 
         startTransition();
 }
 
 // TODO: have an option of disabling the animation
-void MCompositeWindow::restore(const QRectF &icongeometry, bool defer)
+void MCompositeWindow::restore(bool defer)
 {
-    if (icongeometry.isEmpty())
-        this->iconGeometry = fadeRect;
-    else
-        this->iconGeometry = icongeometry;
-   
     setVisible(true);
     iconified = false;
      // Restore handler
@@ -394,7 +347,6 @@ void MCompositeWindow::q_fadeIn()
     setVisible(true);
     setOpacity(0.0);
     updateWindowPixmap();
-    origPosition = pos();
     newly_mapped = true;
     
     iconified = false;
@@ -442,8 +394,6 @@ void MCompositeWindow::closeWindowAnimation()
         defer = true;
     }
     
-    origPosition = pos();
-    
     // fade-out handler
     if (animator) {
         if (defer)
@@ -462,13 +412,6 @@ bool MCompositeWindow::event(QEvent *e)
         return true;
     } else
         return QObject::event(e);
-}
-
-void MCompositeWindow::prettyDestroy()
-{
-    setVisible(true);
-    destroyed = true;
-    iconify();
 }
 
 void MCompositeWindow::finalizeState()
@@ -517,14 +460,6 @@ bool MCompositeWindow::isIconified() const
         return false;
 
     return iconified_final;
-}
-bool MCompositeWindow::isScaled() const
-{
-    return scaled;
-}
-void MCompositeWindow::setScaled(bool s)
-{
-    scaled = s;
 }
 
 void MCompositeWindow::setVisible(bool visible)

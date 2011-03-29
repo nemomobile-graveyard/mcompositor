@@ -2249,8 +2249,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             if (event->window != stack[DESKTOP_LAYER])
                 setExposeDesktop(false);
             if (i && i->propertyCache()->windowState() == IconicState) {
-                QRectF iconGeometry = i->propertyCache()->iconGeometry();
-                i->restore(iconGeometry, needComp);
+                i->restore(needComp);
                 if (needComp)
                     enableCompositing();
             }
@@ -2320,7 +2319,8 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
         if (event->data.l[0] == IconicState && event->format == 32) {
             MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
             MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
-            if (d_item && i && i->status() != MCompositeWindow::Minimizing) {
+            if (d_item && i && i->isMapped()
+                && i->status() != MCompositeWindow::Minimizing) {
                 d_item->setZValue(i->zValue() - 1);
 
                 Window lower, topmost = getTopmostApp();
@@ -2382,7 +2382,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 // Delayed transition is only available on platforms
                 // that have selective compositing. This is triggered
                 // when windows are rendered off-screen
-                if (!i->iconify(i->propertyCache()->iconGeometry(), needComp))
+                if (!i->iconify(needComp))
                     // signal will not come, set it iconic now
                     setWindowState(i->window(), IconicState);
 
@@ -3295,7 +3295,6 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     }
     MWindowPropertyCache *pc = item->propertyCache();
 
-    item->saveState();
     windows[window] = item;
 
     const XWMHints &h = pc->getWMHints();
@@ -3800,9 +3799,8 @@ void MCompositeManager::dumpState(const char *heading)
                    yn[cw->hasTransitioningWindow()],
                    yn[cw->isWindowTransitioning()],
                    yn[cw->isClosing()]);
-        qDebug("    dimmed: %s, blurred: %s, scaled: %s",
-                    yn[cw->dimmedEffect()], yn[cw->blurred()],
-                    yn[cw->isScaled()]);
+        qDebug("    dimmed: %s, blurred: %s",
+                    yn[cw->dimmedEffect()], yn[cw->blurred()]);
         behind = cw->behind();
         qDebug("    stack index: %d, behind window: 0x%lx, "
                    "last visible parent: 0x%lx", cw->indexInStack(),
