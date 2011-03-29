@@ -138,6 +138,10 @@ void MTexturePixmapItem::init()
 
     d->custom_tfp = !hasTextureFromPixmap();
 
+    glGenTextures(1, &d->textureId);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, d->textureId);
+
     if (d->custom_tfp) {
         initCustomTfp();
         saveBackingStore();
@@ -153,9 +157,6 @@ void MTexturePixmapItem::init()
         None
     };
 
-    glGenTextures(1, &d->textureId);
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, d->textureId);
     d->glpixmap = glXCreatePixmap(QX11Info::display(), pc->hasAlpha() ?
                         configAlpha : config, d->windowp, pixmapAttribs);
 
@@ -250,9 +251,6 @@ MTexturePixmapItem::~MTexturePixmapItem()
 
 void MTexturePixmapItem::initCustomTfp()
 {
-    glGenTextures(1, &d->ctextureId);
-
-    glBindTexture(GL_TEXTURE_2D, d->ctextureId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -264,9 +262,8 @@ void MTexturePixmapItem::cleanup()
     if (!d->custom_tfp) {
         glXReleaseTexImageEXT(QX11Info::display(), d->glpixmap, GLX_FRONT_LEFT_EXT);
         glXDestroyPixmap(QX11Info::display(), d->glpixmap);
-        glDeleteTextures(1, &d->textureId);
-    } else
-        glDeleteTextures(1, &d->ctextureId);
+    }
+    glDeleteTextures(1, &d->textureId);
 
     if (d->windowp) {
         XFreePixmap(QX11Info::display(), d->windowp);
@@ -291,7 +288,7 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
 
         QT_TRY {
             QImage img = d->glwidget->convertToGLFormat(qp.toImage());
-            glBindTexture(GL_TEXTURE_2D, d->ctextureId);
+            glBindTexture(GL_TEXTURE_2D, d->textureId);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(), 0,
                          GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
         } QT_CATCH(std::bad_alloc e) {
