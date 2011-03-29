@@ -124,6 +124,7 @@ void MWindowPropertyCache::init()
     attrs = 0;
     meego_layer = 0;
     low_power_mode = 0;
+    prestarted = false;
     window_state = -1;
     window_type = MCompAtoms::INVALID;
     parent_window = QX11Info::appRootWindow();
@@ -196,6 +197,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                                XCB_ATOM_CARDINAL));
     addRequest(SLOT(lowPowerMode()),
                requestProperty(MCompAtoms::_MEEGO_LOW_POWER_MODE,
+                               XCB_ATOM_CARDINAL));
+    addRequest(SLOT(prestartedApp()),
+               requestProperty(MCompAtoms::_MEEGOTOUCH_PRESTARTED,
                                XCB_ATOM_CARDINAL));
     addRequest(SLOT(windowTypeAtom()),
                requestProperty(MCompAtoms::_NET_WM_WINDOW_TYPE,
@@ -566,6 +570,23 @@ unsigned int MWindowPropertyCache::lowPowerMode()
     return low_power_mode;
 }
 
+bool MWindowPropertyCache::prestartedApp()
+{
+    QLatin1String me(SLOT(prestartedApp()));
+    if (is_valid && requests[me]) {
+        xcb_get_property_cookie_t c = { requests[me] };
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        replyCollected(me);
+        // some bright soul decided to make it 8-bit..
+        if (r && xcb_get_property_value_length(r) == sizeof(char)
+            && *((char*)xcb_get_property_value(r)))
+            prestarted = true;
+        free(r);
+    }
+    return prestarted;
+}
+
 /*!
  * Used for special windows that should not be minimised/iconified.
  */
@@ -608,9 +629,13 @@ const XWMHints &MWindowPropertyCache::getWMHints()
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, c, 0);
         replyCollected(me);
-        if (r && xcb_get_property_value_length(r) >= int(sizeof(XWMHints)))
+        if (r && xcb_get_property_value_length(r) >= int(sizeof(XWMHints))) {
             memcpy(wmhints, xcb_get_property_value(r), sizeof(XWMHints));
-        else
+            if (prestartedApp())
+                // Ignore the bogus iconic initial_state requests
+                // of prestarted apps.
+                wmhints->flags &= ~StateHint;
+        } else
             memset(wmhints, 0, sizeof(*wmhints));
         free(r);
     }
@@ -707,6 +732,10 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     } else if (e->atom == ATOM(WM_CLASS)) {
         wm_class[0].clear();
         wm_class[1].clear();
+    } else if (e->state == PropertyNewValue
+               && e->atom == ATOM(_MEEGOTOUCH_PRESTARTED)) {
+        prestarted = true;
+        wmhints->flags &= ~StateHint;
     }
     return false;
 }

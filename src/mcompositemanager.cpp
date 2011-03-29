@@ -204,6 +204,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_ORIENTATION_ANGLE",
         "_MEEGO_SPLASH_SCREEN",
         "_MEEGO_LOW_POWER_MODE",
+        "_MEEGOTOUCH_PRESTARTED",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA

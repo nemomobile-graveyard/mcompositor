@@ -255,6 +255,7 @@ signals:
 
 private slots:
     void buttonGeometryHelper();
+    bool prestartedApp();
 
 private:
     void init();
@@ -277,6 +278,7 @@ private:
     XWMHints *wmhints;
     xcb_get_window_attributes_reply_t *attrs;
     unsigned meego_layer, low_power_mode;
+    bool prestarted;
     int window_state;
     QVector<Atom> type_atoms;
     MCompAtoms::Type window_type;
