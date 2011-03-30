@@ -2315,7 +2315,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     }
 }
 
-void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
+void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event,
+                                                  bool from_outside)
 {
     // Handle iconify requests
     if (event->message_type == ATOM(WM_CHANGE_STATE))
@@ -2327,9 +2328,9 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 d_item->setZValue(i->zValue() - 1);
 
                 Window lower, topmost = getTopmostApp();
-                MWindowPropertyCache *top_pc = prop_caches.value(topmost, 0);
-                if (i->window() != topmost &&
-                    i->window() != getLastVisibleParent(top_pc)) {
+                if (from_outside && i->window() != topmost &&
+                    i->window() != getLastVisibleParent(
+                                             prop_caches.value(topmost, 0))) {
                     /* Request from a background app.  Don't do anything,
                      * just make sure the states are not screwed. */
                     // FIXME: this breaks if WM_CHANGE_STATE comes for a non-app
@@ -2376,23 +2377,23 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                         !cw->propertyCache()->dontIconify())
                         setWindowState(cw->window(), IconicState);
                 }
-                Q_ASSERT(lower_i > 0);
-                STACKING_MOVE(stacking_list.indexOf(stack[DESKTOP_LAYER]),
-                              lower_i-1);
-                safe_move(stacking_list, stacking_list.indexOf(stack[DESKTOP_LAYER]),
-                                   lower_i - 1);
+                // exposeSwitcher() can choose 'lower' so that lower_i < 0
+                if (lower_i > 0) {
+                    STACKING_MOVE(stacking_list.indexOf(stack[DESKTOP_LAYER]),
+                                  lower_i - 1);
+                    stacking_list.move(stacking_list.indexOf(stack[DESKTOP_LAYER]),
+                                       lower_i - 1);
 
-                // Delayed transition is only available on platforms
-                // that have selective compositing. This is triggered
-                // when windows are rendered off-screen
-                if (!i->iconify(needComp))
-                    // signal will not come, set it iconic now
+                    if (!i->iconify(needComp))
+                        // signal will not come, set it iconic now
+                        setWindowState(i->window(), IconicState);
+
+                    if (needComp)
+                        enableCompositing();
+                    if (i->needDecoration())
+                        i->startTransition();
+                } else
                     setWindowState(i->window(), IconicState);
-
-                if (needComp)
-                    enableCompositing();
-                if (i->needDecoration())
-                    i->startTransition();
                 i->stopPing();
             }
             return;
@@ -3616,7 +3617,7 @@ void MCompositeManagerPrivate::exposeSwitcher()
     e.xclient.data.l[3] = 0;
     e.xclient.data.l[4] = 0;
     // no need to send to X server first, also avoids NB#210587
-    clientMessageEvent(&(e.xclient));
+    clientMessageEvent(&(e.xclient), false);
 }
 
 void MCompositeManagerPrivate::installX11EventFilter(long xevent,
