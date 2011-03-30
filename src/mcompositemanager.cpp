@@ -974,6 +974,7 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated(int *index)
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         MWindowPropertyCache *pc;
         if (cw && cw->isMapped() && (pc = cw->propertyCache()) &&
+            pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
             !pc->isOverrideRedirect() &&
             (cw->needDecoration() || cw->status() == MCompositeWindow::Hung
              || (FULLSCREEN_WINDOW(cw->propertyCache()) &&
@@ -2325,8 +2326,6 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event,
             MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
             if (d_item && i && i->isMapped()
                 && i->status() != MCompositeWindow::Minimizing) {
-                d_item->setZValue(i->zValue() - 1);
-
                 Window lower, topmost = getTopmostApp();
                 if (from_outside && i->window() != topmost &&
                     i->window() != getLastVisibleParent(
@@ -2355,6 +2354,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event,
                 // raise the desktop above them to make the animation end onto
                 // the desktop
                 int wi, lower_i = -1;
+                int d_zeta = i->zValue() - 1;
                 for (wi = stacking_list.size() - 1; wi >= 0; --wi) {
                     Window w = stacking_list.at(wi);
                     if (!w)
@@ -2376,9 +2376,13 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event,
                         // skip devicelock and screenlock windows
                         !cw->propertyCache()->dontIconify())
                         setWindowState(cw->window(), IconicState);
+                    else if (cw && cw->isMapped())
+                        // show desktop under non-minimizable windows
+                        d_zeta = cw->zValue() - 1;
                 }
                 // exposeSwitcher() can choose 'lower' so that lower_i < 0
                 if (lower_i > 0) {
+                    d_item->setZValue(d_zeta);
                     STACKING_MOVE(stacking_list.indexOf(stack[DESKTOP_LAYER]),
                                   lower_i - 1);
                     stacking_list.move(stacking_list.indexOf(stack[DESKTOP_LAYER]),
@@ -3592,11 +3596,13 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
 void MCompositeManagerPrivate::exposeSwitcher()
 {
     MCompositeWindow *i = 0;
-    for (int j = stacking_list.size() - 1; j >= 0; --j) {
+    for (int j = stacking_list.size() - 1; j >= 0; --j, i = 0) {
         Window w = stacking_list.at(j);
+        if (w == stack[DESKTOP_LAYER])
+            // no windows to minimize
+            return;
         if (!(i = COMPOSITE_WINDOW(w)) || !i->propertyCache() ||
-            !i->propertyCache()->isMapped() ||
-            i->propertyCache()->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP)
+            !i->propertyCache()->isMapped()
             || i->propertyCache()->windowState() == IconicState ||
             // skip devicelock and screenlock windows
             i->propertyCache()->dontIconify() || !i->isAppWindow(true))
