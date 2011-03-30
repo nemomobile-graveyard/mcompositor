@@ -618,7 +618,7 @@ bool MWindowPropertyCache::dontIconify()
     if (cannotMinimize() > 0)
         return true;
     int layer = meegoStackingLayer();
-    if (layer == 1 || layer == 2)
+    if (layer == 1 || (layer > 0 && wmName() == "Screen Lock"))
         // these (screen/device lock) cannot be iconified by default
         return true;
     return false;
