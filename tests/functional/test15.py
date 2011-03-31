@@ -100,7 +100,7 @@ os.popen('windowctl U %s' % argb_win)
 os.popen("xprop -id %s -f _MEEGOTOUCH_OPAQUE_WINDOW 32c "
          "-set _MEEGOTOUCH_OPAQUE_WINDOW 1" % argb_win)
 os.popen('windowctl M %s' % argb_win)
-time.sleep(1)
+time.sleep(2)
 check_visi(win4, ' OBS. ')
 check_visi(argb_win, ' UNOBS. ')
 
