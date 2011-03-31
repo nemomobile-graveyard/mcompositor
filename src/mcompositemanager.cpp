@@ -207,6 +207,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGO_SPLASH_SCREEN",
         "_MEEGO_LOW_POWER_MODE",
         "_MEEGOTOUCH_OPAQUE_WINDOW",
+        "_MEEGOTOUCH_STATUSBAR_VISIBLE",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
@@ -1776,6 +1777,7 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
              break;
          }
     }
+    bool statusbar_visible = false;
     MWindowPropertyCache *ga_pc = 0;
     /* Send synthetic visibility events for our babies */
     int home_i = stacking_list.indexOf(duihome);
@@ -1800,6 +1802,9 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
                 cw->propertyCache()->videoGlobalAlpha() < 255))
                 // select topmost window with global alpha properties
                 ga_pc = cw->propertyCache();
+            if (!statusbar_visible &&
+                !cw->propertyCache()->statusbarGeometry().isEmpty())
+                statusbar_visible = true;
         } else {
             if (i < home_i &&
                 ((MTexturePixmapItem *)cw)->isDirectRendered()) {
@@ -1819,6 +1824,14 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
         set_global_alpha(ga_pc->globalAlpha(), ga_pc->videoGlobalAlpha());
     else
         reset_global_alpha();
+    static bool prev_statusbar_visible = false;
+    if (prev_statusbar_visible != statusbar_visible) {
+        long v = statusbar_visible ? 1 : 0;
+        XChangeProperty(QX11Info::display(), wm_window,
+                        ATOM(_MEEGOTOUCH_STATUSBAR_VISIBLE), XA_CARDINAL,
+                        32, PropModeReplace, (unsigned char *)&v, 1);
+        prev_statusbar_visible = statusbar_visible;
+    }
 }
 
 // XSetErrorHandler() function, used exclusively to catch errors
