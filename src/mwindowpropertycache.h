@@ -99,6 +99,7 @@ public:
     void setBeingMapped(bool s) { being_mapped = s; }
     void setDontIconify(bool s) { dont_iconify = s; }
     bool dontIconify();
+    bool isLockScreen();
     void setStackedUnmapped(bool s) { stacked_unmapped = s; }
     bool stackedUnmapped() const { return stacked_unmapped; }
 
