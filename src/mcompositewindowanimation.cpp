@@ -53,7 +53,7 @@ protected:
     virtual void updateCurrentTime(int currentTime)
     {        
         MCompositeWindow::update();
-        return QParallelAnimationGroup::updateCurrentTime(currentTime);
+        QParallelAnimationGroup::updateCurrentTime(currentTime);
     }
 
     virtual void updateState(QAbstractAnimation::State newState, 
@@ -72,7 +72,7 @@ protected:
             if (parent->targetWindow2())
                 parent->targetWindow2()->endAnimation();
         }
-        return QParallelAnimationGroup::updateState(newState, oldState);
+        QParallelAnimationGroup::updateState(newState, oldState);
     }
 private:
     MCompositeWindowAnimation* parent;
