@@ -174,7 +174,7 @@ os.popen('windowctl U %s' % new_win)
 os.popen("xprop -id %s -f _MEEGOTOUCH_OPAQUE_WINDOW 32c "
          "-set _MEEGOTOUCH_OPAQUE_WINDOW 1" % new_win)
 os.popen('windowctl M %s' % new_win)
-time.sleep(1)
+time.sleep(2)
 
 # check that new_win is not redirected
 check_redir(new_win, 'WINDOW_DIRECT',
