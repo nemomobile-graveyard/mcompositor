@@ -2014,6 +2014,10 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
         if ((h.flags & StateHint) && h.initial_state == IconicState)
             return true;
     }
+    // lock-screen window dont animate
+    if (pc->dontIconify())
+        return true;
+    
     bool above = false; // is the window above the desktop?
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         MWindowPropertyCache *tmp;
