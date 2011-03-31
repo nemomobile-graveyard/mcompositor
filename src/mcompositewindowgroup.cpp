@@ -216,6 +216,12 @@ void MCompositeWindowGroup::removeChildWindow(MTexturePixmapItem* window)
     disconnect(window, SIGNAL(destroyed()), this, SLOT(q_removeWindow()));
 }
 
+MCompositeWindow *MCompositeWindowGroup::mainWindow() const
+{
+    Q_D(const MCompositeWindowGroup);
+    return d->main_window;
+}
+
 void MCompositeWindowGroup::mainWindowDestroyed()
 {
     Q_D(MCompositeWindowGroup);
