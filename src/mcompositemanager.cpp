@@ -846,6 +846,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     }
 
     if (pc->propertyEvent(e) && pc->isMapped()) {
+        bool recheck_visibility = false;
         changed_properties = true; // property change can affect stacking order
         if (pc->isDecorator())
             // in case decorator's transiency changes, make us update the value
@@ -857,10 +858,12 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
             MWindowPropertyCache *p_pc = prop_caches.value(p, 0);
             if (p_pc) setWindowState(e->window, p_pc->windowState());
         }
-        dirtyStacking(false, e->time);
+        if (e->atom == ATOM(_MEEGOTOUCH_OPAQUE_WINDOW))
+            recheck_visibility = true;
+        dirtyStacking(recheck_visibility, e->time);
         MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
         if (cw && !cw->isNewlyMapped()) {
-            checkStacking(false, e->time);
+            checkStacking(recheck_visibility, e->time);
             // window on top could have changed
             if (!possiblyUnredirectTopmostWindow() && !compositing)
                 enableCompositing();
@@ -2509,7 +2512,7 @@ void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
     }
 
     /* the animation is finished, compositing needs to be reconsidered */
-    dirtyStacking(false);
+    dirtyStacking(window->propertyCache()->opaqueWindow());
 }
 
 void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
