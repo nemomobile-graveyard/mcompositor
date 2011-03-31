@@ -2015,7 +2015,7 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
             return true;
     }
     // lock-screen window dont animate
-    if (pc->dontIconify())
+    if (pc->isLockScreen())
         return true;
     
     bool above = false; // is the window above the desktop?

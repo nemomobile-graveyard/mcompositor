@@ -618,10 +618,15 @@ bool MWindowPropertyCache::dontIconify()
     if (cannotMinimize() > 0)
         return true;
     int layer = meegoStackingLayer();
-    if (layer == 1 || (layer > 0 && wmName() == "Screen Lock"))
+    if (layer == 1 || isLockScreen())
         // these (screen/device lock) cannot be iconified by default
         return true;
     return false;
+}
+
+bool MWindowPropertyCache::isLockScreen()
+{
+    return (meegoStackingLayer() > 0 && wmName() == "Screen Lock");
 }
 
 bool MWindowPropertyCache::wantsFocus()
