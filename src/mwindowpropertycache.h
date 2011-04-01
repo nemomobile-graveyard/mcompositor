@@ -153,7 +153,7 @@ public slots:
     virtual const QRegion &shapeRegion();
     void shapeRefresh();
 
-    virtual bool hasAlpha();
+    virtual bool hasAlpha(bool really = false);
     int globalAlpha();
     int videoGlobalAlpha();
 

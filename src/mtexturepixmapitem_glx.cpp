@@ -147,17 +147,19 @@ void MTexturePixmapItem::init()
         saveBackingStore();
         return;
     }
-    d->inverted_texture = pc->hasAlpha() ? configAlphaInverted
-                                         : configInverted;
+
+    bool hasAlpha = pc->hasAlpha(true);
+    d->inverted_texture = hasAlpha ? configAlphaInverted
+                                   : configInverted;
 
     const int pixmapAttribs[] = {
         GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-        GLX_TEXTURE_FORMAT_EXT, pc->hasAlpha() ?
+        GLX_TEXTURE_FORMAT_EXT, hasAlpha ?
                 GLX_TEXTURE_FORMAT_RGBA_EXT : GLX_TEXTURE_FORMAT_RGB_EXT,
         None
     };
 
-    d->glpixmap = glXCreatePixmap(QX11Info::display(), pc->hasAlpha() ?
+    d->glpixmap = glXCreatePixmap(QX11Info::display(), hasAlpha ?
                         configAlpha : config, d->windowp, pixmapAttribs);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -181,9 +183,10 @@ MTexturePixmapItem::MTexturePixmapItem(Window window,
 
 void MTexturePixmapItem::rebindPixmap()
 {
+    bool hasAlpha = propertyCache()->hasAlpha(true);
     const int pixmapAttribs[] = {
         GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-        GLX_TEXTURE_FORMAT_EXT, propertyCache()->hasAlpha() ?
+        GLX_TEXTURE_FORMAT_EXT, hasAlpha ?
         GLX_TEXTURE_FORMAT_RGBA_EXT : GLX_TEXTURE_FORMAT_RGB_EXT,
         None
     };
@@ -192,8 +195,7 @@ void MTexturePixmapItem::rebindPixmap()
         Display *display = QX11Info::display();
         glXReleaseTexImageEXT(display, d->glpixmap, GLX_FRONT_LEFT_EXT);
         glXDestroyPixmap(display, d->glpixmap);
-        d->glpixmap = glXCreatePixmap(display, propertyCache()->hasAlpha() ?
-                                                 configAlpha : config,
+        d->glpixmap = glXCreatePixmap(display, hasAlpha ? configAlpha : config,
                                                  d->windowp, pixmapAttribs);
         glBindTexture(GL_TEXTURE_2D, d->textureId);
         glXBindTexImageEXT(display, d->glpixmap, GLX_FRONT_LEFT_EXT, NULL);
