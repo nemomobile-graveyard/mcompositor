@@ -2600,7 +2600,6 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
 void MCompositeManagerPrivate::displayOff(bool display_off)
 {
     if (display_off) {
-        // keep compositing to have synthetic events to obscure all windows
         if (!haveMappedWindow())
             enableCompositing();
         scene()->views()[0]->setUpdatesEnabled(false);
@@ -2609,6 +2608,8 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
              it != windows.end(); ++it) {
              MCompositeWindow *i = it.value();
              i->stopPing();
+             if (i->windowAnimator() && i->windowAnimator()->isActive())
+                 i->windowAnimator()->finish();
              // stop damage tracking while the display is off
              if (i->propertyCache())
                  i->propertyCache()->damageTracking(false);

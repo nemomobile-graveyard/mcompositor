@@ -346,6 +346,12 @@ void MCompositeWindowAnimation::pause()
     animationGroup()->pause();
 }
 
+void MCompositeWindowAnimation::finish()
+{
+    animationGroup()->setCurrentTime(animationGroup()->duration());
+    animationGroup()->stop();
+}
+
 bool MCompositeWindowAnimation::isActive()
 {
     return (animationGroup()->state() != QAbstractAnimation::Stopped);
