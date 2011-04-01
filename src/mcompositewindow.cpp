@@ -35,8 +35,6 @@
 
 int MCompositeWindow::window_transitioning = 0;
 
-QRectF defaultIconGeometry;
-
 MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
                                    MWindowPropertyCache *mpc, 
                                    QGraphicsItem *p)
@@ -95,14 +93,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         setVisible(window_visible); // newly_mapped used here
     } else
         window_visible = false;
-
-    if (defaultIconGeometry.isEmpty()) {
-        QRectF d = QApplication::desktop()->availableGeometry();
-        defaultIconGeometry.setWidth(d.width() / 2);
-        defaultIconGeometry.setHeight(d.height() / 2);
-        defaultIconGeometry.moveTo(defaultIconGeometry.width() / 2,
-                                   defaultIconGeometry.height() / 2);
-    }
 
     MCompositeWindowAnimation* a = 0;
     if (pc->windowType() == MCompAtoms::SHEET) 
