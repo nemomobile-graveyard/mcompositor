@@ -151,7 +151,6 @@ void MTexturePixmapItem::init()
     
     d->saveBackingStore();
     d->damageRetryTimer.setSingleShot(true);
-    d->damageRetryTimer.setInterval(0);
     connect(&d->damageRetryTimer, SIGNAL(timeout()),
             SLOT(updateWindowPixmapProxy()));
 }
@@ -262,9 +261,14 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
                    && d->pastDamages->first() + expiry < when)
                 d->pastDamages->removeFirst();
             if (d->pastDamages->size() >= limit) {
-                // Too many damages in the given timeframe, postpone.
-                if (!d->damageRetryTimer.isActive())
+                // Too many damages in the given timeframe, postpone
+                // until the time the queue is ready to accept a new
+                // update.
+                if (!d->damageRetryTimer.isActive()) {
+                    d->damageRetryTimer.setInterval(
+                               d->pastDamages->first()+expiry - when);
                     d->damageRetryTimer.start();
+                }
                 return;
             }
         } else
