@@ -198,27 +198,30 @@ void MCompositeWindowAnimation::windowShown()
 #define OPAQUE 1.0
 #define DIMMED 0.1
     Q_D(MCompositeWindowAnimation);
-    extern QRectF defaultIconGeometry;
 
     if (!d->target_window)
         return;
 
-    QRectF iconGeometry;
-    if (d->target_window->propertyCache()->iconGeometry().isEmpty())
-        iconGeometry = defaultIconGeometry;
-    else
-        iconGeometry = d->target_window->propertyCache()->iconGeometry();
-    d->target_window->setPos(iconGeometry.topLeft());
-    
+    const qreal scaleStart = 0.2;
+    const QRectF &iconGeometry = d->target_window->propertyCache()->iconGeometry();
+    QPointF topLeft = iconGeometry.topLeft();
+
+    if (iconGeometry.isEmpty()) {
+        const QRectF d = QApplication::desktop()->availableGeometry();
+        topLeft.setX(d.width()/2.0f * (1.0f-scaleStart));
+        topLeft.setY(d.height()/2.0f * (1.0f-scaleStart));
+    }
+
+    d->target_window->setPos(topLeft);
     positionAnimation()->setEasingCurve(QEasingCurve::OutQuad);
-    positionAnimation()->setStartValue(iconGeometry.topLeft());
+    positionAnimation()->setStartValue(topLeft);
     positionAnimation()->setEndValue(
         QPointF(d->target_window->propertyCache()->realGeometry().x(),
                 d->target_window->propertyCache()->realGeometry().y()));
     scaleAnimation()->setEasingCurve(QEasingCurve::OutQuad);
     
     // TODO: use icon geometry signal
-    scaleAnimation()->setStartValue(0.2);
+    scaleAnimation()->setStartValue(scaleStart);
     scaleAnimation()->setEndValue(1.0);
     opacityAnimation()->setEasingCurve(QEasingCurve::OutQuad);
     opacityAnimation()->setStartValue(DIMMED);
