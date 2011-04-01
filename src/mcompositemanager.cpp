@@ -1769,7 +1769,7 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
          MWindowPropertyCache *pc = 0;
          if (cw && cw->isMapped())
              pc = cw->propertyCache();
-         if (cw && cw->isMapped() && (!pc->hasAlpha() || pc->opaqueWindow()) &&
+         if (cw && cw->isMapped() && !pc->hasAlpha() &&
              !pc->isDecorator() && !cw->hasTransitioningWindow() &&
              // allow input windows to composite their app, see NB#223280
              pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&

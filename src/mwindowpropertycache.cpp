@@ -294,10 +294,13 @@ MWindowPropertyCache::~MWindowPropertyCache()
     damageTracking(false);
 }
 
-bool MWindowPropertyCache::hasAlpha()
+bool MWindowPropertyCache::hasAlpha(bool really)
 {
-    if (!is_valid || has_alpha != -1)
-        return has_alpha == 1 ? true : false;
+    if (!is_valid || !has_alpha)
+        return false;
+    else if (has_alpha > 0)
+        // Lie if the application wants us to believe it doesn't @has_alpha.
+        return !opaqueWindow();
     has_alpha = 0;
 
     // the following code is replacing a XRenderFindVisualFormat() call...
@@ -340,7 +343,7 @@ bool MWindowPropertyCache::hasAlpha()
         }
     }
 
-    return has_alpha;
+    return has_alpha && !opaqueWindow();
 }
 
 const QRegion &MWindowPropertyCache::shapeRegion()
