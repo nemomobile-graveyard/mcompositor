@@ -1482,7 +1482,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
                     frame->setDialogDecoration(true);
 
                 // TEST: a framed translucent window
-                if (pc->hasAlpha())
+                if (pc->hasAlphaAndIsNotOpaque())
                     frame->setAttribute(Qt::WA_TranslucentBackground);
                 QSize s = frame->suggestedWindowSize();
                 XResizeWindow(QX11Info::display(), e->window, s.width(), s.height());
@@ -1763,7 +1763,7 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
          MWindowPropertyCache *pc = 0;
          if (cw && cw->isMapped())
              pc = cw->propertyCache();
-         if (cw && cw->isMapped() && (!pc->hasAlpha() || pc->opaqueWindow()) &&
+         if (cw && cw->isMapped() && !pc->hasAlphaAndIsNotOpaque() &&
              !pc->isDecorator() && !cw->hasTransitioningWindow() &&
              // allow input windows to composite their app, see NB#223280
              pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&

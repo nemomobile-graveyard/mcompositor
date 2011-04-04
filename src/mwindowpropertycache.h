@@ -153,6 +153,8 @@ public slots:
     void shapeRefresh();
 
     virtual bool hasAlpha();
+    bool hasAlphaAndIsNotOpaque()
+        { return hasAlpha() && !opaqueWindow(); }
     int globalAlpha();
     int videoGlobalAlpha();
 
