@@ -2232,11 +2232,11 @@ static bool should_be_pinged(MCompositeWindow *cw)
 void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
 {
     MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
+    MWindowPropertyCache *pc = prop_caches.value(event->window, 0);
 
-    if (event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
-        MWindowPropertyCache *pc = prop_caches.value(event->window, 0);
-        if (pc && !skipStartupAnim(pc) &&
-            (!m_extensions.values(MapNotify).isEmpty() || !getTopmostApp())) {
+    if (pc && pc->isMapped()
+        && event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
+        if (!m_extensions.values(MapNotify).isEmpty() || !getTopmostApp()) {
             // Not necessary to animate if not in desktop view or we have a plugin.
             Window raise = event->window;
             MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
@@ -2281,7 +2281,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         } else
             // use composition due to the transition effect
             activateWindow(event->window, CurrentTime, false);
-    } else if (i && event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
+    } else if (i && pc && pc->isMapped()
+               && event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
         // save pixmap and delete or kill this window
         i->closeWindowRequest();
     } else if (event->message_type == ATOM(WM_PROTOCOLS)) {
