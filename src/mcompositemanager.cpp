@@ -3500,6 +3500,11 @@ void MCompositeManagerPrivate::iconifyApps()
     }
 }
 
+void MCompositeManager::iconifyApps()
+{
+    d->iconifyApps();
+}
+
 /*!
    Helper function to arrange arrange the order of the windows
    in the _NET_CLIENT_LIST_STACKING

@@ -105,6 +105,11 @@ public:
     void redirectWindows();
 
     /*!
+     * Mark windows iconic, except those that cannot be iconified.
+     */
+    void iconifyApps();
+
+    /*!
      * Load @overridePluginPath if provided and abort if fails.
      * Otherwise, if there's no @overridePluginPath loads plugins
      * from @regularPluginDir but skips non-library files and
