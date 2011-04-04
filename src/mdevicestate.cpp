@@ -32,8 +32,10 @@ void MDeviceState::mceDisplayStatusIndSignal(QString mode)
         display_off = true;
         emit displayStateChange(true);
     } else {  // "on" or "dimmed"
-        display_off = false;
-        emit displayStateChange(false);
+        if (display_off) {
+            display_off = false;
+            emit displayStateChange(false);
+        }
     }
 }
 #endif
