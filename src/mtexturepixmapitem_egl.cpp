@@ -75,10 +75,10 @@ private:
     bool genTextures(int n) {
         GLuint tex[n + 1];
         glGenTextures(n, tex);
-        if (glGetError() == GL_INVALID_ENUM)
-            // Try once again in case the call failed only temporarily,
-            // as it does when we allocate the next batch of IDs.
+        if (glGetError() == GL_INVALID_ENUM) {
             glGenTextures(n, tex);
+            n = 1;
+        }
         if (glGetError() != GL_NO_ERROR) {
             qWarning("glGenTextures(%d): %d", n, glGetError());
             return false;
