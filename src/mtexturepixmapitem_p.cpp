@@ -305,7 +305,7 @@ void MTexturePixmapPrivate::paint(QPainter *painter,
 
 void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
 {
-    if (item->propertyCache()->hasAlpha() ||
+    if (item->propertyCache()->hasAlphaAndIsNotOpaque() ||
         (item->opacity() < 1.0f && !item->dimmedEffect())) {
         // Blend differently if fading in on the top of a splash screen.
         glEnable(GL_BLEND);

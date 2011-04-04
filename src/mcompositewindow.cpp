@@ -588,7 +588,7 @@ bool MCompositeWindow::needsCompositing() const
         return false;
     if (need_decor || (pc->isDecorator() && !pc->opaqueWindow()))
         return true;
-    if (!pc->opaqueWindow() && !pc->lowPowerMode() && pc->hasAlpha())
+    if (pc->hasAlphaAndIsNotOpaque() && !pc->lowPowerMode())
         return true;
     return false;
 }
