@@ -56,8 +56,8 @@ public:
     }
 
     GLuint getTexture() {
-        if (free_tex.empty() && !genTextures(10))
-            return 0;
+        if (free_tex.empty())
+            genTextures(10);
         GLuint ret = free_tex.back();
         free_tex.pop_back();
         return ret;
@@ -72,22 +72,13 @@ public:
     }
 private:
 
-    bool genTextures(int n) {
+    void genTextures(int n) {
         GLuint tex[n + 1];
         glGenTextures(n, tex);
-        if (glGetError() == GL_INVALID_ENUM) {
-            glGenTextures(n, tex);
-            n = 1;
-        }
-        if (glGetError() != GL_NO_ERROR) {
-            qWarning("glGenTextures(%d): %d", n, glGetError());
-            return false;
-        }
         for (int i = 0; i < n; i++) {
             free_tex.push_back(tex[i]);
             all_tex.push_back(tex[i]);
         }
-        return true;
     }
 
     QVector<GLuint> free_tex, all_tex;
