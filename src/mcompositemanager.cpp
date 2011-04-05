@@ -1920,12 +1920,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     bool restacked = false;
     if (xrestackwindows_error || order_changed) {
         QList<Window> reverse;
-        for (int i = last_i; i >= 0; --i) {
-            MWindowPropertyCache *pc = prop_caches.value(stacking_list.at(i),
-                                                         0);
-            if (pc && pc->isVirtual()) continue;
+        for (int i = last_i; i >= 0; --i)
             reverse.append(stacking_list.at(i));
-        }
 
         // Log the actual arguments of XRestackWindows().
         STACKING("XRestackWindows([%s])",
@@ -4219,4 +4215,6 @@ void MCompositeManager::ensureSettingsFile()
         settings->setValue("damage-timeout-ms", 500);
     if (!settings->contains("expect-resize-timeout-ms"))
         settings->setValue("expect-resize-timeout-ms", 800);
+    if (!settings->contains("splash-timeout-ms"))
+        settings->setValue("splash-timeout-ms", 15000);
 }

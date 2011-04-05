@@ -85,7 +85,9 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid,
 
     if (pixmap) {
         timer.setSingleShot(true);
-        timer.setInterval(15 * 1000);
+        int timeout = ((MCompositeManager*)qApp)->config().value(
+                                  "splash-timeout-ms", 15000).toInt();
+        timer.setInterval(timeout);
         connect(&timer, SIGNAL(timeout()), m->d, SLOT(splashTimeout()));
         timer.start();
     }
