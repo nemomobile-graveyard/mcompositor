@@ -36,3 +36,8 @@ mdinst.files = $${metadata.output}
 mdinst.path = /usr/share/$$SUITENAME
 mdinst.CONFIG = no_check_exist
 INSTALLS += mdinst
+
+# jpg file for test25.py
+splash.files = splash.jpg
+splash.path = /usr/share/$$SUITENAME
+INSTALLS += splash

@@ -1,5 +1,5 @@
 TEMPLATE = subdirs
-SUBDIRS = windowctl windowstack focus-tracker functional unit
+SUBDIRS = windowctl windowstack focus-tracker functional unit manual-splash
 # appinterface depends on libdecorator and is built by the toplevel Makefile
 
 include(shell.pri)
