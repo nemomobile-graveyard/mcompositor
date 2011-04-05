@@ -40,8 +40,6 @@
 #include <mcompositemanager_p.h>
 #include <msheetanimation.h>
 
-static int default_duration = 200;
-
 class McParallelAnimation: public QParallelAnimationGroup
 {
 public:
@@ -88,15 +86,17 @@ public:
     {
         scale = new QPropertyAnimation(animation);
         scale->setPropertyName("scale");
-        scale->setDuration(default_duration);
+        int duration = ((MCompositeManager*)qApp)->config().value(
+                                   "startup-anim-duration", 200).toInt();
+        scale->setDuration(duration);
         
         position = new QPropertyAnimation(animation);
         position->setPropertyName("pos");
-        position->setDuration(default_duration);
+        position->setDuration(duration);
         
         opacity = new QPropertyAnimation(animation);
         opacity->setPropertyName("opacity");
-        opacity->setDuration(default_duration);
+        opacity->setDuration(duration);
         
         scalepos = new McParallelAnimation(animation);
         scalepos->addAnimation(scale);
@@ -284,7 +284,9 @@ void MCompositeWindowAnimation::crossFadeTo(MCompositeWindow *cw)
     op->setTargetObject(cw);
     op->setEasingCurve(QEasingCurve::Linear);
     op->setPropertyName("opacity");
-    op->setDuration(250);
+    int duration = ((MCompositeManager*)qApp)->config().value(
+                               "crossfade-duration", 250).toInt();
+    op->setDuration(duration);
     op->setStartValue(0);
     op->setEndValue(1);
     d->crossfade->addAnimation(op);
