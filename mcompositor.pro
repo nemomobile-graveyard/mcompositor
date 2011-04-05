@@ -10,7 +10,7 @@ mcompositor.depends = src
 appinterface_test.subdir = tests/appinterface
 appinterface_test.depends = libdecorator
 unittests.subdir = tests/unit
-unittests.depends = src
+unittests.depends = libdecorator src
 
 QMAKE_CLEAN += configure-stamp build-stamp
 QMAKE_DISTCLEAN += configure-stamp build-stamp

@@ -8,7 +8,7 @@ INCLUDEPATH += ../../../src /usr/include/meegotouch/mcompositor
 
 DEFINES += TESTS
 
-LIBS += ../../../src/libmcompositor.so
+LIBS += ../../../decorators/libdecorator/libdecorator.so ../../../src/libmcompositor.so
 
 # Input
 HEADERS += ut_stacking.h
