@@ -1,0 +1,18 @@
+CaseName="splash_screen"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Some tests for the splash screen.
+
+- Test steps
+	- show an unmapped application window
+        - show a splash screen for it
+        - check that the splash screen appeared
+        - map the application window
+        - check that the splash screen disappeared
+        - show a new splash screen with a bogus PID
+        - check that the splash screen appeared
+        - map a new application window
+        - check that the app window is stacked above the splash screen
+        - wait for the splash timeout
+- Post-conditions
+	- check that the splash screen disappeared on timeout\n"

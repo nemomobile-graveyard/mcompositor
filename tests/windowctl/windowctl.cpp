@@ -177,6 +177,15 @@ static void set_always_mapped (Display *dpy, Window w, int value)
   XSync(dpy, False);
 }
 
+static void set_wm_pid (Display *dpy, Window w)
+{
+  long data = getpid();
+  Atom a = XInternAtom (dpy, "_NET_WM_PID", False);
+  XChangeProperty (dpy, w, a, XA_CARDINAL, 32, PropModeReplace,
+                   (unsigned char*)&data, 1);
+  XSync(dpy, False);
+}
+
 static void set_decorator_buttons (Display *dpy, Window w)
 {
   unsigned int data[8] = {0, 0, 100, 100,
@@ -1004,6 +1013,7 @@ static bool old_main(QStringList& args, QString& stdOut)
                 c->res_name = c->res_class = (char*)"windowctl";
                 XSetClassHint(dpy, w, c);
 	}
+        set_wm_pid(dpy, w);
 
         // listen to root window damage
         XDamageCreate(dpy, DefaultRootWindow(dpy), XDamageReportRawRectangles);
