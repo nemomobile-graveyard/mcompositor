@@ -22,8 +22,8 @@
 #include "mcompositescene.h"
 #include "mcompositemanager.h"
 
-#define TMPDIR "/tmp"
-#define HACKDIR ".mcompositor-qt-plugin-hack"
+// @plugindir ?
+#define PLUGINDIR "/usr/lib/mcompositor"
 
 int main(int argc, char *argv[])
 {
@@ -36,26 +36,8 @@ int main(int argc, char *argv[])
     setenv("CONTEXT_COMMANDING", "1", 1);
 #endif
     
-    // Load only Qt plugins that are for image formats. This seems to be
-    // possible only with some hackery (otherwise we load e.g. style plugins).
-    QStringList oldpath = QCoreApplication::libraryPaths();
-    if (!oldpath.size())
-        oldpath.append(QString("/usr/lib/qt4/plugins"));
-    QDir tmpdir(QString(TMPDIR));
-    tmpdir.mkdir(QString(HACKDIR));
-    bool succ = tmpdir.cd(QString(HACKDIR));
-    tmpdir.mkdir(QString("plugins"));
-    succ = succ && tmpdir.cd(QString("plugins"));
-    QFile fmts(QString(TMPDIR "/" HACKDIR "/plugins/imageformats"));
-    fmts.remove();
-    fmts.setFileName(oldpath[0] + QString("/imageformats"));
-    succ = succ && fmts.link(QString(TMPDIR "/" HACKDIR
-                                     "/plugins/imageformats"));
-    if (succ)
-        QCoreApplication::setLibraryPaths(
-                             QStringList(TMPDIR "/" HACKDIR "/plugins"));
-    else
-        QCoreApplication::setLibraryPaths(QStringList());
+    // Don't load any Qt plugins
+    QCoreApplication::setLibraryPaths(QStringList(PLUGINDIR));
 
     QApplication::setDesktopSettingsAware(false);
     // make QPixmap create X pixmaps
@@ -109,15 +91,13 @@ int main(int argc, char *argv[])
     w->makeCurrent();
     view.show();
 
-    // The directory is hard-coded for now. could be moved this
-    // to $plugindir later.
     int testPlugin;
     const QStringList &args = app.arguments();
     for (testPlugin = 1; testPlugin < args.length(); testPlugin++)
         if (!args[testPlugin].isEmpty() && args[testPlugin][0] != '-')
             break;
     app.loadPlugins(testPlugin < args.length() ? args[testPlugin] : QString(),
-                    "/usr/lib/mcompositor");
+                    PLUGINDIR);
 
     app.prepareEvents();
     app.redirectWindows();
