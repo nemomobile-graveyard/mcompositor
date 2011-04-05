@@ -68,13 +68,16 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         is_valid = true;
     connect(mpc, SIGNAL(iconGeometryUpdated()), SLOT(updateIconGeometry()));
 
-    // this could be configurable. But will do for now. Most WMs use 5s delay
+    int interval = ((MCompositeManager*)qApp)->config().value(
+                               "ping-interval-ms", 5000).toInt();
     t_ping = new QTimer(this);
-    t_ping->setInterval(5000);
+    t_ping->setInterval(interval);
     connect(t_ping, SIGNAL(timeout()), SLOT(pingTimeout()));
     t_reappear = new QTimer(this);
     t_reappear->setSingleShot(true);
-    t_reappear->setInterval(30 * 1000);
+    int reappear = ((MCompositeManager*)qApp)->config().value(
+                               "hung-dialog-reappear-ms", 30000).toInt();
+    t_reappear->setInterval(reappear);
     connect(t_reappear, SIGNAL(timeout()), SLOT(reappearTimeout()));
 
     damage_timer = new QTimer(this);
@@ -280,9 +283,13 @@ bool MCompositeWindow::showWindow()
         setWindowObscured(false);
         // waiting for two damage events seems to work for Meegotouch apps
         // at least, for the rest, there is a timeout
-        waiting_for_damage = 2;
+        int n_damage = ((MCompositeManager*)qApp)->config().value(
+                                   "damages-for-starting-anim", 2).toInt();
+        waiting_for_damage = n_damage;
         resize_expected = false;
-        damage_timer->setInterval(500);
+        int timeout = ((MCompositeManager*)qApp)->config().value(
+                                  "damage-timeout-ms", 500).toInt();
+        damage_timer->setInterval(timeout);
         damage_timer->start();
     } else
         q_fadeIn();
@@ -295,8 +302,10 @@ void MCompositeWindow::expectResize()
     // Be nice and wait some more because mdecorator has a huge latency.
     if (!damage_timer->isActive())
         return;
+    int timeout = ((MCompositeManager*)qApp)->config().value(
+                              "expect-resize-timeout-ms", 800).toInt();
     resize_expected = true;
-    damage_timer->setInterval(800);
+    damage_timer->setInterval(timeout);
 }
 
 void MCompositeWindow::damageReceived()

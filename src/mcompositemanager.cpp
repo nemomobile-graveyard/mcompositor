@@ -605,7 +605,9 @@ static void setup_key_grabs()
     Display* dpy = QX11Info::display();
     static bool ignored_mod = false;
     if (!switcher_key) {
-        switcher_key = XKeysymToKeycode(dpy, XStringToKeysym("BackSpace"));
+        QString k = ((MCompositeManager*)qApp)->config().value(
+                                "switcher-keysym", "BackSpace").toString();
+        switcher_key = XKeysymToKeycode(dpy, XStringToKeysym(k.toAscii()));
         XGrabKey(dpy, switcher_key, Mod5Mask,
                  RootWindow(QX11Info::display(), 0), True,
                  GrabModeAsync, GrabModeAsync);
@@ -4095,6 +4097,10 @@ void MCompositeManager::xtracef(const char *fun, const char *fmt, ...)
 MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
+    // $HOME/.config/mcompositor/mcompositor.conf
+    settings = new QSettings("mcompositor", "mcompositor", this);
+    ensureSettingsFile();
+
     d = new MCompositeManagerPrivate(this);
     connect(d, SIGNAL(windowBound(MCompositeWindow*)), SIGNAL(windowBound(MCompositeWindow*)));
     d->mayShowApplicationHungDialog = !arguments().contains("-nohung");
@@ -4220,4 +4226,24 @@ bool MCompositeManager::possiblyUnredirectTopmostWindow()
 void MCompositeManager::exposeSwitcher()
 {
     d->exposeSwitcher();
+}
+
+void MCompositeManager::ensureSettingsFile()
+{
+    if (!settings->contains("startup-anim-duration"))
+        settings->setValue("startup-anim-duration", 200);
+    if (!settings->contains("crossfade-duration"))
+        settings->setValue("crossfade-duration", 250);
+    if (!settings->contains("switcher-keysym"))
+        settings->setValue("switcher-keysym", "BackSpace");
+    if (!settings->contains("ping-interval-ms"))
+        settings->setValue("ping-interval-ms", 5000);
+    if (!settings->contains("hung-dialog-reappear-ms"))
+        settings->setValue("hung-dialog-reappear-ms", 30000);
+    if (!settings->contains("damages-for-starting-anim"))
+        settings->setValue("damages-for-starting-anim", 2);
+    if (!settings->contains("damage-timeout-ms"))
+        settings->setValue("damage-timeout-ms", 500);
+    if (!settings->contains("expect-resize-timeout-ms"))
+        settings->setValue("expect-resize-timeout-ms", 800);
 }
