@@ -23,6 +23,7 @@
 #include <QApplication>
 #include <QGLWidget>
 #include <QDir>
+#include <QSettings>
 #include <mwindowpropertycache.h>
 
 class QGraphicsScene;
@@ -151,6 +152,7 @@ public:
     void queryDialogAnswer(unsigned int window, bool yes_answer);
 
     Window desktopWindow() const;
+    const QSettings &config() const { return *settings; }
 
 #ifdef WINDOW_DEBUG
     // Dump the current state of MCompositeManager and MCompositeWindow:s
@@ -203,7 +205,9 @@ public slots:
     void windowBound(MCompositeWindow* window);
 
 private:
+    void ensureSettingsFile();
     MCompositeManagerPrivate *d;
+    QSettings *settings;
 
     friend class MCompositeWindow;
     friend class MCompositeWindowAnimation;
