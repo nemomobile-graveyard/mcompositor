@@ -1,6 +1,7 @@
 TEMPLATE = subdirs
 SUBDIRS = windowctl windowstack focus-tracker functional unit
 # appinterface depends on libdecorator and is built by the toplevel Makefile
+# unit tests depend on libmcompositor and are built likewise
 
 include(shell.pri)
 
