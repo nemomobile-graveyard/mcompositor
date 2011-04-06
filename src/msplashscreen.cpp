@@ -23,14 +23,33 @@
 #include "mdevicestate.h"
 #include "mcompositewindowanimation.h"
 
-MSplashPropertyCache *MSplashPropertyCache::singleton;
+// Non-deletable, static MWindowPropertyCache.
+class MSplashPropertyCache: public MWindowPropertyCache
+{
+public:
+    MSplashPropertyCache();
+    static MSplashPropertyCache *get();
+
+private:
+    bool event(QEvent *e);
+
+    xcb_get_window_attributes_reply_t attrs;
+};
 
 MSplashPropertyCache::MSplashPropertyCache()
-    : MWindowPropertyCache(0)
+    : MWindowPropertyCache(0, &attrs)
 {
+    memset(&attrs, 0, sizeof(attrs));
+    setIsMapped(true);
+    type_atoms.append(ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE));
+    setRealGeometry(QApplication::desktop()->geometry());
+    has_alpha = 1; // prevent switching off compositing
 }
+
 MSplashPropertyCache *MSplashPropertyCache::get()
 {
+    static MSplashPropertyCache *singleton;
+
     if (!singleton)
         singleton = new MSplashPropertyCache();
     return singleton;
@@ -103,13 +122,6 @@ MSplashScreen::~MSplashScreen()
 
     // return this QPixmap to the QPixmapCache with a valid X pixmap
     delete q_pixmap;
-}
-
-const QRegion &MSplashPropertyCache::shapeRegion()
-{
-    if (bounding_region.isEmpty())
-        bounding_region = QApplication::desktop()->geometry();
-    return bounding_region;
 }
 
 QRectF MSplashScreen::boundingRect() const
