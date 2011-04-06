@@ -23,26 +23,6 @@
 #include <mtexturepixmapitem.h>
 #include <mwindowpropertycache.h>
 
-// Non-deletable, static MWindowPropertyCache.
-class MSplashPropertyCache: public MWindowPropertyCache
-{
-public:
-    MSplashPropertyCache();
-    static MSplashPropertyCache *get();
-    bool isMapped() const { return true; }
-    bool isVirtual() const { return true; }
-    MCompAtoms::Type windowType() { return MCompAtoms::FRAMELESS; }
-    Atom windowTypeAtom()
-    { return ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE); }
-    const QRegion &shapeRegion();
-    // prevent switching off compositing
-    bool hasAlpha() { return true; }
-private:
-    bool event(QEvent *e);
-    static MSplashPropertyCache *singleton;
-    QRegion bounding_region;
-};
-
 /*!
  * Class for splash screens, which look like normal window objects but don't
  * refresh their pixmap and don't have a window.

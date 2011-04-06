@@ -53,7 +53,7 @@ public:
                          Damage damage_obj = 0);
     virtual ~MWindowPropertyCache();
 
-    virtual MCompAtoms::Type windowType();
+    MCompAtoms::Type windowType();
 
     void setRequestedGeometry(const QRect &rect) {
         req_geom = rect;
@@ -102,7 +102,7 @@ public:
     void setStackedUnmapped(bool s) { stacked_unmapped = s; }
     bool stackedUnmapped() const { return stacked_unmapped; }
 
-    virtual bool isMapped() const {
+    bool isMapped() const {
         if (!is_valid || !attrs)
             return false;
         return attrs->map_state == XCB_MAP_STATE_VIEWABLE;
@@ -124,7 +124,7 @@ public:
      * Returns whether override_redirect flag was in XWindowAttributes at
      * object creation time.
      */
-    virtual bool isOverrideRedirect() const {
+    bool isOverrideRedirect() const {
         if (!is_valid || !attrs)
             return false;
         return attrs->override_redirect;
@@ -143,35 +143,35 @@ public:
 
 public slots:
     bool isDecorator();
-    virtual Atom windowTypeAtom();
+    Atom windowTypeAtom();
     unsigned pid();
 
     const XWMHints &getWMHints();
     const QRect realGeometry();
     const QRectF &iconGeometry();
-    virtual const QRegion &shapeRegion();
+    const QRegion &shapeRegion();
     void shapeRefresh();
 
-    virtual bool hasAlpha();
+    bool hasAlpha();
     bool hasAlphaAndIsNotOpaque()
         { return hasAlpha() && !opaqueWindow(); }
     int globalAlpha();
     int videoGlobalAlpha();
 
     //! Returns value of TRANSIENT_FOR property.
-    virtual Window transientFor();
+    Window transientFor();
 
     //! Returns the first cardinal of WM_STATE of this window
-    virtual int windowState();
+    int windowState();
 
     //! Returns list of _NET_WM_STATE of the window.
-    virtual const QList<Atom>& netWmState();
+    const QList<Atom>& netWmState();
 
     //! Returns list of WM_PROTOCOLS of the window.
     const QList<Atom>& supportedProtocols();
 
     //! Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 10].
-    virtual unsigned int meegoStackingLayer();
+    unsigned int meegoStackingLayer();
 
     //! Returns value of _MEEGO_LOW_POWER_MODE. The value is 0 or 1. Allows
     //  switching off compositing for any window type, and special handling
@@ -216,7 +216,7 @@ public:
      */
     bool propertyEvent(XPropertyEvent *e);
 
-    bool is_valid;
+    bool is_valid, is_virtual;
 
     static void set_xcb_connection(xcb_connection_t *c) {
         MWindowPropertyCache::xcb_conn = c;
@@ -250,8 +250,9 @@ public:
 
     /*! 
      * Is this a special property cache without a corresponding X window?
+     * "virtual is invalid but in a happy way" -- Kimmo
      */
-    virtual bool isVirtual() const { return false; }
+    bool isVirtual() const { return is_virtual; }
 
 signals:
     void iconGeometryUpdated();
@@ -269,6 +270,7 @@ private:
     void init_invalid();
     int alphaValue(const QLatin1String me);
 
+protected:
     Window transient_for;
     QList<Window> transients;
     QList<Atom> wm_protocols;
