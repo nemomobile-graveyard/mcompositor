@@ -21,57 +21,39 @@ static int error_handler(Display * , XErrorEvent *)
 class fake_LMT_window : public MWindowPropertyCache
 {
 public:
-    fake_LMT_window(Window w, bool is_mapped = true) : MWindowPropertyCache(w)
+    fake_LMT_window(Window w, bool is_mapped = true)
+        : MWindowPropertyCache(None, &attrs)
     {
-        fake_shape_region = QRect(0, 0, dwidth, dheight);
-        meego_level = 0;
+        window = w;
+        memset(&attrs, 0, sizeof(attrs));
+        setIsMapped(is_mapped);
+        setRealGeometry(QRect(0, 0, dwidth, dheight));
+        type_atoms.append(ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE));
         window_state = NormalState;
-        mapped = is_mapped;
-        fake_transient_for = 0;
-        fake_window_type = MCompAtoms::FRAMELESS;
-        fake_type_atom = ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE);
-        fake_is_OR = false;
+        has_alpha = 0;
     }
-    bool isMapped() const { return mapped; }
-//    bool isVirtual() const { return true; }
-    MCompAtoms::Type windowType() { return fake_window_type; }
-    Atom windowTypeAtom() { return fake_type_atom; }
-    const QRegion &shapeRegion() { return fake_shape_region; }
-    bool hasAlpha() { return false; }
-    unsigned int meegoStackingLayer() { return meego_level; }
-    int windowState() { return window_state; }
-    Window transientFor() { return fake_transient_for; }
-    const QList<Atom>& netWmState() { return fake_netwmstate; }
-    bool isOverrideRedirect() const { return fake_is_OR; }
 
-    unsigned int meego_level;
-    int window_state;
-    bool mapped, fake_is_OR;
-    Window fake_transient_for;
-    Atom fake_type_atom;
-    MCompAtoms::Type fake_window_type;
-    QList<Atom> fake_netwmstate;
+    xcb_get_window_attributes_reply_t attrs;
 
-private:
-    QRegion fake_shape_region;
+    friend class ut_Stacking;
 };
 
 class fake_desktop_window : public MWindowPropertyCache
 {
 public:
-    fake_desktop_window(Window w) : MWindowPropertyCache(w)
+    fake_desktop_window(Window w)
+        : MWindowPropertyCache(None, &attrs)
     {
-        fake_shape_region = QRect(0, 0, dwidth, dheight);
+        window = w;
+        memset(&attrs, 0, sizeof(attrs));
+        setIsMapped(true);
+        setRealGeometry(QRect(0, 0, dwidth, dheight));
+        type_atoms.append(ATOM(_NET_WM_WINDOW_TYPE_DESKTOP));
+        window_state = NormalState;
+        has_alpha = 0;
     }
-    bool isMapped() const { return true; }
-//    bool isVirtual() const { return true; }
-    MCompAtoms::Type windowType() { return MCompAtoms::DESKTOP; }
-    Atom windowTypeAtom()
-    { return ATOM(_NET_WM_WINDOW_TYPE_DESKTOP); }
-    const QRegion &shapeRegion() { return fake_shape_region; }
-    bool hasAlpha() { return false; }
-    int windowState() { return NormalState; }
-    QRegion fake_shape_region;
+
+    xcb_get_window_attributes_reply_t attrs;
 };
 
 void ut_Stacking::initTestCase()
@@ -112,23 +94,20 @@ void ut_Stacking::testLotOfUnmapped()
                     trans2(10);
     Window free_id;
 
-    trans1.fake_transient_for = 2;
-    meego1.meego_level = 1;
-    sysmodal.fake_window_type = MCompAtoms::NO_DECOR_DIALOG;
-    sysmodal.fake_type_atom = ATOM(_NET_WM_WINDOW_TYPE_DIALOG);
-    sysmodal.fake_netwmstate.append(ATOM(_NET_WM_STATE_MODAL));
-    sysdlg.fake_window_type = MCompAtoms::NO_DECOR_DIALOG;
-    sysdlg.fake_type_atom = ATOM(_NET_WM_WINDOW_TYPE_DIALOG);
-    banner.fake_window_type = MCompAtoms::NOTIFICATION;
-    banner.fake_type_atom = ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION);
-    or_window.fake_is_OR = true;
-    trans2.fake_transient_for = 3;
+    trans1.transient_for = 2;
+    meego1.meego_layer = 1;
+    sysmodal.type_atoms.prepend(ATOM(_NET_WM_WINDOW_TYPE_DIALOG));
+    sysmodal.net_wm_state.append(ATOM(_NET_WM_STATE_MODAL));
+    sysdlg.type_atoms.prepend(ATOM(_NET_WM_WINDOW_TYPE_DIALOG));
+    banner.type_atoms[0] = ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION);
+    or_window.attrs.override_redirect = 1;
+    trans2.transient_for = 3;
 
     // make a stack with a varying number of unmapped windows between mapped ones
     for (int n_unmapped = 1; n_unmapped < 51; ++n_unmapped) {
         Window first_unmapped;
         free_id = first_unmapped = 11;
-        normal_lmt.mapped = true;
+        normal_lmt.setIsMapped(true);
         iconic_lmt.window_state = trans2.window_state = IconicState;
 
         QVector<MWindowPropertyCache *> stack;
@@ -184,17 +163,17 @@ void ut_Stacking::testLotOfUnmapped()
         QCOMPARE(checkOrder(correct2), true);
 
         // unmap the transient parent (no change in order)
-        normal_lmt.mapped = false;
+        normal_lmt.setIsMapped(false);
         cmgr->d->roughSort();
         QCOMPARE(checkOrder(correct2), true);
 
         // drop meego level to 0 and then raise it back to 1
-        meego1.meego_level = 0;
+        meego1.meego_layer = 0;
         cmgr->d->roughSort();
         Window correct3[] = { 11, 1, 2, 4, 7, 3, 10, 5, 6, 9, 8, 0 };
         QCOMPARE(checkOrder(correct3), true);
 
-        meego1.meego_level = 1;
+        meego1.meego_layer = 1;
         cmgr->d->roughSort();
         QCOMPARE(checkOrder(correct2), true);
 

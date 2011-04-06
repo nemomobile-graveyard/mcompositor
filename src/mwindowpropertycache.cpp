@@ -70,6 +70,9 @@ bool MWindowPropertyCache::requestPending(const QLatin1String collector)
 void MWindowPropertyCache::addRequest(const QLatin1String collector,
                                       unsigned cookie)
 {
+    if (is_virtual)
+        return;
+
     unsigned prev_cookie = requests[collector];
     requests[collector] = cookie;
     if (prev_cookie)
@@ -82,6 +85,7 @@ void MWindowPropertyCache::addRequest(const QLatin1String collector,
 // Makes @collector's property considered isUpdate().
 void MWindowPropertyCache::replyCollected(const QLatin1String collector)
 {
+    Q_ASSERT(!is_virtual);
     requests[collector] = 0;
     collect_timer->disconnect(collector.latin1());
 }
@@ -102,6 +106,7 @@ void MWindowPropertyCache::cancelRequest(const QLatin1String collector)
 unsigned MWindowPropertyCache::requestProperty(Atom prop, Atom type,
                                                unsigned n)
 {
+    Q_ASSERT(!is_virtual);
     return xcb_get_property(xcb_conn, 0, window,
                             prop, type, 0, n).sequence;
 }
@@ -163,7 +168,18 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
         attrs = wa;
 
     is_valid = true;
+    is_virtual = window == None;
     damage_object = damage_obj;
+
+    if (geom) {
+        real_geom = QRect(geom->x, geom->y, geom->width, geom->height);
+        requests[QLatin1String(SLOT(realGeometry()))] = 0;
+        free(geom);
+    }
+
+    if (is_virtual)
+        // addRequest() is NOP
+        return;
 
     if (!isMapped()) {
         // required to get property changes happening before mapping
@@ -176,11 +192,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     collect_timer->setInterval(5000);
     collect_timer->setSingleShot(true);
 
-    if (geom) {
-        real_geom = QRect(geom->x, geom->y, geom->width, geom->height);
-        requests[QLatin1String(SLOT(realGeometry()))] = 0;
-        free(geom);
-    } else
+    if (!geom)
         addRequest(SLOT(realGeometry()),
                    xcb_get_geometry(xcb_conn, window).sequence);
     addRequest(SLOT(isDecorator()), 
@@ -270,7 +282,7 @@ MWindowPropertyCache::MWindowPropertyCache()
 
 MWindowPropertyCache::~MWindowPropertyCache()
 {
-    if (!is_valid) {
+    if (!is_valid || is_virtual) {
         // no pending XCB requests
         XFree(wmhints);
         return;
@@ -378,7 +390,7 @@ const QRegion &MWindowPropertyCache::shapeRegion()
 const QRegion &MWindowPropertyCache::customRegion()
 {
     QLatin1String me(SLOT(customRegion()));
-    if (is_valid && !requests.contains(me))
+    if (is_valid && !is_virtual && !requests.contains(me))
         requests[me] = requestProperty(MCompAtoms::_MEEGOTOUCH_CUSTOM_REGION,
                                        XCB_ATOM_CARDINAL, 10 * 4);
     else if (!is_valid || !requests[me])
@@ -501,7 +513,7 @@ int MWindowPropertyCache::alwaysMapped()
 int MWindowPropertyCache::desktopView()
 {
     QLatin1String me(SLOT(desktopView()));
-    if (is_valid && !requests.contains(me))
+    if (is_valid && !is_virtual && !requests.contains(me))
         requests[me] = requestProperty(MCompAtoms::_MEEGOTOUCH_DESKTOP_VIEW,
                                        XCB_ATOM_CARDINAL);
     else if (!is_valid || !requests[me])
