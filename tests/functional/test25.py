@@ -71,7 +71,8 @@ time.sleep(1)
 
 # show a splash screen for it
 pid = os.popen('pidof windowctl').readline().strip()
-splash = '/usr/share/mcompositor-functional-tests/splash.jpg'
+splash = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+	'splash.jpg')
 os.popen('manual-splash %s ignored %s %s ""' % (pid, splash, splash))
 time.sleep(1)
 
