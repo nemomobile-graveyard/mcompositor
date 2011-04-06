@@ -58,6 +58,8 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       resize_expected(false),
       win_id(window)
 {
+    const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
+
     if (!mpc || (mpc && !mpc->is_valid && !mpc->isVirtual())) {
         is_valid = false;
         newly_mapped = false;
@@ -68,16 +70,12 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         is_valid = true;
     connect(mpc, SIGNAL(iconGeometryUpdated()), SLOT(updateIconGeometry()));
 
-    int interval = ((MCompositeManager*)qApp)->config().value(
-                               "ping-interval-ms", 5000).toInt();
     t_ping = new QTimer(this);
-    t_ping->setInterval(interval);
+    t_ping->setInterval(mc->configInt("ping-interval-ms"));
     connect(t_ping, SIGNAL(timeout()), SLOT(pingTimeout()));
     t_reappear = new QTimer(this);
     t_reappear->setSingleShot(true);
-    int reappear = ((MCompositeManager*)qApp)->config().value(
-                               "hung-dialog-reappear-ms", 30000).toInt();
-    t_reappear->setInterval(reappear);
+    t_reappear->setInterval(mc->configInt("hung-dialog-reappear-ms"));
     connect(t_reappear, SIGNAL(timeout()), SLOT(reappearTimeout()));
 
     damage_timer = new QTimer(this);
@@ -278,18 +276,15 @@ bool MCompositeWindow::showWindow()
     findBehindWindow();
     beginAnimation();
     if (newly_mapped && (!animator || !animator->isActive())) {
+        const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
         // NB#180628 - some stupid apps are listening for visibilitynotifies.
         // Well, all of the toolkit anyways
         setWindowObscured(false);
         // waiting for two damage events seems to work for Meegotouch apps
         // at least, for the rest, there is a timeout
-        int n_damage = ((MCompositeManager*)qApp)->config().value(
-                                   "damages-for-starting-anim", 2).toInt();
-        waiting_for_damage = n_damage;
+        waiting_for_damage = mc->configInt("damages-for-starting-anim");
         resize_expected = false;
-        int timeout = ((MCompositeManager*)qApp)->config().value(
-                                  "damage-timeout-ms", 500).toInt();
-        damage_timer->setInterval(timeout);
+        damage_timer->setInterval(mc->configInt("damage-timeout-ms"));
         damage_timer->start();
     } else
         q_fadeIn();
@@ -298,14 +293,14 @@ bool MCompositeWindow::showWindow()
 
 void MCompositeWindow::expectResize()
 {
+    const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
+
     // In addition to @waiting_for_damages, also wait for a resize().
     // Be nice and wait some more because mdecorator has a huge latency.
     if (!damage_timer->isActive())
         return;
-    int timeout = ((MCompositeManager*)qApp)->config().value(
-                              "expect-resize-timeout-ms", 800).toInt();
     resize_expected = true;
-    damage_timer->setInterval(timeout);
+    damage_timer->setInterval(mc->configInt("expect-resize-timeout-ms"));
 }
 
 void MCompositeWindow::damageReceived()

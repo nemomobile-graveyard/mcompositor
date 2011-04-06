@@ -84,10 +84,11 @@ public:
         : crossfade(0),
           pending_animation(MCompositeWindowAnimation::NoAnimation)
     {
+        const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
+        int duration = mc->configInt("startup-anim-duration");
+
         scale = new QPropertyAnimation(animation);
         scale->setPropertyName("scale");
-        int duration = ((MCompositeManager*)qApp)->config().value(
-                                   "startup-anim-duration", 200).toInt();
         scale->setDuration(duration);
         
         position = new QPropertyAnimation(animation);
@@ -275,6 +276,7 @@ void MCompositeWindowAnimation::windowRestored()
 void MCompositeWindowAnimation::crossFadeTo(MCompositeWindow *cw)
 {
     Q_D(MCompositeWindowAnimation);
+    const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
 
     if (d->crossfade)
         delete d->crossfade;
@@ -284,9 +286,7 @@ void MCompositeWindowAnimation::crossFadeTo(MCompositeWindow *cw)
     op->setTargetObject(cw);
     op->setEasingCurve(QEasingCurve::Linear);
     op->setPropertyName("opacity");
-    int duration = ((MCompositeManager*)qApp)->config().value(
-                               "crossfade-duration", 250).toInt();
-    op->setDuration(duration);
+    op->setDuration(mc->configInt("crossfade-duration"));
     op->setStartValue(0);
     op->setEndValue(1);
     d->crossfade->addAnimation(op);

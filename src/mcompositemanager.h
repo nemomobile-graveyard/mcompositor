@@ -157,7 +157,9 @@ public:
     void queryDialogAnswer(unsigned int window, bool yes_answer);
 
     Window desktopWindow() const;
-    const QSettings &config() const { return *settings; }
+    int configInt(const char *key) const;
+    QVariant config(const char *key) const;
+    void config(const char *key, const QVariant &val) const;
 
 #ifdef WINDOW_DEBUG
     // Dump the current state of MCompositeManager and MCompositeWindow:s
