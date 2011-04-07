@@ -9,7 +9,7 @@ class MCurrentWindowOrientationProviderPrivate;
 class MCurrentWindowOrientationProvider
 {
 public:
-    MCurrentWindowOrientationProvider();
+    MCurrentWindowOrientationProvider(unsigned int defaultAngle);
     ~MCurrentWindowOrientationProvider();
 
 public:
