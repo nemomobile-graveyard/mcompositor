@@ -17,15 +17,20 @@ MCurrentWindowOrientationProvider::~MCurrentWindowOrientationProvider()
     // keep QScopedPointer happy
 }
 
-MCurrentWindowOrientationProvider::MCurrentWindowOrientationProvider():
+MCurrentWindowOrientationProvider::MCurrentWindowOrientationProvider(unsigned int defaultAngle):
     d_ptr(new MCurrentWindowOrientationProviderPrivate)
 {
     Q_D(MCurrentWindowOrientationProvider);
     d->q_ptr = this;
+    d->defaultAngle =defaultAngle;
+    d->property.setValue(defaultAngle);
 }
 
 void MCurrentWindowOrientationProvider::update(MWindowPropertyCache *pc)
 {
     Q_D(MCurrentWindowOrientationProvider);
-    d->property.setValue(pc->orientationAngle());
+    if(pc != 0)
+        d->property.setValue(pc->orientationAngle());
+    else
+        d->property.setValue(d->defaultAngle);
 }

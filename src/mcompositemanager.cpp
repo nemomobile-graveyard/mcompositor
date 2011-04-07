@@ -555,6 +555,8 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       glwidget(0),
       compositing(true),
       changed_properties(false),
+      orientationProvider(qobject_cast<MCompositeManager*>(p)->
+                          configInt("default-current-window-angle")),
       prepared(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime),
@@ -1740,8 +1742,11 @@ void MCompositeManagerPrivate::setCurrentApp(MCompositeWindow *cw,
                     XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
     current_app = w;
     emit currentAppChanged(current_app);
-    if (!cw)
+    if (!cw) {
         cw = COMPOSITE_WINDOW(w);
+        //we need to tell orientation provider that there is no current window by passing 0
+        orientationProvider.update(0);
+    }
     if (cw)
         orientationProvider.update(cw->propertyCache());
 
@@ -4265,4 +4270,5 @@ void MCompositeManager::ensureSettingsFile()
     config("damage-timeout-ms",                 500);
     config("expect-resize-timeout-ms",          800);
     config("splash-timeout-ms",               15000);
+    config("default-current-window-angle",      270);
 }
