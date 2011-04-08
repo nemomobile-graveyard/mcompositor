@@ -1,8 +1,11 @@
-mcompositor (0.9.1-1~unreleased) unstable; urgency=low
+mcompositor (0.9.1-1) unstable; urgency=low
 
-  * .
+  * Fixes: NB#241723 - Pressing power button in the middle of...
+  * Fixes: NB#239538 - Compositor should provide a property to inform whether current foreground application has status bar
+  * Fixes: NB#240588 - Lock screen additional in-transition on unlocking
+  * Fixes: NB#230034 - Low power mode ui is static
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Fri, 08 Apr 2011 15:37:38 +0300
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Fri, 08 Apr 2011 16:48:53 +0300
 
 mcompositor (0.9.0-1) unstable; urgency=low
 
