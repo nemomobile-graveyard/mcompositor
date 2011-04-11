@@ -139,6 +139,7 @@ void MWindowPropertyCache::init()
     orientation_angle = 0;
     damage_object = 0;
     collect_timer = 0;
+    no_animations = 0;
 }
 
 void MWindowPropertyCache::init_invalid()
@@ -260,6 +261,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                requestProperty(MCompAtoms::WM_NAME, XCB_ATOM_STRING, 100));
     addRequest(SLOT(pid()), requestProperty(MCompAtoms::_NET_WM_PID,
                                             XCB_ATOM_CARDINAL));
+    addRequest(SLOT(noAnimations()),
+               requestProperty(MCompAtoms::_MEEGOTOUCH_NO_ANIMATIONS,
+                               XCB_ATOM_CARDINAL));
 
     // add any transients to the transients list
     MCompositeManager *m = (MCompositeManager*)qApp;
@@ -490,6 +494,24 @@ int MWindowPropertyCache::cannotMinimize()
         }
     }
     return cannot_minimize;
+}
+
+unsigned int MWindowPropertyCache::noAnimations()
+{
+    QLatin1String me(SLOT(noAnimations()));
+    if (is_valid && requests[me]) {
+        xcb_get_property_cookie_t c = { requests[me] };
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        replyCollected(me);
+        no_animations = 0;
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                no_animations = *((CARD32*)xcb_get_property_value(r));
+            free(r);
+        }
+    }
+    return no_animations;
 }
 
 int MWindowPropertyCache::alwaysMapped()
@@ -771,6 +793,10 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     } else if (e->atom == ATOM(WM_NAME)) {
         addRequest(SLOT(wmName()),
                    requestProperty(MCompAtoms::WM_NAME, XCB_ATOM_STRING, 100));
+    } else if (e->atom == ATOM(_MEEGOTOUCH_NO_ANIMATIONS)) {
+        addRequest(SLOT(noAnimations()),
+               requestProperty(MCompAtoms::_MEEGOTOUCH_NO_ANIMATIONS,
+                               XCB_ATOM_CARDINAL));
     } else if (e->atom == ATOM(_NET_WM_PID)) {
         wm_pid = 0;
         if (e->state == PropertyNewValue)

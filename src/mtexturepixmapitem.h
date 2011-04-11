@@ -115,6 +115,7 @@ private:
     friend class MCompositeWindowShaderEffect;
     friend class MCompositeWindowGroupPrivate;
     friend class MCompositeWindowGroup;
+    friend class ut_Anim;
 
 private slots:
     void updateWindowPixmapProxy();
