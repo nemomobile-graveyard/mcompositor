@@ -20,7 +20,7 @@
 #ifndef DUICOMPOSITEMANAGER_P_H
 #define DUICOMPOSITEMANAGER_P_H
 
-#include "mcurrentwindoworientationprovider.h"
+#include "mcontextproviderwrapper.h"
 
 #include <QObject>
 #include <QHash>
@@ -44,7 +44,6 @@ class MCompositeWindow;
 class MDeviceState;
 class MWindowPropertyCache;
 class MCompositeManagerExtension;
-class MCurrentWindowOrientationProvider;
 class MSplashScreen;
 
 enum {
@@ -169,7 +168,7 @@ public:
     bool overlay_mapped;
     bool changed_properties;
     MDeviceState *device_state;
-    MCurrentWindowOrientationProvider orientationProvider;
+    MContextProviderWrapper orientationProvider;
 
     // Indicates whether MCompositeManager::prepare() has finished.
     // Used by the destructor.
