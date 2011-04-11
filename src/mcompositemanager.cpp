@@ -27,7 +27,7 @@
 #include "mdevicestate.h"
 #include "mcompositemanagerextension.h"
 #include "mcompmgrextensionfactory.h"
-#include "mcurrentwindoworientationprovider.h"
+#include "mcontextproviderwrapper.h"
 #include "mcompositordebug.h"
 #include "msplashscreen.h"
 #include "mcompositewindowanimation.h"
@@ -557,8 +557,8 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       glwidget(0),
       compositing(true),
       changed_properties(false),
-      orientationProvider(qobject_cast<MCompositeManager*>(p)->
-                          configInt("default-current-window-angle")),
+      orientationProvider(qobject_cast<MCompositeManager*>(p)->configInt("default-current-window-angle"),
+                          qobject_cast<MCompositeManager*>(p)->configInt("default-desktop-angle")),
       prepared(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime),
@@ -921,9 +921,12 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA)))
         dirtyStacking(true, e->time);
 
-    if (pc->isMapped() && e->window == current_app
-        && e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE))
-        orientationProvider.update(pc);
+    if (pc->isMapped()&& e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE)) {
+        if(e->window == stack[DESKTOP_LAYER])
+            orientationProvider.updateDesktopOrientationAngle(pc);
+        if(e->window == current_app)
+            orientationProvider.updateCurrentWindowOrienationAngle(pc);
+    }
 }
 
 Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
@@ -1151,6 +1154,11 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 
 void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 {
+    //if desktop window was unmapped we need apropriate context property to be set to default
+    if (e->window == stack[DESKTOP_LAYER]) {
+        orientationProvider.updateDesktopOrientationAngle(0);
+        }
+
     if (e->send_event == True || e->event != QX11Info::appRootWindow())
         // handle root's SubstructureNotifys (top-levels) only
         return;
@@ -1806,7 +1814,7 @@ void MCompositeManagerPrivate::setCurrentApp(MCompositeWindow *cw,
     if (!cw)
         cw = COMPOSITE_WINDOW(w);
     // tell orientation provider that there is no current window by passing 0
-    orientationProvider.update(cw ? cw->propertyCache() : 0);
+    orientationProvider.updateCurrentWindowOrienationAngle(cw ? cw->propertyCache() : 0);
 
     prev = w;
 }
@@ -3500,6 +3508,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     } else if (pc->windowType() == MCompAtoms::DESKTOP) {
         // just in case startup sequence changes
         stack[DESKTOP_LAYER] = window;
+        orientationProvider.updateDesktopOrientationAngle(getPropertyCache(window));
         dirtyStacking(false);
         return item;
     }
@@ -4391,4 +4400,5 @@ void MCompositeManager::ensureSettingsFile()
     config("default-current-window-angle",      270);
     config("lockscreen-map-timeout-ms",        1000);
     config("default-statusbar-height",           36);
+    config("default-desktop-angle",             270);
 }
