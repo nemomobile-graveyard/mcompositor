@@ -366,7 +366,7 @@ private:
 
     QPointer<MWindowPropertyCache> pc;
     QPointer<MCompositeWindow> behind_window;
-    QPointer<MCompositeWindowAnimation> animator;
+    QPointer<MCompositeWindowAnimation> animator, orig_animator;
     int zval;
     ulong sent_ping_timestamp;
     ulong received_ping_timestamp;

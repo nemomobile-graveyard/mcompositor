@@ -97,7 +97,7 @@ public:
     void mapEvent(XMapEvent *);
     void mapRequestEvent(XMapRequestEvent *);
     void rootMessageEvent(XClientMessageEvent *);
-    void clientMessageEvent(XClientMessageEvent *, bool from_outside = true);
+    void clientMessageEvent(XClientMessageEvent *);
     void keyEvent(XKeyEvent*);
     void buttonEvent(XButtonEvent*);
     void installX11EventFilter(long xevent, MCompositeManagerExtension* extension);

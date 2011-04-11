@@ -208,6 +208,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGO_LOW_POWER_MODE",
         "_MEEGOTOUCH_OPAQUE_WINDOW",
         "_MEEGOTOUCH_STATUSBAR_VISIBLE",
+        "_MEEGOTOUCH_NO_ANIMATIONS",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
@@ -1150,7 +1151,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     if (item) {
         // mark obscured so that we send unobscured if it's remapped
         item->setWindowObscured(true, true);
-        item->closeWindowAnimation();
+        if (!wpc->noAnimations())
+            item->closeWindowAnimation();
         item->stopPing();
         item->setIsMapped(false);
         setWindowState(e->window, WithdrawnState);
@@ -2031,6 +2033,8 @@ void MCompositeManagerPrivate::stackingTimeout()
 // check if there is a categorically higher mapped window than pc
 bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
 {
+    if (pc->noAnimations())
+        return true;
     // Ignore initial_state == IconicState if the client stacked the window
     // somewhere, then only skip if it's below the desktop (which is still
     // not correct but better than nothing).
@@ -2279,9 +2283,13 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             if (event->window != stack[DESKTOP_LAYER])
                 setExposeDesktop(false);
             if (i && i->propertyCache()->windowState() == IconicState) {
-                i->restore(needComp);
-                if (needComp)
-                    enableCompositing();
+                if (i->propertyCache()->noAnimations())
+                    positionWindow(i->window(), true);
+                else {
+                    i->restore(needComp);
+                    if (needComp)
+                        enableCompositing();
+                }
             }
         } else if (event->window != stack[DESKTOP_LAYER]) {
             // unless we redirect the desktop we run the risk of using trash
@@ -2312,8 +2320,11 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             activateWindow(event->window, CurrentTime, false);
     } else if (i && pc && pc->isMapped()
                && event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
-        // save pixmap and delete or kill this window
-        i->closeWindowRequest();
+        if (pc->noAnimations())
+            closeHandler(i);
+        else
+            // save pixmap and delete or kill this window
+            i->closeWindowRequest();
     } else if (event->message_type == ATOM(WM_PROTOCOLS)) {
         if (event->data.l[0] == (long) ATOM(_NET_WM_PING)) {
             MCompositeWindow *ping_source = COMPOSITE_WINDOW(event->data.l[2]);
@@ -2342,8 +2353,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     }
 }
 
-void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event,
-                                                  bool from_outside)
+void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
 {
     // Handle iconify requests
     if (event->message_type == ATOM(WM_CHANGE_STATE))
@@ -2351,30 +2361,24 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event,
             MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
             MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
             if (d_item && i && i->isMapped()
+                && i->propertyCache()->windowState() == NormalState
+                && !i->propertyCache()->dontIconify()
                 && i->status() != MCompositeWindow::Minimizing) {
-                Window lower, topmost = getTopmostApp();
-                if (from_outside && i->window() != topmost &&
-                    i->window() != getLastVisibleParent(
-                                             prop_caches.value(topmost, 0))) {
-                    /* Request from a background app.  Don't do anything,
-                     * just make sure the states are not screwed. */
-                    // FIXME: this breaks if WM_CHANGE_STATE comes for a non-app
-                    // and there is no topmost app
-                    i->stopPing();
-                    setWindowState(i->window(), IconicState);
+                if (i->propertyCache()->noAnimations()) {
+                    // iconify all without the animation
+                    iconifyApps();
+                    checkStacking(false);
                     return;
                 }
+                Window lower, topmost = getTopmostApp();
                 if (topmost)
                     lower = topmost;
                 else
                     lower = event->window;
                 setExposeDesktop(false); // don't update thumbnails now
 
-                bool needComp = false;
-                if (i->isDirectRendered() || d_item->isDirectRendered()) {
-                    d_item->setVisible(true);
-                    needComp = true;
-                }
+                bool needComp = !compositing;
+                d_item->setVisible(true);
 
                 // mark other applications on top of the desktop Iconified and
                 // raise the desktop above them to make the animation end onto
@@ -3655,7 +3659,7 @@ void MCompositeManagerPrivate::exposeSwitcher()
     e.xclient.data.l[3] = 0;
     e.xclient.data.l[4] = 0;
     // no need to send to X server first, also avoids NB#210587
-    clientMessageEvent(&(e.xclient), false);
+    clientMessageEvent(&(e.xclient));
 }
 
 void MCompositeManagerPrivate::installX11EventFilter(long xevent,

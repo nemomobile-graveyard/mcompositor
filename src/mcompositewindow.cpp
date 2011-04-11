@@ -101,6 +101,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     else 
         a = new MCompositeWindowAnimation(this);
     a->setTargetWindow(this);
+    orig_animator = a;
 }
 
 MCompositeWindow::~MCompositeWindow()
@@ -222,7 +223,9 @@ void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
  */
 void MCompositeWindow::startTransition()
 {
-    if (iconified && pc->iconGeometry().isNull())
+    if (orig_animator == animator
+        // this limitation makes sense for the default animator only
+        && iconified && pc->iconGeometry().isNull())
         return;
     if (animator && animator->pendingAnimation()) {
         // don't trigger irrelevant windows
