@@ -4,6 +4,7 @@
 #include <mcompositemanager.h>
 #include <mcompositemanager_p.h>
 #include <mwindowpropertycache.h>
+#include <mcompositewindow.h>
 #include "ut_stacking.h"
 
 #include <QtDebug>
@@ -84,6 +85,58 @@ void ut_Stacking::prepareStack(QVector<MWindowPropertyCache *> &t)
         if (t[i]->windowType() == MCompAtoms::DESKTOP)
             cmgr->d->stack[DESKTOP_LAYER] = t[i]->winId();
     }
+}
+
+void ut_Stacking::testRaisingAndMapping()
+{
+    fake_desktop_window desk(1);
+    fake_LMT_window normal_lmt(2);
+
+    QVector<MWindowPropertyCache *> stack;
+    stack.append(&desk);
+    stack.append(&normal_lmt);
+
+    prepareStack(stack);
+    cmgr->d->roughSort();
+
+    Window correct[] = { 1, 2, 0 };
+    QCOMPARE(checkOrder(correct), true);
+
+    // iconify and unmap the app
+    normal_lmt.window_state = IconicState;
+    cmgr->d->positionWindow(2, false);
+    cmgr->d->roughSort();
+
+    Window correct2[] = { 2, 1, 0 };
+    QCOMPARE(checkOrder(correct2), true);
+
+    XUnmapEvent ue;
+    memset(&ue, 0, sizeof(ue));
+    ue.window = 2;
+    ue.event = QX11Info::appRootWindow();
+    cmgr->d->unmapEvent(&ue);
+
+    cmgr->d->roughSort();
+    QCOMPARE(checkOrder(correct2), true);
+
+    // raise and map it
+    XConfigureRequestEvent ce;
+    memset(&ce, 0, sizeof(ce));
+    ce.window = 2;
+    ce.value_mask = CWStackMode;
+    ce.detail = Above;
+    cmgr->d->configureRequestEvent(&ce);
+
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = 2;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+
+    QCOMPARE(checkOrder(correct), true);
+
+    while (MCompositeWindow::hasTransitioningWindow())
+       QTest::qWait(500); // wait the animation to finish
 }
 
 void ut_Stacking::testLotOfUnmapped()

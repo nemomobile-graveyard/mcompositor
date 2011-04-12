@@ -3338,6 +3338,8 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
         Window d = stack[DESKTOP_LAYER];
         if (d && stacking_list.indexOf(d) > stacking_list.indexOf(window))
             setWindowState(window, IconicState);
+        else
+            setWindowState(window, NormalState);
     } else if ((h.flags & StateHint) && (h.initial_state == IconicState)) {
         setWindowState(window, IconicState);
         item->setZValue(-1);
