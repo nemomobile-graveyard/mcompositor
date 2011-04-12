@@ -9,7 +9,7 @@ UT_TESTCASES=""
 # FT_TESTCASES=""
 
 for T in `cd unit; ls -d ?t_*`; do
-  TEMPLATE="<case name=\"$T\" description=\"$T\" requirement=\"\" timeout=\"300
+  TEMPLATE="<case name=\"$T\" description=\"$T\" requirement=\"\" timeout=\"300\">
         <step expected_result=\"0\">/usr/lib/mcompositor-tests/$T</step>
       </case>
       "
