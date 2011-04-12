@@ -2560,6 +2560,7 @@ void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
         ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         /* desktop is on top, direct render it */
         possiblyUnredirectTopmostWindow();
+    sendSyntheticVisibilityEventsForOurBabies();
 }
 
 void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
