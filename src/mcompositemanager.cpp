@@ -1054,7 +1054,8 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
     // (to prevent jerkiness); if we unredirected this window it would be
     // flashing.
     if (cw && static_cast<MCompositeManager*>(qApp)->displayOff()
-        && !cw->propertyCache()->isLockScreen())
+        && !cw->propertyCache()->isLockScreen()
+        && !cw->propertyCache()->lowPowerMode())
         return false;
 
     // this code prevents us disabling compositing when we have a window
