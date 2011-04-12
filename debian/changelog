@@ -1,8 +1,15 @@
-mcompositor (0.9.2-1~unreleased) unstable; urgency=low
+mcompositor (0.9.3-1~unreleased) unstable; urgency=low
 
   * .
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Fri, 08 Apr 2011 16:59:36 +0300
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Tue, 12 Apr 2011 12:00:07 +0300
+
+mcompositor (0.9.2-1) unstable; urgency=low
+
+  * Fixes: NB#238912 - query dialog shown in landscape during bootup
+  * Fixes: NB#245057 - New API for disabling window animations needed by games
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Tue, 12 Apr 2011 12:00:06 +0300
 
 mcompositor (0.9.1-1) unstable; urgency=low
 
