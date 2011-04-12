@@ -3,10 +3,10 @@
   <suite name="mcompositor-tests" domain="Application Framework" type="Unit" level="Component">
     <set name="unit_tests" description="Unit Tests" feature="MCompositor">
 
-      <case name="ut_anim" description="ut_anim" requirement="" timeout="300
+      <case name="ut_anim" description="ut_anim" requirement="" timeout="300">
         <step expected_result="0">/usr/lib/mcompositor-tests/ut_anim</step>
       </case>
-      <case name="ut_stacking" description="ut_stacking" requirement="" timeout="300
+      <case name="ut_stacking" description="ut_stacking" requirement="" timeout="300">
         <step expected_result="0">/usr/lib/mcompositor-tests/ut_stacking</step>
       </case>
       
