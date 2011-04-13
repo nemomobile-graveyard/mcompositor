@@ -360,9 +360,7 @@ void MCompositeWindow::resize(int, int)
 }
 
 void MCompositeWindow::q_fadeIn()
-{   
-    endAnimation();
-    
+{
     newly_mapped = false;
     setVisible(true);
     setOpacity(0.0);
@@ -377,7 +375,8 @@ void MCompositeWindow::q_fadeIn()
         // at checkStacking 
         setZValue(((MCompositeManager *) qApp)->d->stacking_list.size()+1);
         animator->windowShown();
-    }
+    } else
+        endAnimation();
 }
 
 void MCompositeWindow::closeWindowRequest()
