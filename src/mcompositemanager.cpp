@@ -1048,16 +1048,6 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         }
     }
 
-    // if displayOff() only the lock screen can be unredirected because:
-    // we could be just in a paused anim when the display is turned off,
-    // which forces the animation stop but does not necessarily untransform
-    // (to prevent jerkiness); if we unredirected this window it would be
-    // flashing.
-    if (cw && static_cast<MCompositeManager*>(qApp)->displayOff()
-        && !cw->propertyCache()->isLockScreen()
-        && !cw->propertyCache()->lowPowerMode())
-        return false;
-
     // this code prevents us disabling compositing when we have a window
     // that has XMapWindow() called but we have not yet received the MapNotify
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
@@ -2046,7 +2036,10 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
         if ((h.flags & StateHint) && h.initial_state == IconicState)
             return true;
     }
-
+    // lock-screen window dont animate
+    if (pc->isLockScreen())
+        return true;
+    
     bool above = false; // is the window above the desktop?
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         MWindowPropertyCache *tmp;

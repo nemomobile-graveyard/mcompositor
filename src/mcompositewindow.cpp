@@ -327,15 +327,6 @@ void MCompositeWindow::damageReceived()
     waiting_for_damage = 0;
     resize_expected = false;
 
-    if (pc->isLockScreen()) {
-        // Don't animate the opening of the lock screen.
-        newly_mapped = false;
-        setVisible(true);
-        endAnimation();
-        static_cast<MCompositeManager*>(qApp)->possiblyUnredirectTopmostWindow();
-        return;
-    }
-
     // We're ready to take over the splash screen.
     MCompositeWindow *splash;
     splash = static_cast<MCompositeManager *>(qApp)->splashed(this);

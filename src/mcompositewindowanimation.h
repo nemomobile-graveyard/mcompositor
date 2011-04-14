@@ -50,7 +50,7 @@ class MCompositeWindowAnimation: public QObject
     MCompositeWindow* targetWindow2() const;
     AnimationType pendingAnimation() const;
     void start();
-    virtual void finish();
+    void finish();
     void pause();
     bool isActive();
     
