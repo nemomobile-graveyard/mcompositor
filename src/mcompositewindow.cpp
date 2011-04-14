@@ -370,11 +370,34 @@ void MCompositeWindow::q_fadeIn()
         endAnimation();
 }
 
+bool MCompositeWindow::isInanimate()
+{
+    if (static_cast<MCompositeManager*>(qApp)->displayOff())
+        return true;
+    if (pc->windowType() == MCompAtoms::SHEET)
+        return false;
+    if (!pc->is_valid)
+        return true;
+    if (window_status == MCompositeWindow::Hung
+          || pc->windowState() == IconicState)
+        return true;
+    if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
+        return true;
+    if (pc->isInputOnly() || pc->isOverrideRedirect())
+        return true;
+    if (!windowPixmap())
+        return true;
+    // isAppWindow() returns true for system dialogs
+    if (!isAppWindow() && !pc->invokedBy())
+        return true;
+    return false;
+}
+
 void MCompositeWindow::closeWindowRequest()
 {
     if (!pc || !pc->is_valid || (!isMapped() && !pc->beingMapped()))
         return;
-    if (!windowPixmap() && !pc->isInputOnly()) {
+    if (!isInanimate()) {
         // get a Pixmap for the possible unmap animation
         MCompositeManager *p = (MCompositeManager *) qApp;
         if (!p->isCompositing())
@@ -386,19 +409,10 @@ void MCompositeWindow::closeWindowRequest()
 
 void MCompositeWindow::closeWindowAnimation()
 {
-    if ((pc->windowType() != MCompAtoms::SHEET) &&
-        (!pc || !pc->is_valid || window_status == Closing
-        || pc->isInputOnly() || pc->isOverrideRedirect()
-        || !windowPixmap() || (!isAppWindow() && pc->invokedBy() == None)
-        // isAppWindow() returns true for system dialogs
-        || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)
-        || propertyCache()->windowState() == IconicState
-        || window_status == MCompositeWindow::Hung)) {
+    if (window_status == Closing || isInanimate())
         return;
-    }
-    
     window_status = Closing; // animating, do not disturb
-    
+
     MCompositeManager *p = (MCompositeManager *) qApp;
     bool defer = false;
     setVisible(true);

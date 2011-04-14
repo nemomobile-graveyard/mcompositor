@@ -1431,7 +1431,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
     // Composition is enabled by default because we are introducing animations
     // on window map. It will be turned off once transitions are done
-    if (!pc->isInputOnly())
+    if (!pc->isInputOnly() && !device_state->displayOff())
         enableCompositing();
 
     MDecoratorFrame *deco = MDecoratorFrame::instance();
