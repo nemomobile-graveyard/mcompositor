@@ -38,7 +38,6 @@
 #include <QParallelAnimationGroup>
 #include <mcompositemanager.h>
 #include <mcompositemanager_p.h>
-#include <msheetanimation.h>
 
 class McParallelAnimation: public QParallelAnimationGroup
 {
@@ -82,7 +81,8 @@ class MCompositeWindowAnimationPrivate
 public:
     MCompositeWindowAnimationPrivate(MCompositeWindowAnimation* animation)
         : crossfade(0),
-          pending_animation(MCompositeWindowAnimation::NoAnimation)
+          pending_animation(MCompositeWindowAnimation::NoAnimation),
+          is_replaceable(true)
     {
         const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
         int duration = mc->configInt("startup-anim-duration");
@@ -123,6 +123,7 @@ public:
     QPointer<QPropertyAnimation> opacity;
     McParallelAnimation* scalepos, *crossfade;
     MCompositeWindowAnimation::AnimationType pending_animation;
+    bool is_replaceable;
 };
 
 MCompositeWindowAnimation::MCompositeWindowAnimation(QObject* parent)
@@ -139,9 +140,8 @@ void MCompositeWindowAnimation::setTargetWindow(MCompositeWindow* window)
 {
     Q_D(MCompositeWindowAnimation);
 
-    // never override a sheet 
-    if ((window->propertyCache()->windowType() == MCompAtoms::SHEET)
-        && !qobject_cast<MSheetAnimation *>(this)) {
+    // never override a non-replaceable animation
+    if (window->animator && !window->animator->isReplaceable()) {
         deleteLater();
         return;
     }
@@ -367,4 +367,49 @@ MCompositeWindowAnimation::AnimationType MCompositeWindowAnimation::pendingAnima
     Q_D(const MCompositeWindowAnimation);
     
     return d->pending_animation; 
+}
+
+/*!
+  Enabled or disables this animation. Re-implement this function to customize
+  how a custom animation can be disabled or disabled
+ */
+void MCompositeWindowAnimation::setEnabled(bool enabled)
+{
+    if (enabled) {
+        if (animationGroup()->indexOfAnimation(positionAnimation()) == -1)
+            animationGroup()->addAnimation(positionAnimation());
+        if (animationGroup()->indexOfAnimation(scaleAnimation()) == -1)
+            animationGroup()->addAnimation(scaleAnimation());
+        if (animationGroup()->indexOfAnimation(opacityAnimation()) == -1)
+            animationGroup()->addAnimation(opacityAnimation());
+    } else if (!enabled) {
+        animationGroup()->stop();
+        animationGroup()->removeAnimation(positionAnimation());
+        animationGroup()->removeAnimation(scaleAnimation());
+        animationGroup()->removeAnimation(opacityAnimation());
+    }
+}
+
+/*!
+  \return Whether this animation can be replaced or not. By default, window
+  animations can be replaced with a custom animation 
+ */
+bool MCompositeWindowAnimation::isReplaceable() const
+{
+    Q_D(const MCompositeWindowAnimation);
+    
+    return d->is_replaceable;
+}
+
+/*!
+   If \a replaceable is true, this animation can be replaced with another custom
+   animation object. If \a replaceable is false, the animation may not be 
+   replaced with another animation and will be set for the lifetime of the 
+   window that is initially associated with it.
+ */
+void MCompositeWindowAnimation::setReplaceable(bool replaceable)
+{
+    Q_D(MCompositeWindowAnimation);
+
+    d->is_replaceable = replaceable;
 }

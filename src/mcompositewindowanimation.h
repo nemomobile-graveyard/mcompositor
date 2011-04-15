@@ -45,7 +45,8 @@ class MCompositeWindowAnimation: public QObject
     MCompositeWindowAnimation(QObject* parent = 0);
     virtual ~MCompositeWindowAnimation();
 
-    virtual void setTargetWindow(MCompositeWindow* window); 
+    virtual void setTargetWindow(MCompositeWindow* window);
+    virtual void setEnabled(bool);
     MCompositeWindow* targetWindow() const;
     MCompositeWindow* targetWindow2() const;
     AnimationType pendingAnimation() const;
@@ -53,6 +54,8 @@ class MCompositeWindowAnimation: public QObject
     void finish();
     void pause();
     bool isActive();
+    bool isReplaceable() const;
+    void setReplaceable(bool);
     
     QParallelAnimationGroup* animationGroup() const;
     QPropertyAnimation* scaleAnimation() const;
