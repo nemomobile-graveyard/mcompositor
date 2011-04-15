@@ -174,7 +174,6 @@ MChainedAnimation::MChainedAnimation(QObject* parent)
 
 void MChainedAnimation::windowShown()
 {
-    qDebug() << __func__;
     setEnabled(true);
 
     MStatusBarTexture::instance()->updatePixmap();
@@ -208,7 +207,6 @@ void MChainedAnimation::windowShown()
 
 void MChainedAnimation::windowClosed()
 {
-    qDebug() << __func__;
     setEnabled(true);
     
     MStatusBarTexture::instance()->updatePixmap();
