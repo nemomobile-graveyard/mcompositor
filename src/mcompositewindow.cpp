@@ -26,7 +26,7 @@
 #include "mcompositemanagerextension.h"
 #include "mcompositewindowgroup.h"
 #include "msplashscreen.h"
-#include "msheetanimation.h"
+#include "mpositionanimation.h"
 
 #include <QX11Info>
 #include <QGraphicsScene>
@@ -99,7 +99,9 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     MCompositeWindowAnimation* a = 0;
     if (pc->windowType() == MCompAtoms::SHEET) 
         a = new MSheetAnimation(this);
-    else 
+    else if (pc->invokedBy() != None)
+        a = new MChainedAnimation(this);
+    else
         a = new MCompositeWindowAnimation(this);
     a->setTargetWindow(this);
     orig_animator = a;
@@ -394,6 +396,8 @@ bool MCompositeWindow::isInanimate()
     if (static_cast<MCompositeManager*>(qApp)->displayOff())
         return true;
     if (pc->windowType() == MCompAtoms::SHEET)
+        return false;
+    if (pc->invokedBy() != None)
         return false;
     if (!pc->is_valid)
         return true;
