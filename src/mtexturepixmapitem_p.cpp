@@ -353,6 +353,8 @@ void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
     if (scissor_on)
         glDisable(GL_SCISSOR_TEST);
 
+    //    qDebug() << __func__ << item->window() << item->pos();
+
     // Explicitly disable blending. for some reason, the latest drivers
     // still has blending left-over even if we call glDisable(GL_BLEND)
     glBlendFunc(GL_ONE, GL_ZERO);

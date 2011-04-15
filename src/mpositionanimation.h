@@ -17,27 +17,52 @@
 **
 ****************************************************************************/
 
-#ifndef MSHEETANIMATION_H
-#define MSHEETANIMATION_H
+#ifndef MPOSITIONANIMATION_H
+#define MPOSITIONANIMATION_H
 
 class QPropertyAnimation;
+class MStatusBarCrop;
 
 #include <mcompositewindowanimation.h>
 
-class MSheetAnimation: public MCompositeWindowAnimation
+class MPositionAnimation: public MCompositeWindowAnimation
 {
     Q_OBJECT
  public:
-    MSheetAnimation(QObject* parent = 0);
-    ~MSheetAnimation();
-
-    virtual void windowShown(); 
-    virtual void windowClosed();
-
+    MPositionAnimation(QObject* parent = 0);
+    ~MPositionAnimation();
     void setEnabled(bool enabled);
 
  private:
     QPropertyAnimation* position;
+};
+
+class MSheetAnimation: public MPositionAnimation
+{
+    Q_OBJECT
+ public:
+    MSheetAnimation(QObject* parent = 0);
+
+    virtual void windowShown(); 
+    virtual void windowClosed();
+};
+
+class MChainedAnimation: public MPositionAnimation
+{
+    Q_OBJECT
+ public:
+    MChainedAnimation(QObject* parent = 0);
+
+    virtual void windowShown(); 
+    virtual void windowClosed();
+
+ private slots:
+    void endAnimation();
+
+ private:
+    MCompositeWindow* invokerWindow();
+    QPropertyAnimation* invoker_pos;
+    MStatusBarCrop* cropper;
 };
 
 #endif
