@@ -18,6 +18,10 @@ private slots:
     void testStartupAnimForSecondTimeMapped();
     void testNoAnimations();  
 
+
+    void testOpenChainingAnimation();
+    //void testCloseChainingAnimation();
+
 private:
     MCompositeManager *cmgr;
 };
