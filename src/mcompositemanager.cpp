@@ -2161,7 +2161,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 item->setNewlyMapped(false);
                 item->setVisible(true);
             }
-        } else if (pc->isLockScreen() && !pc->lowPowerMode()) {
+        } else if (watch->keep_black && pc->isLockScreen()) {
             item->waitForPainting();
         } else {
             item->setNewlyMapped(false);
@@ -2191,7 +2191,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 item->setNewlyMapped(false);
                 item->setVisible(true);
             }
-        } else if (pc->isLockScreen() && !pc->lowPowerMode()) {
+        } else if (watch->keep_black && pc->isLockScreen()) {
             item->waitForPainting();
         } else {
             item->setNewlyMapped(false);
@@ -2648,8 +2648,11 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
         if (!(pc = findLockScreen()) || !(cw = COMPOSITE_WINDOW(pc->winId()))
             || !pc->isMapped() || !cw->paintedAfterMapping())
             lockscreen_painted = false;
-        if (!pc || !pc->lowPowerMode())
+        if (!pc || !pc->lowPowerMode()) {
             watch->keep_black = true;
+            if (!compositing)
+                enableCompositing();
+        }
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
@@ -4315,5 +4318,5 @@ void MCompositeManager::ensureSettingsFile()
     config("expect-resize-timeout-ms",          800);
     config("splash-timeout-ms",               15000);
     config("default-current-window-angle",      270);
-    config("lockscreen-map-timeout-ms",         200);
+    config("lockscreen-map-timeout-ms",        1000);
 }

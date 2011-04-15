@@ -124,6 +124,7 @@ void ut_Lockscreen::testScreenOnBeforeLockscreenPaint()
     cmgr->d->displayOff(true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // display on
     device_state->fake_display_off = false;
@@ -159,6 +160,7 @@ void ut_Lockscreen::testScreenOnAfterLockscreenPaint()
     cmgr->d->displayOff(true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // map and paint lockscreen
     XMapEvent e;
@@ -172,6 +174,7 @@ void ut_Lockscreen::testScreenOnAfterLockscreenPaint()
     cw->damageReceived();
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // display on
     device_state->fake_display_off = false;
@@ -193,6 +196,7 @@ void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
     cmgr->d->displayOff(true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // map the lockscreen
     XMapEvent e;
@@ -204,6 +208,7 @@ void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
     QCOMPARE(cw != 0, true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // display on
     device_state->fake_display_off = false;
@@ -211,6 +216,7 @@ void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
 
     // keeps black because lockscreen is not yet painted
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // paint the lockscreen
     cw->damageReceived();
@@ -232,6 +238,7 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
     cmgr->d->displayOff(true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // map the lockscreen
     XMapEvent e;
@@ -243,6 +250,7 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
     QCOMPARE(cw != 0, true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // display on
     device_state->fake_display_off = false;
@@ -250,6 +258,7 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
 
     // keeps black because lockscreen is not yet painted
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // wait for the painting timeout
     int t = qobject_cast<MCompositeManager*>(qApp)->
@@ -272,12 +281,14 @@ void ut_Lockscreen::testScreenOnButLockscreenTimesOut()
     cmgr->d->displayOff(true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // display on
     device_state->fake_display_off = false;
     cmgr->d->displayOff(false);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // wait for the timeout
     int t = qobject_cast<MCompositeManager*>(qApp)->
@@ -294,12 +305,14 @@ void ut_Lockscreen::testScreenOnAndThenQuicklyOff()
     cmgr->d->displayOff(true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // display on
     device_state->fake_display_off = false;
     cmgr->d->displayOff(false);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // wait less than the timeout
     int t = qobject_cast<MCompositeManager*>(qApp)->
@@ -311,10 +324,63 @@ void ut_Lockscreen::testScreenOnAndThenQuicklyOff()
     cmgr->d->displayOff(true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
 
     // check that the timeout does not occur anymore
     QTest::qWait(t / 2 + 1);
     QCOMPARE(cmgr->d->watch->keep_black, true);
+}
+
+void ut_Lockscreen::testScreenOffAndThenQuicklyOn()
+{
+    // map the lockscreen
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = lockscreen_win;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+    MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
+    QCOMPARE(cw != 0, true);
+
+    // display off
+    device_state->fake_display_off = true;
+    cmgr->d->displayOff(true);
+
+    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
+
+    // display on
+    device_state->fake_display_off = false;
+    cmgr->d->displayOff(false);
+
+    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
+
+    // simulate case where lockscreen is still unmapping
+    // because of screen off
+    XUnmapEvent ue;
+    memset(&ue, 0, sizeof(ue));
+    ue.window = lockscreen_win;
+    ue.event = QX11Info::appRootWindow();
+    cmgr->d->unmapEvent(&ue);
+
+    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
+
+    // map the lockscreen
+    memset(&e, 0, sizeof(e));
+    e.window = lockscreen_win;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+
+    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
+
+    // paint the lockscreen
+    cw->damageReceived();
+    cw->damageReceived();
+
+    QCOMPARE(cmgr->d->watch->keep_black, false);
 }
 
 int main(int argc, char* argv[])
