@@ -3495,7 +3495,6 @@ void MCompositeManagerPrivate::iconifyApps()
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         if (cw && cw->propertyCache() && cw->propertyCache()->isMapped()
             && !cw->propertyCache()->dontIconify()
-            && !cw->propertyCache()->meegoStackingLayer()
             && cw->isAppWindow(true))
             setWindowState(cw->window(), IconicState);
     }
