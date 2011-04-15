@@ -279,6 +279,7 @@ public:
     
     bool dimmedEffect() const { return dimmed_effect; }
     bool paintedAfterMapping() const { return painted_after_mapping; }
+    void waitForPainting();
 
     MCompositeWindowAnimation* windowAnimator() const;
     
@@ -364,6 +365,7 @@ private:
       between shader effects */
     virtual MTexturePixmapPrivate* renderer() const = 0;
     void findBehindWindow();
+    bool isInanimate();
 
     QPointer<MWindowPropertyCache> pc;
     QPointer<MCompositeWindow> behind_window;

@@ -261,6 +261,19 @@ void MCompositeWindow::restore(bool defer)
     }
 }
 
+void MCompositeWindow::waitForPainting()
+{
+    const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
+    setWindowObscured(false);
+    // waiting for two damage events seems to work for Meegotouch apps
+    // at least, for the rest, there is a timeout
+    waiting_for_damage = mc->configInt("damages-for-starting-anim");
+    resize_expected = false;
+    painted_after_mapping = false;
+    damage_timer->setInterval(mc->configInt("damage-timeout-ms"));
+    damage_timer->start();
+}
+
 bool MCompositeWindow::showWindow()
 {
     if (type() == MSplashScreen::Type) {
@@ -280,17 +293,7 @@ bool MCompositeWindow::showWindow()
     findBehindWindow();
     beginAnimation();
     if (newly_mapped && (!animator || !animator->isActive())) {
-        const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
-        // NB#180628 - some stupid apps are listening for visibilitynotifies.
-        // Well, all of the toolkit anyways
-        setWindowObscured(false);
-        // waiting for two damage events seems to work for Meegotouch apps
-        // at least, for the rest, there is a timeout
-        waiting_for_damage = mc->configInt("damages-for-starting-anim");
-        resize_expected = false;
-        painted_after_mapping = false;
-        damage_timer->setInterval(mc->configInt("damage-timeout-ms"));
-        damage_timer->start();
+        waitForPainting();
     } else {
         painted_after_mapping = true;
         q_fadeIn();
@@ -333,11 +336,10 @@ void MCompositeWindow::damageReceived()
     resize_expected = false;
 
     if (pc->isLockScreen()) {
-        static_cast<MCompositeManager*>(qApp)->lockScreenPainted();
-        // Don't animate the opening of the lock screen.
         newly_mapped = false;
         setVisible(true);
         endAnimation();
+        static_cast<MCompositeManager*>(qApp)->lockScreenPainted();
         static_cast<MCompositeManager*>(qApp)->possiblyUnredirectTopmostWindow();
         return;
     }
@@ -385,11 +387,34 @@ void MCompositeWindow::q_fadeIn()
         endAnimation();
 }
 
+bool MCompositeWindow::isInanimate()
+{
+    if (static_cast<MCompositeManager*>(qApp)->displayOff())
+        return true;
+    if (pc->windowType() == MCompAtoms::SHEET)
+        return false;
+    if (!pc->is_valid)
+        return true;
+    if (window_status == MCompositeWindow::Hung
+          || pc->windowState() == IconicState)
+        return true;
+    if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
+        return true;
+    if (pc->isInputOnly() || pc->isOverrideRedirect())
+        return true;
+    if (!windowPixmap())
+        return true;
+    // isAppWindow() returns true for system dialogs
+    if (!isAppWindow() && !pc->invokedBy())
+        return true;
+    return false;
+}
+
 void MCompositeWindow::closeWindowRequest()
 {
     if (!pc || !pc->is_valid || (!isMapped() && !pc->beingMapped()))
         return;
-    if (!windowPixmap() && !pc->isInputOnly()) {
+    if (!isInanimate()) {
         // get a Pixmap for the possible unmap animation
         MCompositeManager *p = (MCompositeManager *) qApp;
         if (!p->isCompositing())
@@ -401,19 +426,10 @@ void MCompositeWindow::closeWindowRequest()
 
 void MCompositeWindow::closeWindowAnimation()
 {
-    if ((pc->windowType() != MCompAtoms::SHEET) &&
-        (!pc || !pc->is_valid || window_status == Closing
-        || pc->isInputOnly() || pc->isOverrideRedirect()
-        || !windowPixmap() || (!isAppWindow() && pc->invokedBy() == None)
-        // isAppWindow() returns true for system dialogs
-        || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)
-        || propertyCache()->windowState() == IconicState
-        || window_status == MCompositeWindow::Hung)) {
+    if (window_status == Closing || isInanimate())
         return;
-    }
-    
     window_status = Closing; // animating, do not disturb
-    
+
     MCompositeManager *p = (MCompositeManager *) qApp;
     bool defer = false;
     setVisible(true);
