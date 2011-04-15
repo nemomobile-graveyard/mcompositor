@@ -52,6 +52,8 @@ public:
      */
     void prepareRoot();
 
+    bool keep_black;
+
 protected:
     void drawItems(QPainter *painter, int numItems, QGraphicsItem *items[], const QStyleOptionGraphicsItem options[], QWidget *widget);
 

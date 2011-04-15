@@ -10,7 +10,7 @@ UT_TESTCASES=""
 
 for T in `cd unit; ls -d ?t_*`; do
   TEMPLATE="<case name=\"$T\" description=\"$T\" requirement=\"\" timeout=\"300\">
-        <step expected_result=\"0\">/usr/lib/mcompositor-tests/$T</step>
+        <step expected_result=\"0\">/usr/lib/mcompositor-unit-tests/$T</step>
       </case>
       "
 

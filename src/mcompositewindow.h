@@ -278,6 +278,7 @@ public:
     void setDimmedEffect(bool dimmed) { dimmed_effect = dimmed; }
     
     bool dimmedEffect() const { return dimmed_effect; }
+    bool paintedAfterMapping() const { return painted_after_mapping; }
 
     MCompositeWindowAnimation* windowAnimator() const;
     
@@ -385,6 +386,7 @@ private:
     bool dimmed_effect;
     char waiting_for_damage;
     bool resize_expected;
+    bool painted_after_mapping;
 
     static int window_transitioning;
 

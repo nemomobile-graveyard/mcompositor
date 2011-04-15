@@ -51,7 +51,8 @@ static int error_handler(Display * , XErrorEvent *error)
 }
 
 MCompositeScene::MCompositeScene(QObject *p)
-    : QGraphicsScene(p)
+    : QGraphicsScene(p),
+      keep_black(false)
 {
     setBackgroundBrush(Qt::NoBrush);
     setForegroundBrush(Qt::NoBrush);
@@ -81,6 +82,13 @@ void MCompositeScene::prepareRoot()
 
 void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *items[], const QStyleOptionGraphicsItem options[], QWidget *widget)
 {
+    if (keep_black) {
+        glClearColor(0, 0, 0, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        // freeze updates
+        views()[0]->setUpdatesEnabled(false);
+        return;
+    }
     QRegion visible(sceneRect().toRect());
     QVector<int> to_paint(10);
     int size = 0;

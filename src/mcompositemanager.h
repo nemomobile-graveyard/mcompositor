@@ -211,6 +211,9 @@ public slots:
      */
     void windowBound(MCompositeWindow* window);
 
+private slots:
+    void lockScreenPainted();
+
 private:
     void ensureSettingsFile();
     MCompositeManagerPrivate *d;
@@ -225,6 +228,7 @@ private:
     friend class MSplashScreen;
     friend class ut_Stacking;
     friend class ut_Anim;
+    friend class ut_Lockscreen;
 };
 
 #endif
