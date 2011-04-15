@@ -7,6 +7,7 @@
 #include <mcompositewindow.h>
 #include <mcompositewindowanimation.h>
 #include <mtexturepixmapitem.h>
+#include <mpositionanimation.h>
 #include "ut_anim.h"
 
 #include <QtDebug>
@@ -38,6 +39,15 @@ public:
         has_alpha = 0;
         // mark valid to create animation object
         is_valid = true;
+    }
+    
+    void setInvokedBy(Window w)
+    {
+        invoked_by = w;
+    }
+    void setOrientationAngle(unsigned a)
+    {
+        orientation_angle = a;
     }
 
     xcb_get_window_attributes_reply_t attrs;
@@ -109,6 +119,50 @@ void ut_Anim::testStartupAnimForFirstTimeMapped()
     int w_i = cmgr->d->stacking_list.indexOf(1);
     QCOMPARE(d_i >= 0 && w_i >= 0, true);
     QCOMPARE(d_i < w_i, true);
+}
+
+void ut_Anim::testOpenChainingAnimation()
+{
+    fake_LMT_window *pc2 = new fake_LMT_window(2000, false);
+    pc2->setInvokedBy(1);
+    // portrait
+    pc2->setOrientationAngle(270);
+
+    cmgr->d->prop_caches[2000] = pc2;
+    // invoked window
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = 2000;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+
+    MCompositeWindow *cw2 = cmgr->d->windows.value(2000, 0);
+    QCOMPARE(cw2 != 0, true);
+    QCOMPARE(cw2->isValid(), true);
+    QCOMPARE(cw2->windowAnimator() != 0, true);
+    
+    // invoked should use chained
+    QCOMPARE(qobject_cast<MChainedAnimation*> (cw2->windowAnimator()) != 0, 
+             true);
+    
+    cw2->damageReceived();
+    cw2->damageReceived();
+
+    // window position check
+    QCOMPARE(cw2->windowAnimator()->isActive(), true);
+    QRectF screen = QApplication::desktop()->availableGeometry();
+    QCOMPARE(cw2->pos() == screen.translated(0,-screen.height()).topLeft(),
+             true);
+
+    while (cw2->windowAnimator()->isActive())
+        QTest::qWait(1000); // wait the animation to finish
+        
+    MCompositeWindow *cw1 = cmgr->d->windows.value(1, 0);
+    // window position check
+    QCOMPARE(cw2->pos() == QPointF(0,0),
+             true);
+    QCOMPARE(cw1->pos() == screen.bottomLeft(),
+             true);
 }
 
 void ut_Anim::testIconifyingAnimation()
