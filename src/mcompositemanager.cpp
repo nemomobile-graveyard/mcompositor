@@ -2097,7 +2097,11 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     pc->setIsMapped(true);
     if (pc->isLockScreen()) {
         lockscreen_map_timer.stop();
-        lockscreen_painted = false;
+        if (e->send_event == False)
+            lockscreen_painted = false;
+        else
+            // we just started -> don't expect any damage
+            lockscreen_painted = true;
     }
 
 #ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
@@ -2163,7 +2167,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 item->setNewlyMapped(false);
                 item->setVisible(true);
             }
-        } else if (watch->keep_black && pc->isLockScreen()) {
+        } else if (pc->isLockScreen()) {
             item->waitForPainting();
         } else {
             item->setNewlyMapped(false);
@@ -2193,7 +2197,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 item->setNewlyMapped(false);
                 item->setVisible(true);
             }
-        } else if (watch->keep_black && pc->isLockScreen()) {
+        } else if (pc->isLockScreen()) {
             item->waitForPainting();
         } else {
             item->setNewlyMapped(false);
