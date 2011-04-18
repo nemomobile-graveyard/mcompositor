@@ -10,4 +10,4 @@ INCLUDEPATH += $$M_INSTALL_HEADERS
 }
 
 # Compositor components only
-VERSION = 0.7.9
+VERSION = 0.9.1
