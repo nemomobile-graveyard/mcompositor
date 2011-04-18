@@ -216,10 +216,29 @@ void MCompositeWindowGroup::removeChildWindow(MTexturePixmapItem* window)
     disconnect(window, SIGNAL(destroyed()), this, SLOT(q_removeWindow()));
 }
 
-MCompositeWindow *MCompositeWindowGroup::mainWindow() const
+MCompositeWindow *MCompositeWindowGroup::topWindow() const
 {
+    static const QRegion fs_r(0, 0,
+                    ScreenOfDisplay(QX11Info::display(),
+                        DefaultScreen(QX11Info::display()))->width,
+                    ScreenOfDisplay(QX11Info::display(),
+                        DefaultScreen(QX11Info::display()))->height);
     Q_D(const MCompositeWindowGroup);
-    return d->main_window;
+    MCompositeWindow *cw = 0;
+    for (int i = d->item_list.size() - 1; i >= 0; --i) {
+        cw = d->item_list[i];
+        if (cw->propertyCache()->isDecorator() ||
+            cw->propertyCache()->isOverrideRedirect() ||
+            cw->propertyCache()->windowType() == MCompAtoms::INPUT ||
+            !fs_r.subtracted(cw->propertyCache()->shapeRegion()).isEmpty()) {
+            cw = 0;
+            continue;
+        }
+        break;
+    }
+    if (!cw)
+        cw = d->main_window;
+    return cw;
 }
 
 void MCompositeWindowGroup::mainWindowDestroyed()
