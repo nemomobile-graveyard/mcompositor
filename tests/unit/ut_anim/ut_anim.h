@@ -20,7 +20,7 @@ private slots:
 
 
     void testOpenChainingAnimation();
-    //void testCloseChainingAnimation();
+    void testCloseChainingAnimation();
 
 private:
     MCompositeManager *cmgr;

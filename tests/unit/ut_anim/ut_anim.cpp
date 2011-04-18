@@ -165,6 +165,36 @@ void ut_Anim::testOpenChainingAnimation()
              true);
 }
 
+void ut_Anim::testCloseChainingAnimation()
+{
+    MCompositeWindow *cw1 = cmgr->d->windows.value(1, 0);
+    MCompositeWindow *cw2 = cmgr->d->windows.value(2000, false);
+
+    XUnmapEvent ue;
+    memset(&ue, 0, sizeof(ue));
+    ue.window = 2000;
+    ue.event = QX11Info::appRootWindow();
+    ((MTexturePixmapItem*)cw2)->d->windowp = 0xDEADBEEF;
+    cmgr->d->unmapEvent(&ue);
+    
+    // should use chained
+    QCOMPARE(qobject_cast<MChainedAnimation*> (cw2->windowAnimator()) != 0, 
+             true);
+    
+    // window position check
+    QCOMPARE(cw2->windowAnimator()->isActive(), true);
+    QRectF screen = QApplication::desktop()->availableGeometry();
+    QCOMPARE(cw2->pos() == QPointF(0,0), true);
+    QCOMPARE(cw1->pos() == screen.bottomLeft(), true);
+    
+    while (cw2->windowAnimator()->isActive())
+        QTest::qWait(1000); // wait the animation to finish
+    // window position check
+    QCOMPARE(cw2->pos() == screen.translated(0,-screen.height()).topLeft(), 
+             true);
+    QCOMPARE(cw1->pos() == QPointF(0,0), true);
+}
+
 void ut_Anim::testIconifyingAnimation()
 {
     // iconifies window 1
