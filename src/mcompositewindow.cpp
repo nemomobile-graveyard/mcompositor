@@ -135,6 +135,12 @@ bool MCompositeWindow::blurred()
  */
 bool MCompositeWindow::iconify(bool defer)
 {
+    if (damage_timer->isActive()) {
+        damage_timer->stop();
+        waiting_for_damage = 0;
+        resize_expected = false;
+    }
+
     if (iconify_state == ManualIconifyState) {
         setIconified(true);
         window_status = Normal;
@@ -283,10 +289,10 @@ bool MCompositeWindow::showWindow()
         // isAppWindow() returns true for system dialogs
         || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
         return false;
-    
+
     findBehindWindow();
     beginAnimation();
-    if (newly_mapped) {
+    if (newly_mapped && (!animator || !animator->isActive())) {
         waitForPainting();
     } else {
         painted_after_mapping = true;
