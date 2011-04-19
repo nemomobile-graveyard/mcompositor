@@ -279,6 +279,7 @@ public:
     
     bool dimmedEffect() const { return dimmed_effect; }
     bool paintedAfterMapping() const { return painted_after_mapping; }
+    void waitForPainting();
 
     MCompositeWindowAnimation* windowAnimator() const;
     

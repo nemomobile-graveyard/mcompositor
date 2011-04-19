@@ -255,6 +255,19 @@ void MCompositeWindow::restore(bool defer)
     }
 }
 
+void MCompositeWindow::waitForPainting()
+{
+    const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
+    setWindowObscured(false);
+    // waiting for two damage events seems to work for Meegotouch apps
+    // at least, for the rest, there is a timeout
+    waiting_for_damage = mc->configInt("damages-for-starting-anim");
+    resize_expected = false;
+    painted_after_mapping = false;
+    damage_timer->setInterval(mc->configInt("damage-timeout-ms"));
+    damage_timer->start();
+}
+
 bool MCompositeWindow::showWindow()
 {
     if (type() == MSplashScreen::Type) {
@@ -274,17 +287,7 @@ bool MCompositeWindow::showWindow()
     findBehindWindow();
     beginAnimation();
     if (newly_mapped) {
-        const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
-        // NB#180628 - some stupid apps are listening for visibilitynotifies.
-        // Well, all of the toolkit anyways
-        setWindowObscured(false);
-        // waiting for two damage events seems to work for Meegotouch apps
-        // at least, for the rest, there is a timeout
-        waiting_for_damage = mc->configInt("damages-for-starting-anim");
-        resize_expected = false;
-        painted_after_mapping = false;
-        damage_timer->setInterval(mc->configInt("damage-timeout-ms"));
-        damage_timer->start();
+        waitForPainting();
     } else {
         painted_after_mapping = true;
         q_fadeIn();

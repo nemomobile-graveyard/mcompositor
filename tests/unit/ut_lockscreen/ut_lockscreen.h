@@ -17,6 +17,7 @@ private slots:
     void testScreenOnThenMapsButDoesNotPaint();
     void testScreenOnButLockscreenTimesOut();  
     void testScreenOnAndThenQuicklyOff();  
+    void testScreenOffAndThenQuicklyOn();
 
 private:
     MCompositeManager *cmgr;
