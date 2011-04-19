@@ -84,6 +84,7 @@ Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
 Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
 MCompAtoms *MCompAtoms::d = 0;
 static KeyCode switcher_key = 0;
+static bool lockscreen_painted = false;
 
 static bool should_be_pinged(MCompositeWindow *cw);
 static bool compareWindows(Window w_a, Window w_b);
@@ -569,12 +570,18 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
     atom = MCompAtoms::instance();
 
     device_state = new MDeviceState(this);
+    watch->keep_black = device_state->displayOff();
     connect(device_state, SIGNAL(displayStateChange(bool)),
             this, SLOT(displayOff(bool)));
     connect(device_state, SIGNAL(callStateChange(bool)),
             this, SLOT(callOngoing(bool)));
     stacking_timer.setSingleShot(true);
     connect(&stacking_timer, SIGNAL(timeout()), this, SLOT(stackingTimeout()));
+    lockscreen_map_timer.setSingleShot(true);
+    lockscreen_map_timer.setInterval(qobject_cast<MCompositeManager*>(p)->
+                                     configInt("lockscreen-map-timeout-ms"));
+    connect(&lockscreen_map_timer, SIGNAL(timeout()), p,
+            SLOT(lockScreenPainted()));
     connect(this, SIGNAL(currentAppChanged(Window)), this,
             SLOT(setupButtonWindows(Window)));
 }
@@ -1012,7 +1019,7 @@ bool MCompositeManagerPrivate::haveMappedWindow() const
 
 bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 {
-    if (splash)
+    if (splash || watch->keep_black)
         return false;
     static const QRegion fs_r(0, 0,
                     ScreenOfDisplay(QX11Info::display(),
@@ -1130,6 +1137,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
             XRemoveFromSaveSet(QX11Info::display(), e->window);
         if (wpc->isDecorator())
             MDecoratorFrame::instance()->setDecoratorItem(0);
+        if (wpc->isLockScreen())
+            lockscreen_painted = false;
     }
 
     // do not keep unmapped windows in windows_as_mapped list
@@ -2072,6 +2081,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
 
     pc->setBeingMapped(false);
     pc->setIsMapped(true);
+    if (pc->isLockScreen()) {
+        lockscreen_map_timer.stop();
+        lockscreen_painted = false;
+    }
 
 #ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
     FrameData fd = framed_windows.value(win);
@@ -2591,13 +2604,35 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         dirtyStacking(false);
 }
 
+void MCompositeManager::lockScreenPainted()
+{
+    lockscreen_painted = true;
+    if (!d->device_state->displayOff())
+        d->displayOff(false);
+}
+
+MWindowPropertyCache *MCompositeManagerPrivate::findLockScreen() const
+{
+    for (QHash<Window, MWindowPropertyCache*>::const_iterator
+         it = prop_caches.begin(); it != prop_caches.end(); ++it)
+        if ((*it)->isLockScreen())
+            return *it;
+    return 0;
+}
+
 void MCompositeManagerPrivate::displayOff(bool display_off)
 {
     if (display_off) {
-        // keep compositing to have synthetic events to obscure all windows
+        lockscreen_map_timer.stop();
         if (!haveMappedWindow())
             enableCompositing();
-        scene()->views()[0]->setUpdatesEnabled(false);
+        MWindowPropertyCache *pc;
+        MCompositeWindow *cw;
+        if (!(pc = findLockScreen()) || !(cw = COMPOSITE_WINDOW(pc->winId()))
+            || !pc->isMapped() || !cw->paintedAfterMapping())
+            lockscreen_painted = false;
+        if (!pc || !pc->lowPowerMode())
+            watch->keep_black = true;
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
@@ -2608,6 +2643,16 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
                  i->propertyCache()->damageTracking(false);
         }
     } else {
+        MWindowPropertyCache *pc;
+        if (!lockscreen_painted && (pc = findLockScreen())) {
+            // lockscreen not painted yet: wait for painting or timeout
+            if (!pc->isMapped())
+                // give it little time to map but not for ever
+                lockscreen_map_timer.start();
+            return;
+        }
+        watch->keep_black = false;
+        glwidget->update();
         if (!possiblyUnredirectTopmostWindow() && !compositing)
             enableCompositing();
         /* start pinging again */
@@ -4246,4 +4291,5 @@ void MCompositeManager::ensureSettingsFile()
     config("expect-resize-timeout-ms",          800);
     config("splash-timeout-ms",               15000);
     config("default-current-window-angle",      270);
+    config("lockscreen-map-timeout-ms",         200);
 }

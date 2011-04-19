@@ -56,6 +56,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       dimmed_effect(false),
       waiting_for_damage(0),
       resize_expected(false),
+      painted_after_mapping(false),
       win_id(window)
 {
     const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
@@ -281,10 +282,13 @@ bool MCompositeWindow::showWindow()
         // at least, for the rest, there is a timeout
         waiting_for_damage = mc->configInt("damages-for-starting-anim");
         resize_expected = false;
+        painted_after_mapping = false;
         damage_timer->setInterval(mc->configInt("damage-timeout-ms"));
         damage_timer->start();
-    } else
+    } else {
+        painted_after_mapping = true;
         q_fadeIn();
+    }
     return true;
 }
 
@@ -313,6 +317,7 @@ void MCompositeWindow::damageReceived()
             // Conditions haven't been met yet.
             return;
     }
+    painted_after_mapping = true;
 
     // Either timeout or the conditions have been met.
     Q_ASSERT(!damage_timer->isActive() ||
@@ -320,6 +325,16 @@ void MCompositeWindow::damageReceived()
     damage_timer->stop();
     waiting_for_damage = 0;
     resize_expected = false;
+
+    if (pc->isLockScreen()) {
+        static_cast<MCompositeManager*>(qApp)->lockScreenPainted();
+        // Don't animate the opening of the lock screen.
+        newly_mapped = false;
+        setVisible(true);
+        endAnimation();
+        static_cast<MCompositeManager*>(qApp)->possiblyUnredirectTopmostWindow();
+        return;
+    }
 
     // We're ready to take over the splash screen.
     MCompositeWindow *splash;

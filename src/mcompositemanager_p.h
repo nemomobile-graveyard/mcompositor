@@ -133,6 +133,7 @@ public:
     void setCurrentApp(MCompositeWindow *cw, bool restacked);
     bool raiseWithTransients(MWindowPropertyCache *pc,
                            int parent_idx, QList<int> *anewpos = NULL);
+    MWindowPropertyCache *findLockScreen() const;
     MCompositeScene *watch;
     Window localwin, localwin_parent, wm_window;
     Window xoverlay;
@@ -189,6 +190,7 @@ public:
     void pingTopmost();
     MSplashScreen *splash;
     QPointer<MCompositeWindow> waiting_damage;
+    QTimer lockscreen_map_timer;
 
 signals:
     void compositingEnabled();

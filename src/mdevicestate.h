@@ -39,7 +39,7 @@ public:
     MDeviceState(QObject* parent = 0);
     ~MDeviceState();
 
-    bool displayOff() const { return display_off; }
+    virtual bool displayOff() const { return display_off; }
     bool ongoingCall() const { return ongoing_call; }
     const QString &screenTopEdge() const { return screen_topedge; }
 
