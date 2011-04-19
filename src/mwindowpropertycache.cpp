@@ -1089,9 +1089,12 @@ MCompAtoms::Type MWindowPropertyCache::windowType()
     else if (type_atom == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
         window_type = MCompAtoms::NOTIFICATION;
     else if (type_atom == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
-             type_atom == ATOM(_NET_WM_WINDOW_TYPE_MENU))
-        window_type = MCompAtoms::FRAMELESS;
-    else if (transientFor())
+             type_atom == ATOM(_NET_WM_WINDOW_TYPE_MENU)) {
+        if (type_atoms.contains(ATOM(_MEEGOTOUCH_NET_WM_WINDOW_TYPE_SHEET)))
+            window_type = MCompAtoms::SHEET;
+        else
+            window_type = MCompAtoms::FRAMELESS;
+    } else if (transientFor())
         window_type = MCompAtoms::UNKNOWN;
     else // fdo spec suggests unknown non-transients must be normal
         window_type = MCompAtoms::NORMAL;

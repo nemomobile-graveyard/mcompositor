@@ -26,6 +26,7 @@
 #include "mcompositemanagerextension.h"
 #include "mcompositewindowgroup.h"
 #include "msplashscreen.h"
+#include "msheetanimation.h"
 
 #include <QX11Info>
 #include <QGraphicsScene>
@@ -94,7 +95,11 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     } else
         window_visible = false;
 
-    MCompositeWindowAnimation* a = new MCompositeWindowAnimation(this);
+    MCompositeWindowAnimation* a = 0;
+    if (pc->windowType() == MCompAtoms::SHEET) 
+        a = new MSheetAnimation(this);
+    else 
+        a = new MCompositeWindowAnimation(this);
     a->setTargetWindow(this);
     orig_animator = a;
 }
@@ -347,6 +352,7 @@ void MCompositeWindow::q_fadeIn()
     newly_mapped = true;
     
     iconified = false;
+
     // fade-in handler
     if (animator) {
         // always ensure the animation is visible. zvalues get corrected later 
@@ -372,30 +378,34 @@ void MCompositeWindow::closeWindowRequest()
 
 void MCompositeWindow::closeWindowAnimation()
 {
-    if (!pc || !pc->is_valid || window_status == Closing
+    if ((pc->windowType() != MCompAtoms::SHEET) &&
+        (!pc || !pc->is_valid || window_status == Closing
         || pc->isInputOnly() || pc->isOverrideRedirect()
         || !windowPixmap() || !isAppWindow()
         // isAppWindow() returns true for system dialogs
         || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)
         || propertyCache()->windowState() == IconicState
-        || window_status == MCompositeWindow::Hung) {
+        || window_status == MCompositeWindow::Hung)) {
         return;
     }
+    
+
     window_status = Closing; // animating, do not disturb
     
     MCompositeManager *p = (MCompositeManager *) qApp;
     bool defer = false;
     setVisible(true);
     if (!p->isCompositing()) {
-        p->d->enableCompositing();
         defer = true;
     }
     
     // fade-out handler
     if (animator) {
-        if (defer)
+        if (defer) {
             animator->deferAnimation(MCompositeWindowAnimation::Closing);
-        else
+            p->d->enableCompositing();
+            updateWindowPixmap();
+        } else
             animator->windowClosed();
         window_status = Normal;
     }

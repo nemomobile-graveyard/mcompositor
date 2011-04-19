@@ -38,6 +38,7 @@
 #include <QParallelAnimationGroup>
 #include <mcompositemanager.h>
 #include <mcompositemanager_p.h>
+#include <msheetanimation.h>
 
 class McParallelAnimation: public QParallelAnimationGroup
 {
@@ -138,6 +139,11 @@ void MCompositeWindowAnimation::setTargetWindow(MCompositeWindow* window)
 {
     Q_D(MCompositeWindowAnimation);
 
+    // never override a sheet 
+    if ((window->propertyCache()->windowType() == MCompAtoms::SHEET)
+        && !qobject_cast<MSheetAnimation *>(this))
+        return;
+    
     // replace the old animator if there is one
     if (window->animator && (window->animator != this))
         delete window->animator;
