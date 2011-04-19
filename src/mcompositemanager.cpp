@@ -2651,6 +2651,8 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
              it != windows.end(); ++it) {
              MCompositeWindow *i = it.value();
              i->stopPing();
+             if (i->windowAnimator() && i->windowAnimator()->isActive())
+                 i->windowAnimator()->finish();
              // stop damage tracking while the display is off
              if (i->propertyCache())
                  i->propertyCache()->damageTracking(false);
