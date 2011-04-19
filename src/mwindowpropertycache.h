@@ -205,6 +205,10 @@ public slots:
     // WM_NAME
     const QString &wmName();
 
+    // Value of _MEEGOTOUCH_NO_ANIMATIONS window property. It can be used
+    // for cases when restore/iconifying/closing animation is not wanted.
+    unsigned int noAnimations();
+
 public:
     /*!
      * Called on PropertyNotify for this window.
@@ -344,7 +348,7 @@ private:
     static xcb_render_query_pict_formats_cookie_t pict_formats_cookie;
     Damage damage_object;
     QString wm_name;
-    unsigned wm_pid;
+    unsigned wm_pid, no_animations;
 };
 
 // Non-deletable dummy MWindowPropertyCache.

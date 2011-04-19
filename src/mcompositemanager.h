@@ -217,6 +217,7 @@ private:
     friend class MCompositeWindowGroup;
     friend class MSplashScreen;
     friend class ut_Stacking;
+    friend class ut_Anim;
 };
 
 #endif
