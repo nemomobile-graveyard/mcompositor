@@ -2074,6 +2074,16 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                         XA_WINDOW, 32, PropModeReplace,
                         (unsigned char *)no_decors.toVector().data(),
                         no_decors.size());
+        if (stack[DESKTOP_LAYER]) {
+            XPropertyEvent p;
+            p.type   = PropertyNotify;
+            p.window = RootWindow(QX11Info::display(), 0);
+            p.atom   = ATOM(_NET_CLIENT_LIST_STACKING);
+            p.state  = PropertyNewValue;
+            XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER],
+                       False, PropertyChangeMask, (XEvent *)&p);
+        }
+
         prev_stacked_mapped = only_mapped;
     }
     if (mapped_order_changed || changed_properties) {
@@ -3578,6 +3588,15 @@ void MCompositeManagerPrivate::updateWinList()
                         XA_WINDOW, 32, PropModeReplace,
                         (unsigned char *)windows_as_mapped.toVector().data(),
                         windows_as_mapped.size());
+        if (stack[DESKTOP_LAYER]) {
+            XPropertyEvent p;
+            p.type   = PropertyNotify;
+            p.window = RootWindow(QX11Info::display(), 0);
+            p.atom   = ATOM(_NET_CLIENT_LIST);
+            p.state  = PropertyNewValue;
+            XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER],
+                       False, PropertyChangeMask, (XEvent *)&p);
+        }
 
         prev_list = windows_as_mapped;
     }
