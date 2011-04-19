@@ -149,7 +149,8 @@ bool MStatusBarTexture::updateStatusBarGeometry(QImage &img)
     if (lscape.isEmpty())
         // Couldn't determine the size from the desktop window,
         // assume some probable defaults.
-        lscape = QSize(img.width(), 30);
+        lscape = QSize(img.width(),
+            ((MCompositeManager*)qApp)->configInt("default-statusbar-height"));
     if (portrait.isEmpty())
         // Assume full-width portrait statusbar.
         portrait = QSize(QApplication::desktop()->height(), lscape.height());
