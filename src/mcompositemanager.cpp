@@ -4076,13 +4076,14 @@ void MCompositeManager::remoteControl(int cmdfd)
         unsigned i;
 
         delete d;
+        eglTerminate(QX11Info::display());
         XFlush(QX11Info::display());
 
         // Convert the QStringList of args into a char *[].
         i = 0;
         argv = new const char *[args.count()+1];
         foreach (const QString &arg, args)
-            argv[i] = arg.toLatin1().constData();
+            argv[i++] = qstrdup(arg.toLatin1().constData());
         argv[i] = NULL;
 
         // Restart ourselves.
