@@ -1,3 +1,9 @@
+mcompositor (0.9.6-1~unreleased) unstable; urgency=low
+
+  * foo
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 19 Apr 2011 16:00:27 +0300
+
 mcompositor (0.9.5-1) unstable; urgency=low
 
   * Fixes: NB#238912 - query dialog shown in landscape during bootup
