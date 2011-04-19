@@ -1,8 +1,13 @@
-mcompositor (0.9.1-1~unreleased) unstable; urgency=low
+mcompositor (0.9.5-1) unstable; urgency=low
 
-  * .
+  * Fixes: NB#238912 - query dialog shown in landscape during bootup
+  * Fixes: NB#245057 - New API for disabling window animations needed by games
+  * Fixes: NB#246144 - Home visible shortly before lock screen
+  * Partial fix for NB#239295 - Text edit focus is flickering.
+  * Fixes: NB#246593 - Unable to swipe away from incoming call view
+  * Fixes: NB#243423 - ..from lockscreen to full screen window shows statusarea
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Fri, 08 Apr 2011 15:37:38 +0300
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 19 Apr 2011 15:36:17 +0300
 
 mcompositor (0.9.0-1) unstable; urgency=low
 
