@@ -162,6 +162,9 @@ public slots:
     //! Returns value of TRANSIENT_FOR property.
     Window transientFor();
 
+    //! Returns value of _MEEGOTOUCH_WM_INVOKED_BY property.
+    Window invokedBy();
+
     //! Returns the first cardinal of WM_STATE of this window
     int windowState();
 
@@ -273,6 +276,7 @@ private:
 
 protected:
     Window transient_for;
+    Window invoked_by;
     QList<Window> transients;
     QList<Atom> wm_protocols;
     QRectF icon_geometry;
