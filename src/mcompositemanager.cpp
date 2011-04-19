@@ -4324,4 +4324,5 @@ void MCompositeManager::ensureSettingsFile()
     config("splash-timeout-ms",               15000);
     config("default-current-window-angle",      270);
     config("lockscreen-map-timeout-ms",        1000);
+    config("default-statusbar-height",           36);
 }
