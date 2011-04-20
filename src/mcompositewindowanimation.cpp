@@ -29,6 +29,7 @@
 // TODO: import icongeometry. export signals when animation done to hook
 // to composting on off
 
+#include <QMetaMethod>
 #include <QRectF>
 #include <QDesktopWidget>
 #include <QPropertyAnimation>
@@ -79,6 +80,14 @@ private:
 class MCompositeWindowAnimationPrivate
 {
 public:
+
+    struct AnimHandlerInfo
+    {
+        AnimHandlerInfo(): object(0){}        
+        QObject* object;
+        QMetaMethod method;
+    };
+
     MCompositeWindowAnimationPrivate(MCompositeWindowAnimation* animation)
         : crossfade(0),
           pending_animation(MCompositeWindowAnimation::NoAnimation),
@@ -117,6 +126,14 @@ public:
         }
     }
 
+    bool handledByInvoker(MCompositeWindowAnimation::AnimationType type)
+    {
+        AnimHandlerInfo i = animhandler.value(type);
+        if (i.object) 
+            return i.method.invoke(i.object);
+        return false;
+    }
+
     QPointer<MCompositeWindow> target_window, target_window2;
     QPointer<QPropertyAnimation> scale;
     QPointer<QPropertyAnimation> position;
@@ -124,6 +141,7 @@ public:
     McParallelAnimation* scalepos, *crossfade;
     MCompositeWindowAnimation::AnimationType pending_animation;
     bool is_replaceable;
+    QHash<MCompositeWindowAnimation::AnimationType, AnimHandlerInfo> animhandler;   
 };
 
 MCompositeWindowAnimation::MCompositeWindowAnimation(QObject* parent)
@@ -207,10 +225,12 @@ void MCompositeWindowAnimation::windowShown()
 #define OPAQUE 1.0
 #define DIMMED 0.1
     Q_D(MCompositeWindowAnimation);
-
     if (!d->target_window)
         return;
 
+    if (d->handledByInvoker(Showing))
+        return;
+    
     const qreal scaleStart = 0.2;
     const QRectF &iconGeometry = d->target_window->propertyCache()->iconGeometry();
     QPointF topLeft = iconGeometry.topLeft();
@@ -242,6 +262,10 @@ void MCompositeWindowAnimation::windowShown()
 
 void MCompositeWindowAnimation::windowClosed()
 {
+    Q_D(MCompositeWindowAnimation);
+    if (d->handledByInvoker(Closing))
+        return;
+
     positionAnimation()->setEasingCurve(QEasingCurve::InQuad);
     scaleAnimation()->setEasingCurve(QEasingCurve::InQuad);
     opacityAnimation()->setEasingCurve(QEasingCurve::InQuad);
@@ -257,6 +281,10 @@ void MCompositeWindowAnimation::deferAnimation(MCompositeWindowAnimation::Animat
 
 void MCompositeWindowAnimation::windowIconified()
 {
+    Q_D(MCompositeWindowAnimation);
+
+    if (d->handledByInvoker(Iconify))
+        return;
     positionAnimation()->setEasingCurve(QEasingCurve::InQuad);
     scaleAnimation()->setEasingCurve(QEasingCurve::InQuad);
     opacityAnimation()->setEasingCurve(QEasingCurve::InQuad);
@@ -266,6 +294,10 @@ void MCompositeWindowAnimation::windowIconified()
 
 void MCompositeWindowAnimation::windowRestored()
 {
+    Q_D(MCompositeWindowAnimation);
+
+    if (d->handledByInvoker(Restore))
+        return;
     positionAnimation()->setEasingCurve(QEasingCurve::OutQuad);
     scaleAnimation()->setEasingCurve(QEasingCurve::OutQuad);
     opacityAnimation()->setEasingCurve(QEasingCurve::OutQuad);
@@ -412,4 +444,26 @@ void MCompositeWindowAnimation::setReplaceable(bool replaceable)
     Q_D(MCompositeWindowAnimation);
 
     d->is_replaceable = replaceable;
+}
+
+/*!
+   Sets a custom animation handler for animation \a type. If a handler is
+   set and the animation virtual functions are not re-implemented, it will use
+   the slot \a m in the object \a receiver as an animation handler instead.
+ */
+void MCompositeWindowAnimation::setAnimationHandler(AnimationType type, 
+                                                    QObject * receiver, 
+                                                    const char* m)
+{
+    // so that we can use the SLOT keyword on the method
+    QByteArray method(m);
+    method = method.right(method.length()-1);
+    
+    Q_D(MCompositeWindowAnimation);
+    
+    MCompositeWindowAnimationPrivate::AnimHandlerInfo i;
+    int m_idx = receiver->metaObject()->indexOfSlot(method);
+    i.object = receiver;
+    i.method = receiver->metaObject()->method(m_idx);
+    d->animhandler[type] = i;
 }

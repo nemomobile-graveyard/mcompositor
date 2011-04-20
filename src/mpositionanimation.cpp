@@ -42,19 +42,27 @@ MPositionAnimation::MPositionAnimation(QObject* parent)
         screen = QApplication::desktop()->availableGeometry();  
 }
 
+static void removeExternalAnimations(QAnimationGroup* group, const QAbstractAnimation* skip)
+{
+    for (int i = 0; i < group->animationCount(); ++i)
+        if (group->animationAt(i) != skip)
+            group->takeAnimation(i);
+}
+
 MPositionAnimation::~MPositionAnimation()
 {
     // don't delete externally referenced animation objects
-    for (int i = 0; i < animationGroup()->animationCount(); ++i)
-        if (animationGroup()->animationAt(i) != position)
-            animationGroup()->takeAnimation(i);
+    removeExternalAnimations(animationGroup(), position);
 }
 
 void MPositionAnimation::setEnabled(bool enabled)
 {
-    if (enabled && (animationGroup()->indexOfAnimation(position) == -1))
+    if (enabled && (animationGroup()->indexOfAnimation(position) == -1)) {
         animationGroup()->addAnimation(position);
-    else if (!enabled) {
+        // remove external animation objects we don't own
+        removeExternalAnimations(animationGroup(), position);
+
+    } else if (!enabled) {
         animationGroup()->stop();
         animationGroup()->removeAnimation(position);
     }
