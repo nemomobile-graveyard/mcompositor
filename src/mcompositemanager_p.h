@@ -117,6 +117,7 @@ public:
                          Window ignore_window = 0,
                          bool skip_always_mapped = false);
     Window getLastVisibleParent(MWindowPropertyCache *pc);
+    int indexOfCoveringWindow() const;
 
     bool possiblyUnredirectTopmostWindow();
     bool haveMappedWindow() const;
