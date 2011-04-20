@@ -1,3 +1,9 @@
+mcompositor (0.9.7-1~unreleased) unstable; urgency=low
+
+  * foo
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 20 Apr 2011 16:06:17 +0300
+
 mcompositor (0.9.6-1) unstable; urgency=low
 
   * Fix code to make test24.py pass again.
