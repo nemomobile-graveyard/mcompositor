@@ -66,6 +66,10 @@ class MCompositeWindowAnimation: public QObject
     virtual void windowClosed();
     virtual void windowIconified();
     virtual void windowRestored();    
+
+    void setAnimationHandler(AnimationType type, QObject * receiver, 
+                             const char* method);
+
     void crossFadeTo(MCompositeWindow *cw);    
     void deferAnimation(AnimationType type);
     void ensureAnimationVisible();
