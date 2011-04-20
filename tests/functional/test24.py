@@ -26,7 +26,7 @@ os.popen('kill -SIGUSR1 `pidof mcompositor`')
 
 fd = os.popen('windowctl akn')
 win = fd.readline().strip()
-fd = os.popen('windowctl E %s 6' % win)  # raise it above touch screen lock
+fd = os.popen('windowctl E %s 10' % win)  # raise it above touch screen lock
 time.sleep(2)
 
 ret = 0
