@@ -857,7 +857,8 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         pc->propertyEvent(e);
         dirtyStacking(true, e->time); // visibility notify
         // check if compositing needs to be switched on/off
-        if (!possiblyUnredirectTopmostWindow() && !compositing)
+        if (pc->isMapped() &&
+            !possiblyUnredirectTopmostWindow() && !compositing)
             enableCompositing();
         return;
     }
@@ -1768,14 +1769,14 @@ void MCompositeManagerPrivate::fixZValues()
     }
 }
 
-void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
+// index of the covering window in stacking_list, or 0
+int MCompositeManagerPrivate::indexOfCoveringWindow() const
 {
     static int xres = ScreenOfDisplay(QX11Info::display(),
                                DefaultScreen(QX11Info::display()))->width;
     static int yres = ScreenOfDisplay(QX11Info::display(),
                                DefaultScreen(QX11Info::display()))->height;
     static const QRegion fs_r(0, 0, xres, yres);
-    Window duihome = stack[DESKTOP_LAYER];
     int last_i = stacking_list.size() - 1, covering_i = 0;
 
     for (int i = last_i; i >= 0; --i) {
@@ -1800,6 +1801,14 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
              break;
          }
     }
+    return covering_i;
+}
+
+void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
+{
+    int covering_i = indexOfCoveringWindow();
+    Window duihome = stack[DESKTOP_LAYER];
+    int last_i = stacking_list.size() - 1;
     bool statusbar_visible = false;
     MWindowPropertyCache *ga_pc = 0;
     /* Send synthetic visibility events for our babies */
@@ -2655,7 +2664,18 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
         if (!(pc = findLockScreen()) || !(cw = COMPOSITE_WINDOW(pc->winId()))
             || !pc->isMapped() || !cw->paintedAfterMapping())
             lockscreen_painted = false;
-        if (!pc || !pc->lowPowerMode()) {
+        // check whether there is a low-power mode window visible
+        int covering_i = indexOfCoveringWindow();
+        bool lpm_window = false;
+        for (int i = stacking_list.size() - 1; i >= covering_i; --i) {
+            Window w = stacking_list[i];
+            MWindowPropertyCache *pc = prop_caches.value(w, 0);
+            if (pc && pc->isMapped() && pc->lowPowerMode() > 0) {
+                lpm_window = true;
+                break;
+            }
+        }
+        if (!lpm_window) {
             watch->keep_black = true;
             if (!compositing)
                 enableCompositing();
