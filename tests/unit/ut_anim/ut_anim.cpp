@@ -360,6 +360,197 @@ void ut_Anim::testNoAnimations()
     QCOMPARE(cw->windowAnimator()->isActive(), false);
 }
 
+class DerivedAnimationTest: public MCompositeWindowAnimation
+{
+public:
+    DerivedAnimationTest(QObject* parent)
+        :MCompositeWindowAnimation(parent),
+         triggered(MCompositeWindowAnimation::NoAnimation)
+    {}
+    
+    void windowShown()
+    {
+        triggered = MCompositeWindowAnimation::Showing;
+        MCompositeWindowAnimation::windowShown();
+    }
+    
+    void windowClosed()
+    {
+        triggered = MCompositeWindowAnimation::Closing;   
+        MCompositeWindowAnimation::windowClosed();
+    }
+    
+    void windowIconified()
+    {
+        triggered = MCompositeWindowAnimation::Iconify;
+        MCompositeWindowAnimation::windowIconified();
+    }
+    
+    void windowRestored()
+    {
+        triggered = MCompositeWindowAnimation::Restore;
+        MCompositeWindowAnimation::windowRestored();
+    }
+
+    MCompositeWindowAnimation::AnimationType triggered;
+};
+
+class AnimHandlerTest: public QObject
+{
+    Q_OBJECT
+public:    
+    AnimHandlerTest(MCompositeWindow* p)
+        :QObject(p),
+         triggered(MCompositeWindowAnimation::NoAnimation),
+         window(p)
+    {
+    }
+
+public slots:
+    void windowShown()
+    {
+        window->windowAnimator()->start();
+        triggered = MCompositeWindowAnimation::Showing;
+    }
+    
+    void windowClosed()
+    {
+        window->windowAnimator()->start();
+        triggered = MCompositeWindowAnimation::Closing;  
+    }
+
+    void windowIconified()
+    {
+        window->windowAnimator()->start();
+        triggered = MCompositeWindowAnimation::Iconify;
+    }
+    
+    void windowRestored()
+    {
+        window->windowAnimator()->start();
+        triggered = MCompositeWindowAnimation::Restore;
+    }
+public:
+    MCompositeWindowAnimation::AnimationType triggered;
+    MCompositeWindow* window;
+};
+
+void ut_Anim::testDerivedAnimHandler()
+{
+    DerivedAnimationTest* an = new DerivedAnimationTest(0);
+    MCompositeWindow *cw = cmgr->d->windows.value(1, 0);
+    an->setTargetWindow(cw);
+
+    // window shown
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = 1;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+    cw->damageReceived();
+    cw->damageReceived();
+
+    QCOMPARE(cw->windowAnimator()->isActive(), true);
+    QCOMPARE(an->triggered == MCompositeWindowAnimation::Showing, true);
+    an->triggered = MCompositeWindowAnimation::NoAnimation;
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(500); 
+
+    // iconify
+    cmgr->d->exposeSwitcher();
+    QCOMPARE(cw->windowAnimator()->isActive(), true);
+    QCOMPARE(an->triggered == MCompositeWindowAnimation::Iconify, true);
+    an->triggered = MCompositeWindowAnimation::NoAnimation;
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(500); 
+
+    // restore
+    XClientMessageEvent cme;
+    memset(&cme, 0, sizeof(cme));
+    cme.window = 1;
+    cme.type = ClientMessage;
+    cme.message_type = ATOM(_NET_ACTIVE_WINDOW);
+    cmgr->d->rootMessageEvent(&cme);
+    QCOMPARE(an->triggered == MCompositeWindowAnimation::Restore, true);
+    an->triggered = MCompositeWindowAnimation::NoAnimation;    
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(500); 
+
+    // close 
+    XUnmapEvent ue;
+    memset(&ue, 0, sizeof(ue));
+    ue.window = 1;
+    ue.event = QX11Info::appRootWindow();
+    // use a bogus pixmap id
+    ((MTexturePixmapItem*)cw)->d->windowp = 1;
+    cmgr->d->unmapEvent(&ue);
+    QCOMPARE(cw->windowAnimator()->isActive(), true);
+    QCOMPARE(an->triggered == MCompositeWindowAnimation::Closing, true); 
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(500); 
+}
+
+void ut_Anim::testExternalAnimHandler()
+{
+    MCompositeWindow *cw = cmgr->d->windows.value(1, 0);
+    AnimHandlerTest* an = new AnimHandlerTest(cw);
+    cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Showing,
+                                              an,SLOT(windowShown()));
+    cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Closing,
+                                              an,SLOT(windowClosed()));
+    cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Iconify,
+                                              an,SLOT(windowIconified()));
+    cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Restore,
+                                              an,SLOT(windowRestored()));                                              
+    // window shown
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = 1;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+    cw->damageReceived();
+    cw->damageReceived();
+
+    QCOMPARE(cw->windowAnimator()->isActive(), true);
+    QCOMPARE(an->triggered == MCompositeWindowAnimation::Showing, true);
+    an->triggered = MCompositeWindowAnimation::NoAnimation;
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(500); 
+
+    // iconify
+    cmgr->d->exposeSwitcher();
+    QCOMPARE(cw->windowAnimator()->isActive(), true);
+    QCOMPARE(an->triggered == MCompositeWindowAnimation::Iconify, true);
+    an->triggered = MCompositeWindowAnimation::NoAnimation;
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(500); 
+
+    // restore
+    XClientMessageEvent cme;
+    memset(&cme, 0, sizeof(cme));
+    cme.window = 1;
+    cme.type = ClientMessage;
+    cme.message_type = ATOM(_NET_ACTIVE_WINDOW);
+    cmgr->d->rootMessageEvent(&cme);
+    QCOMPARE(an->triggered == MCompositeWindowAnimation::Restore, true);
+    an->triggered = MCompositeWindowAnimation::NoAnimation;    
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(500); 
+
+    // close 
+    XUnmapEvent ue;
+    memset(&ue, 0, sizeof(ue));
+    ue.window = 1;
+    ue.event = QX11Info::appRootWindow();
+    // use a bogus pixmap id
+    ((MTexturePixmapItem*)cw)->d->windowp = 1;
+    cmgr->d->unmapEvent(&ue);
+    QCOMPARE(cw->windowAnimator()->isActive(), true);
+    QCOMPARE(an->triggered == MCompositeWindowAnimation::Closing, true); 
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(500);
+}
+
 int main(int argc, char* argv[])
 {
     // init fake but basic compositor environment
@@ -393,3 +584,5 @@ int main(int argc, char* argv[])
 
     return QTest::qExec(&anim);
 }
+
+#include "ut_anim.moc"
