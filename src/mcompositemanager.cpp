@@ -600,6 +600,33 @@ MCompositeManagerPrivate::~MCompositeManagerPrivate()
     atom = 0;
 }
 
+#ifdef WINDOW_DEBUG
+void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
+{
+    if (!debug_mode) return;
+    MCompositeWindow *i = COMPOSITE_WINDOW(w);
+    if (!i)
+        return;
+
+    CARD32 d[1];
+    if (i->windowVisible())
+        d[0] = i->isDirectRendered() ? ATOM(_M_WM_WINDOW_DIRECT_VISIBLE)
+                                     : ATOM(_M_WM_WINDOW_COMPOSITED_VISIBLE);
+    else
+        d[0] = i->isDirectRendered() ? ATOM(_M_WM_WINDOW_DIRECT_INVISIBLE)
+                                     : ATOM(_M_WM_WINDOW_COMPOSITED_INVISIBLE);
+
+    XChangeProperty(QX11Info::display(), w, ATOM(_M_WM_INFO), XA_ATOM,
+                    32, PropModeReplace, (unsigned char *)d, 1);
+    long z = i->zValue();
+    XChangeProperty(QX11Info::display(), w, ATOM(_M_WM_WINDOW_ZVALUE),
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *) &z, 1);
+}
+#else
+#define setWindowDebugProperties(X)
+#endif
+
 Window MCompositeManagerPrivate::parentWindow(Window child)
 {
     uint children = 0;
@@ -1412,9 +1439,38 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     MWindowPropertyCache *pc = prop_caches.value(e->window, 0);
     if (!device_state->displayOff()) {
         if (pc) {
-            pc->damageTracking(true);
-            XCompositeRedirectWindow(QX11Info::display(), e->window,
-                                     CompositeRedirectManual);
+            // allow input method window to composite its client window
+            Window parent;
+            MCompositeWindow *p_cw;
+            if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)
+                && (parent = pc->transientFor()) &&
+                (p_cw = COMPOSITE_WINDOW(parent)) && p_cw->isMapped()
+                && getTopmostApp() == parent) {
+                // redirect the parent
+                if (((MTexturePixmapItem*)p_cw)->isDirectRendered()) {
+                    ((MTexturePixmapItem*)p_cw)->enableRedirectedRendering();
+                    setWindowDebugProperties(parent);
+                }
+                // unredirect the input method window if possible
+                if (!pc->hasAlphaAndIsNotOpaque()) {
+                    if (compositing) {
+                        showOverlayWindow(false);
+                        compositing = false;
+                    }
+                    MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
+                    if (!cw) {
+                        // first mapping
+                        cw = new MTexturePixmapItem(e->window, pc);
+                        windows[e->window] = cw;
+                    }
+                    ((MTexturePixmapItem*)cw)->enableDirectFbRendering();
+                    setWindowDebugProperties(e->window);
+                }
+            } else {
+                pc->damageTracking(true);
+                XCompositeRedirectWindow(QX11Info::display(), e->window,
+                                         CompositeRedirectManual);
+            }
         } else
             damage_obj = XDamageCreate(dpy, e->window, XDamageReportNonEmpty);
     }
@@ -1441,7 +1497,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
     // Composition is enabled by default because we are introducing animations
     // on window map. It will be turned off once transitions are done
-    if (!pc->isInputOnly() && !device_state->displayOff()
+    if (!compositing && !pc->isInputOnly() && !device_state->displayOff()
         && (pc->hasAlphaAndIsNotOpaque() ||
             (wtype != MCompAtoms::INPUT &&
              pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DIALOG))))
@@ -2783,33 +2839,6 @@ void MCompositeManager::queryDialogAnswer(unsigned int window, bool yes_answer)
         d->closeHandler(cw);
     else
         cw->startDialogReappearTimer();
-}
-
-void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
-{
-#ifdef WINDOW_DEBUG
-    if (!debug_mode) return;
-    MCompositeWindow *i = COMPOSITE_WINDOW(w);
-    if (!i)
-        return;
-
-    CARD32 d[1];
-    if (i->windowVisible())
-        d[0] = i->isDirectRendered() ?
-               ATOM(_M_WM_WINDOW_DIRECT_VISIBLE) : ATOM(_M_WM_WINDOW_COMPOSITED_VISIBLE);
-    else
-        d[0] = i->isDirectRendered() ?
-               ATOM(_M_WM_WINDOW_DIRECT_INVISIBLE) : ATOM(_M_WM_WINDOW_COMPOSITED_INVISIBLE);
-
-    XChangeProperty(QX11Info::display(), w, ATOM(_M_WM_INFO), XA_ATOM,
-                    32, PropModeReplace, (unsigned char *)d, 1);
-    long z = i->zValue();
-    XChangeProperty(QX11Info::display(), w, ATOM(_M_WM_WINDOW_ZVALUE), XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *) &z, 1);
-
-#else
-    Q_UNUSED(w);
-#endif
 }
 
 bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
