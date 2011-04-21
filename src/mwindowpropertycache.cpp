@@ -786,6 +786,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     } else if (e->atom == ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY)) {
         addRequest(SLOT(statusbarGeometry()),
             requestProperty(e->atom, XCB_ATOM_CARDINAL, 4));
+        return true; // re-check _MEEGOTOUCH_STATUSBAR_VISIBLE
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         addRequest(SLOT(supportedProtocols()),
                    requestProperty(e->atom, XCB_ATOM_ATOM, 100));
