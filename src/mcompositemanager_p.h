@@ -84,7 +84,9 @@ public:
                         bool stacked = false);
     void updateWinList();
     void setWindowState(Window, int, int level = 0);
+#ifdef WINDOW_DEBUG
     void setWindowDebugProperties(Window w);
+#endif
     void iconifyApps();
     void positionWindow(Window w, bool on_top);
     void addItem(MCompositeWindow *item);
