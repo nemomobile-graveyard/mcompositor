@@ -385,8 +385,12 @@ void MCompositeWindowAnimation::pause()
 
 void MCompositeWindowAnimation::finish()
 {
-    animationGroup()->setCurrentTime(animationGroup()->duration());
-    animationGroup()->stop();
+  QParallelAnimationGroup *ag = animationGroup();
+
+  // Let the timeline's finish() run.
+  ag->setDirection(QAbstractAnimation::Backward);
+  ag->start();
+  ag->setCurrentTime(ag->duration());
 }
 
 bool MCompositeWindowAnimation::isActive()
