@@ -363,7 +363,8 @@ void MCompositeWindowAnimation::ensureAnimationVisible()
 {
     // Always ensure the animation is REALLY visible. Z-values get corrected 
     // later at checkStacking if needed
-    if (targetWindow())
+    if (targetWindow() && 
+        targetWindow()->propertyCache()->windowState() != IconicState)
         targetWindow()->setZValue(
               ((MCompositeManager*)qApp)->d->stacking_list.size() + 1);
     if (targetWindow2())
@@ -459,6 +460,7 @@ void MCompositeWindowAnimation::setAnimationHandler(AnimationType type,
                                                     QObject * receiver, 
                                                     const char* m)
 {
+    receiver->setProperty("targetwindow", (qulonglong)targetWindow()->window());
     // so that we can use the SLOT keyword on the method
     QByteArray method(m);
     method = method.right(method.length()-1);
