@@ -1873,10 +1873,12 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
         MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
         if (!cw || !cw->isMapped() || !cw->propertyCache()) continue;
         if (device_state->displayOff()) {
-            if (!cw->propertyCache()->lowPowerMode())
-                cw->setWindowObscured(true);
-            else
+            if (cw->propertyCache()->lowPowerMode() > 0
+                && i >= covering_i) {
                 cw->setWindowObscured(false);
+                watch->keep_black = false;
+            } else
+                cw->setWindowObscured(true);
             // setVisible(false) is not needed because updates are frozen
             // and for avoiding NB#174346
             if (duihome && i >= home_i)
