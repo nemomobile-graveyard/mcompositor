@@ -532,6 +532,8 @@ int MWindowPropertyCache::alwaysMapped()
                 always_mapped = *((CARD32*)xcb_get_property_value(r));
             free(r);
         }
+        if (!always_mapped && windowType() == MCompAtoms::DOCK)
+            always_mapped = 1000;
     }
     return always_mapped;
 }

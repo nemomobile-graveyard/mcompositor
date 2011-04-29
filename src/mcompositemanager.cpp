@@ -1539,7 +1539,8 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             setWindowState(e->window, IconicState);
         else
             setWindowState(e->window, NormalState);
-    } else if ((h.flags & StateHint) && (h.initial_state == IconicState))
+    } else if (pc->alwaysMapped() > 0 ||
+               ((h.flags & StateHint) && (h.initial_state == IconicState)))
         setWindowState(e->window, IconicState);
     else
         setWindowState(e->window, NormalState);
@@ -1887,7 +1888,8 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
         }
         if (i >= covering_i) {
             cw->setWindowObscured(false);
-            cw->setVisible(true);
+            if (!cw->hasTransitioningWindow())
+                cw->setVisible(true);
             if (!ga_pc && (cw->propertyCache()->globalAlpha() < 255 ||
                 cw->propertyCache()->videoGlobalAlpha() < 255))
                 // select topmost window with global alpha properties
@@ -3114,6 +3116,15 @@ void MCompositeManagerPrivate::removeWindow(Window w)
 Window MCompositeManager::desktopWindow() const
 {
     return d->stack[DESKTOP_LAYER];
+}
+
+bool MCompositeManager::debugMode() const
+{
+#ifdef WINDOW_DEBUG
+    return debug_mode;
+#else
+    return false;
+#endif
 }
 
 // Determine whether a decorator should be ordered above or below @win.
