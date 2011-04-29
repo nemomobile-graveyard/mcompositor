@@ -39,6 +39,7 @@
 #include <QParallelAnimationGroup>
 #include <mcompositemanager.h>
 #include <mcompositemanager_p.h>
+#include <QVector>
 
 class McParallelAnimation: public QParallelAnimationGroup
 {
@@ -80,18 +81,12 @@ private:
 class MCompositeWindowAnimationPrivate
 {
 public:
-
-    struct AnimHandlerInfo
-    {
-        AnimHandlerInfo(): object(0){}        
-        QObject* object;
-        QMetaMethod method;
-    };
-
+    
     MCompositeWindowAnimationPrivate(MCompositeWindowAnimation* animation)
         : crossfade(0),
           pending_animation(MCompositeWindowAnimation::NoAnimation),
-          is_replaceable(true)
+          is_replaceable(true),
+          animhandler(MCompositeWindowAnimation::AnimationTotal, 0)
     {
         const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
         int duration = mc->configInt("startup-anim-duration");
@@ -128,9 +123,25 @@ public:
 
     bool handledByInvoker(MCompositeWindowAnimation::AnimationType type)
     {
-        AnimHandlerInfo i = animhandler.value(type);
-        if (i.object) 
-            return i.method.invoke(i.object);
+        if (animhandler[type]) {
+            switch (type) {
+            case MCompositeWindowAnimation::Showing:
+                animhandler[type]->windowShown();
+                return true;
+            case MCompositeWindowAnimation::Closing:
+                animhandler[type]->windowClosed();
+                return true;
+            case MCompositeWindowAnimation::Iconify:
+                animhandler[type]->windowIconified();
+                return true;
+            case MCompositeWindowAnimation::Restore:
+                animhandler[type]->windowRestored();
+                return true;
+            default:
+                break;
+            }
+        }
+        
         return false;
     }
 
@@ -141,7 +152,7 @@ public:
     McParallelAnimation* scalepos, *crossfade;
     MCompositeWindowAnimation::AnimationType pending_animation;
     bool is_replaceable;
-    QHash<MCompositeWindowAnimation::AnimationType, AnimHandlerInfo> animhandler;   
+    QVector< MAbstractAnimationHandler* > animhandler;
 };
 
 MCompositeWindowAnimation::MCompositeWindowAnimation(QObject* parent)
@@ -452,24 +463,52 @@ void MCompositeWindowAnimation::setReplaceable(bool replaceable)
 }
 
 /*!
-   Sets a custom animation handler for animation \a type. If a handler is
-   set and the animation virtual functions are not re-implemented, it will use
-   the slot \a m in the object \a receiver as an animation handler instead.
+   Sets a custom external animation handler for animation \a type. If an 
+   external handler is set it will use the virtual functions of that animation
+   \a handler instead of this object's handlers. 
+   To create an external handler, inherit from MAbstractAnimationHandler class
+   and reimplement the required animation functions as needed.
  */
 void MCompositeWindowAnimation::setAnimationHandler(AnimationType type, 
-                                                    QObject * receiver, 
-                                                    const char* m)
+                                                    MAbstractAnimationHandler* handler)
 {
-    receiver->setProperty("targetwindow", (qulonglong)targetWindow()->window());
-    // so that we can use the SLOT keyword on the method
-    QByteArray method(m);
-    method = method.right(method.length()-1);
-    
     Q_D(MCompositeWindowAnimation);
-    
-    MCompositeWindowAnimationPrivate::AnimHandlerInfo i;
-    int m_idx = receiver->metaObject()->indexOfSlot(method);
-    i.object = receiver;
-    i.method = receiver->metaObject()->method(m_idx);
-    d->animhandler[type] = i;
+
+    handler->target_window = targetWindow();
+    d->animhandler[type] = handler;
+}
+
+void MCompositeWindowAnimation::disconnectHandler(MAbstractAnimationHandler* handler)
+{
+    Q_D(MCompositeWindowAnimation);
+    int type = d->animhandler.indexOf(handler);
+    if (type > -1)
+        d->animhandler[type] = 0;
+}
+
+void MAbstractAnimationHandler::windowShown()
+{// NOOP
+}
+
+void MAbstractAnimationHandler::windowClosed()
+{// NOOP
+}
+
+void MAbstractAnimationHandler::windowIconified() 
+{// NOOP
+}
+
+void MAbstractAnimationHandler::windowRestored()
+{// NOOP
+}
+
+MCompositeWindow* MAbstractAnimationHandler::targetWindow() const
+{
+    return target_window;
+}
+
+MAbstractAnimationHandler::~MAbstractAnimationHandler()
+{
+    if (main_animator)
+        main_animator->disconnectHandler(this);
 }
