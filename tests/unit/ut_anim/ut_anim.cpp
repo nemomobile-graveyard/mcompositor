@@ -395,7 +395,7 @@ public:
     MCompositeWindowAnimation::AnimationType triggered;
 };
 
-class AnimHandlerTest: public QObject
+class AnimHandlerTest: public QObject, public MAbstractAnimationHandler
 {
     Q_OBJECT
 public:    
@@ -495,13 +495,13 @@ void ut_Anim::testExternalAnimHandler()
     MCompositeWindow *cw = cmgr->d->windows.value(1, 0);
     AnimHandlerTest* an = new AnimHandlerTest(cw);
     cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Showing,
-                                              an,SLOT(windowShown()));
+                                              an);
     cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Closing,
-                                              an,SLOT(windowClosed()));
+                                              an);
     cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Iconify,
-                                              an,SLOT(windowIconified()));
-    cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Restore,
-                                              an,SLOT(windowRestored()));                                              
+                                              an);
+    cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Restore, 
+                                              an);                                    
     // window shown
     XMapEvent e;
     memset(&e, 0, sizeof(e));
