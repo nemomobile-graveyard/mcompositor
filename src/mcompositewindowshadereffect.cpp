@@ -189,18 +189,18 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 {
     if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
         return;
-    if (comp_window == window)
-        return;
 
-    if (comp_window)
-        disconnect(comp_window, SIGNAL(destroyed()),
-                   this, SLOT(compWindowDestroyed()));
-    comp_window = window;
-    connect(comp_window, SIGNAL(destroyed()), SLOT(compWindowDestroyed()));
+    if (comp_window != window) {
+        if (comp_window)
+            disconnect(comp_window, SIGNAL(destroyed()),
+                       this, SLOT(compWindowDestroyed()));
+        comp_window = window;
+        connect(comp_window, SIGNAL(destroyed()), SLOT(compWindowDestroyed()));
+    }
 
-    // only happens with GL. sorry n800 guys :p
 #ifdef QT_OPENGL_LIB
-    window->renderer()->installEffect(this);    
+    if (window->renderer()->current_effect != this)
+        window->renderer()->installEffect(this);
 #endif
 }
 

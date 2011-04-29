@@ -312,8 +312,6 @@ public slots:
      */
     void startDialogReappearTimer();
     
-protected slots:
-
      /*!
       * This internal slot is called whenever a start of window animation 
       * occurs. This is an atomic operation. 
