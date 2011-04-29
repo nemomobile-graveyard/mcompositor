@@ -21,6 +21,7 @@
 #define MCOMPOSITEWINDOWANIMATOR_H
 
 #include <QObject>
+#include <QPointer>
 #include <X11/Xlib.h>
 
 class MCompositeWindow;
@@ -28,6 +29,7 @@ class QPropertyAnimation;
 class McParallelAnimation;
 class QParallelAnimationGroup;
 class MCompositeWindowAnimationPrivate;
+class MAbstractAnimationHandler;
 
 class MCompositeWindowAnimation: public QObject
 {
@@ -39,7 +41,8 @@ class MCompositeWindowAnimation: public QObject
         Closing,
         Iconify,
         Restore,
-        CrossFade
+        CrossFade,
+        AnimationTotal
     };
     
     MCompositeWindowAnimation(QObject* parent = 0);
@@ -67,8 +70,8 @@ class MCompositeWindowAnimation: public QObject
     virtual void windowIconified();
     virtual void windowRestored();    
 
-    void setAnimationHandler(AnimationType type, QObject * receiver, 
-                             const char* method);
+    void setAnimationHandler(AnimationType type, 
+                             MAbstractAnimationHandler* handler);
 
     void crossFadeTo(MCompositeWindow *cw);    
     void deferAnimation(AnimationType type);
@@ -83,8 +86,30 @@ class MCompositeWindowAnimation: public QObject
     virtual void startTransition();
 
  private:
+    void disconnectHandler(MAbstractAnimationHandler*);
+    
     Q_DECLARE_PRIVATE(MCompositeWindowAnimation)
     QScopedPointer<MCompositeWindowAnimationPrivate> d_ptr;
+
+    friend class MAbstractAnimationHandler;
+};
+
+class MAbstractAnimationHandler
+{
+ public:
+    virtual ~MAbstractAnimationHandler();
+
+    virtual void windowShown();
+    virtual void windowClosed();
+    virtual void windowIconified();
+    virtual void windowRestored();    
+
+    MCompositeWindow* targetWindow() const;
+
+ private:
+    QPointer<MCompositeWindow> target_window;
+    QPointer<MCompositeWindowAnimation> main_animator;
+    friend class MCompositeWindowAnimation;
 };
 
 #endif // MCOMPOSITEWINDOWANIMATOR_H
