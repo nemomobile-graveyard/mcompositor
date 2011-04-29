@@ -4138,7 +4138,9 @@ void MCompositeManager::remoteControl(int cmdfd)
         unsigned i;
 
         delete d;
+#ifdef GLES2_VERSION
         eglTerminate(QX11Info::display());
+#endif
         XFlush(QX11Info::display());
 
         // Convert the QStringList of args into a char *[].
