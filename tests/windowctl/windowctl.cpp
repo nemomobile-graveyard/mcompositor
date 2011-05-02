@@ -19,6 +19,7 @@
 #include <X11/extensions/Xrender.h>
 #include <X11/extensions/Xdamage.h>
 #include <X11/extensions/shape.h>
+#include <X11/extensions/XInput.h>
 #include <signal.h>
 #include <sys/prctl.h>
 
@@ -74,11 +75,13 @@ typedef enum {
 	TYPE_NORMAL,
 	TYPE_DIALOG,
 	TYPE_INPUT,
-	TYPE_NOTIFICATION
+	TYPE_NOTIFICATION,
+	TYPE_DOCK
 } WindowType;
 
 static const char *win_type_str[] = {"INVALID", "TYPE_NORMAL", "TYPE_DIALOG",
-                                     "TYPE_INPUT", "TYPE_NOTIFICATION"};
+                                     "TYPE_INPUT", "TYPE_NOTIFICATION",
+                                     "TYPE_DOCK"};
 
 static void set_window_type (Display *dpy, Window w, WindowType type)
 {
@@ -96,6 +99,9 @@ static void set_window_type (Display *dpy, Window w, WindowType type)
      break;
   case TYPE_NOTIFICATION:
      type_atom = XInternAtom (dpy, "_NET_WM_WINDOW_TYPE_NOTIFICATION", False);
+     break;
+  case TYPE_DOCK:
+     type_atom = XInternAtom (dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
      break;
   default:
      return;
@@ -386,7 +392,8 @@ static void wait_for_mapnotify(Display *dpy, Window w)
 static void print_usage_and_exit(QString& stdOut)
 {
 #define PROG "windowctl"
-  stdOut = "Usage 1: " PROG " [afoemksIchplu(j[12])M](n|d|i|b) [transient for <XID>]\n"
+  stdOut = "Usage 1: " PROG " [afoemksIchplu(j[12])M](n|d|i|b|q)"
+           " [transient for <XID>]\n"
 	 "a - ARGB (32-bit) window, otherwise 16-bit is used\n"
 	 "f - fullscreen window\n"
 	 "o - override-redirect window\n"
@@ -406,7 +413,8 @@ static void print_usage_and_exit(QString& stdOut)
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
-	 "b - WM_TYPE_NOTIFICATION window ('b' is for banner)\n\n"
+	 "b - WM_TYPE_NOTIFICATION window ('b' is for banner)\n"
+	 "q - WM_TYPE_DOCK window\n\n"
 	 "Usage 2: " PROG " N|U|F|C|M|T|A|W|H|S|O|Z <XID>\n"
 	 "N - unfullscreen the window with <XID>\n"
 	 "U - unmap the window with <XID>\n"
@@ -688,6 +696,26 @@ static bool old_main(QStringList& args, QString& stdOut)
 	  return false;
 	}
 
+        // find the touch screen device if available
+        XDeviceInfo *devices = 0;
+        int nrDevices = 0, i;
+        XID id = 0;
+        devices = XListInputDevices(dpy, &nrDevices);
+        for (i = 0; i < nrDevices; ++i) {
+            XDeviceInfo *current = &devices[i];
+            if (!strncmp(current->name, "Atmel", 5)) {
+                id = current->id;
+                break;
+            }
+        }
+        XFreeDeviceList(devices);
+        int touch_dev_press = 0, touch_dev_release = 0;
+        XDevice *touch_dev;
+        if (i == nrDevices)
+            touch_dev = 0;
+        else  
+            touch_dev = XOpenDevice(dpy, id);
+
         /* catch X errors */
         XSetErrorHandler (error_handler);
 
@@ -770,6 +798,10 @@ static bool old_main(QStringList& args, QString& stdOut)
 		if (*p == 'b') {
 		       windowtype = TYPE_NOTIFICATION;	
 		       continue;
+		}
+		if (*p == 'q') {
+                       windowtype = TYPE_DOCK;
+                       continue;
 		}
 		if (*p == 'o') {
 		       override_redirect = 1;	
@@ -935,8 +967,13 @@ static bool old_main(QStringList& args, QString& stdOut)
 		return false;
 	}
 
-	w = create_window (dpy, WIN_W * 2 / 3, WIN_H * 2 / 3, argb, fullscreen,
-                           &colormap, override_redirect, input_only);
+        if (windowtype == TYPE_DOCK) {
+	  w = create_window(dpy, 160, WIN_H, argb, fullscreen,
+                            &colormap, override_redirect, input_only);
+          XMoveWindow(dpy, w, WIN_W - 160, 0);
+        } else
+	  w = create_window(dpy, WIN_W * 2 / 3, WIN_H * 2 / 3, argb, fullscreen,
+                            &colormap, override_redirect, input_only);
 	/* print XID of the window */
 	{
 		char buf[20];
@@ -990,6 +1027,21 @@ static bool old_main(QStringList& args, QString& stdOut)
         if (argb && send_mtt)
             input_mask |= Button1MotionMask;
         XSelectInput (dpy, w, input_mask);
+
+        if (touch_dev && touch_dev->num_classes > 0) {
+            XEventClass events[2];
+            XInputClassInfo *ip;
+            for (ip = touch_dev->classes, i = 0;
+                 i < touch_dev->num_classes; ++ip, ++i) {
+                if (ip->input_class == ButtonClass) {
+                    DeviceButtonPress(touch_dev, touch_dev_press, events[0]);
+                    DeviceButtonRelease(touch_dev, touch_dev_release, events[1]);
+                    if (XSelectExtensionEvent(dpy, w, events, 2))
+                       fprintf(stderr, "XSelectExtensionEvent failed\n");
+                    break;
+                }
+            }
+        }
 
 	/* set WM_NAME */
 	{
@@ -1082,6 +1134,22 @@ mainloop:
                 else if (xev.type == MotionNotify && argb && send_mtt) {
                   int x = last_root_x = xev.xmotion.x_root;
                   send_mtt_message(dpy, w, (float)(WIN_W - x) / (float)WIN_W);
+                }
+                else if (xev.type == touch_dev_press) {
+                  XDeviceButtonEvent *dbe = (XDeviceButtonEvent*)&xev;
+                  printf("XInput press %d %d\n", dbe->x_root, dbe->y_root);
+                  long coords[2] = { dbe->x_root, dbe->y_root };
+                  Atom a = XInternAtom(dpy, "_MEEGO_BUTTON_PRESS", False);
+                  XChangeProperty(dpy, w, a, XA_CARDINAL, 32, PropModeReplace,
+                                  (unsigned char*)coords, 2);
+                }
+                else if (xev.type == touch_dev_release) {
+                  XDeviceButtonEvent *dbe = (XDeviceButtonEvent*)&xev;
+                  printf("XInput release %d %d\n", dbe->x_root, dbe->y_root);
+                  long coords[2] = { dbe->x_root, dbe->y_root };
+                  Atom a = XInternAtom(dpy, "_MEEGO_BUTTON_RELEASE", False);
+                  XChangeProperty(dpy, w, a, XA_CARDINAL, 32, PropModeReplace,
+                                  (unsigned char*)coords, 2);
                 }
                 else if (xev.type == ButtonRelease) {
                   if (argb && send_mtt) {
