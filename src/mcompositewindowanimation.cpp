@@ -471,6 +471,7 @@ void MCompositeWindowAnimation::setAnimationHandler(AnimationType type,
     Q_D(MCompositeWindowAnimation);
 
     handler->target_window = targetWindow();
+    handler->main_animator = this;
     d->animhandler[type] = handler;
 }
 
