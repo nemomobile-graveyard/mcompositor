@@ -212,11 +212,13 @@ void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
 {
     if (window != comp_window)
         return;
-    disconnect(comp_window, SIGNAL(destroyed()),
-               this, SLOT(compWindowDestroyed()));
+    if (comp_window)
+        disconnect(comp_window, SIGNAL(destroyed()),
+                   this, SLOT(compWindowDestroyed()));
     comp_window = 0;
 #ifdef QT_OPENGL_LIB
-    window->renderer()->installEffect(0);    
+    if (window)
+        window->renderer()->installEffect(0);    
 #endif
 }
 
