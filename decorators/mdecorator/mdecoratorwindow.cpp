@@ -264,8 +264,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     connect(navigationBar, SIGNAL(closeButtonClicked()), SIGNAL(escapeClicked()));
 
     requested_only_statusbar = false;
-    /*sceneManager()->appearSceneWindow(statusBar);
-    sceneManager()->appearSceneWindow(menu);*/
+    settings = new QSettings("mcompositor", "mcompositor", this);
 
     d = new MDecorator(this);
     app = new MDecoratorAppInterface(this);
@@ -477,7 +476,8 @@ void MDecoratorWindow::setInputRegion()
         QRect sbrect;
         if (statusBar) {
             sbrect = statusBar->sceneBoundingRect().toRect();
-            sbrect.setHeight(statusBar->property("sharedPixmapHeight").toInt());
+            sbrect.setHeight(settings->value(
+                             "default-statusbar-height").toInt());
         }
         region = sbrect;
 
