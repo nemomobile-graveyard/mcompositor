@@ -338,11 +338,10 @@ void MCompositeWindow::damageReceived()
     resize_expected = false;
 
     if (pc->isLockScreen()) {
-        static_cast<MCompositeManager*>(qApp)->lockScreenPainted();
-        // Don't animate the opening of the lock screen.
         newly_mapped = false;
         setVisible(true);
         endAnimation();
+        static_cast<MCompositeManager*>(qApp)->lockScreenPainted();
         static_cast<MCompositeManager*>(qApp)->possiblyUnredirectTopmostWindow();
         return;
     }
