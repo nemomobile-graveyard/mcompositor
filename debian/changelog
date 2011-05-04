@@ -1,8 +1,16 @@
-mcompositor (0.9.7-1~unreleased) unstable; urgency=low
+mcompositor (0.9.7-1) unstable; urgency=low
 
-  * foo
+  * Fixes: NB#230034 - Low power mode ui is static and burn display
+  * Fixes: NB#245764 - Implement chained apps as subview animation
+  * Fixes: NB#247147 - Systemwide sheet does not come to foreground if it
+    is open in background
+  * Fixes: NB#239295 - Text edit focus is flickering.
+  * Fixes: NB#239538 - Compositor should provide a property to inform whether
+    current foreground application has status bar
+  * Fixes: NB#250742 - Low power mode UI appears black
+  * Fixes: NB#249714 - Lock screen animation does not work always
 
- -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 20 Apr 2011 16:06:17 +0300
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 04 May 2011 10:25:10 +0300
 
 mcompositor (0.9.6-1) unstable; urgency=low
 
