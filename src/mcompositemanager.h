@@ -140,7 +140,7 @@ public:
     MCompositeWindow *splashed(MCompositeWindow *cw) const;
 
     void debug(const QString& d);
-    const QHash<Window, MWindowPropertyCache*>& propCaches() const;
+    QHash<Window, MWindowPropertyCache*>& propCaches() const;
 
     void expectResize(MCompositeWindow *cw, const QRect &r);
     enum StackPosition {
