@@ -4274,7 +4274,7 @@ MCompositeManager::~MCompositeManager()
     d = 0;
 }
 
-const QHash<Window, MWindowPropertyCache*>& MCompositeManager::propCaches() const
+QHash<Window, MWindowPropertyCache*>& MCompositeManager::propCaches() const
 {
     return d->prop_caches;
 }

@@ -253,6 +253,7 @@ public:
 #endif
 
     MWindowPropertyCache *propertyCache() const { return pc; }
+    void setPropertyCache(MWindowPropertyCache *p) { pc = p; }
     
     /*!
      * Convenience function returns last visible parent of this window
