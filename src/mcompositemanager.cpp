@@ -1179,10 +1179,10 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
-        // mark obscured so that we send unobscured if it's remapped
-        item->setWindowObscured(true, true);
         if (!wpc->noAnimations())
             item->closeWindowAnimation();
+        // mark obscured so that we send unobscured if it's remapped
+        item->setWindowObscured(true, true);
         item->stopPing();
         item->setIsMapped(false);
         setWindowState(e->window, WithdrawnState);
