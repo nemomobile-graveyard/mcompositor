@@ -91,6 +91,7 @@ public:
      * proper VisibilityNotify for the window.
      */
     void setWindowObscured(bool obscured, bool no_notify = false);
+    bool windowObscured() { return window_obscured; }
 
     /*!
      * Returns whether this item is iconified or not
