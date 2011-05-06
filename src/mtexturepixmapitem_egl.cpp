@@ -302,12 +302,17 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
     bool new_image = false;
     if (d->custom_tfp) {
         QPixmap qp = QPixmap::fromX11Pixmap(d->windowp);
-        
-        QImage img = d->glwidget->convertToGLFormat(qp.toImage());
-        glBindTexture(GL_TEXTURE_2D, d->textureId);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img.width(), 
+
+        QT_TRY {
+            QImage img = d->glwidget->convertToGLFormat(qp.toImage());
+            glBindTexture(GL_TEXTURE_2D, d->textureId);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img.width(),
                         img.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
-        new_image = true;
+            new_image = true;
+        } QT_CATCH(std::bad_alloc e) {
+            /* XGetImage() failed, the window has been unmapped. */;
+            qWarning("MTexturePixmapItem::%s(): std::bad_alloc e", __func__);
+        }
     } else if (d->egl_image == EGL_NO_IMAGE_KHR) {
         saveBackingStore();
         new_image = true;
