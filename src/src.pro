@@ -44,8 +44,8 @@ HEADERS += \
     mcompositemanagerextension.h \
     mcompositewindowshadereffect.h \
     mcompmgrextensionfactory.h \
-    mcurrentwindoworientationprovider.h \
-    mcurrentwindoworientationprovider_p.h \
+    mcontextproviderwrapper.h \
+    mcontextproviderwrapper_p.h \
     mcompositewindowanimation.h \
     mpositionanimation.h \
     mstatusbartexture.h
@@ -61,7 +61,7 @@ SOURCES += \
     msplashscreen.cpp \
     mcompositemanagerextension.cpp \
     mcompositewindowshadereffect.cpp \
-    mcurrentwindoworientationprovider.cpp \
+    mcontextproviderwrapper.cpp \
     mcompositewindowanimation.cpp \
     mpositionanimation.cpp \
     mstatusbartexture.cpp
