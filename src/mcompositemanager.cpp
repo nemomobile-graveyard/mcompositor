@@ -2382,9 +2382,10 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             if (event->window != stack[DESKTOP_LAYER])
                 setExposeDesktop(false);
             if (i && i->propertyCache()->windowState() == IconicState) {
-                if (i->propertyCache()->noAnimations())
+                if (i->propertyCache()->noAnimations()) {
+                    STACKING("positionWindow 0x%lx -> top", i->window());
                     positionWindow(i->window(), true);
-                else {
+                } else {
                     i->restore(needComp);
                     if (needComp)
                         enableCompositing();
@@ -3907,9 +3908,9 @@ void MCompositeManager::dumpState(const char *heading)
     for (cwit = d->windows.constBegin(); cwit != d->windows.constEnd();
          ++cwit) {
         static const char *wintypes[] = {
-            "INVALID", "DESKTOP", "NORMAL", "DIALOG", "NO_DECOR_DIALOG",
-            "FRAMELESS", "DOCK", "INPUT", "ABOVE", "NOTIFICATION",
-            "DECORATOR", "UNKNOWN",
+            "INVALID", "DESKTOP", "NORMAL", "DIALOG", "SHEET",
+            "NO_DECOR_DIALOG", "FRAMELESS", "DOCK", "INPUT",
+            "ABOVE", "NOTIFICATION", "DECORATOR", "UNKNOWN",
         };
         static const char *winstates[] = {
             "Withdrawn", "Normal", NULL, "Iconic"
@@ -3962,9 +3963,11 @@ void MCompositeManager::dumpState(const char *heading)
         qDebug("    mapped: %s, newly mapped: %s, stacked unmapped: %s",
                yn[cw->isMapped()], yn[cw->isNewlyMapped()],
                yn[cw->propertyCache()->stackedUnmapped()]);
-        qDebug("    InputOnly: %s, visible: %s, direct rendered: %s",
+        qDebug("    InputOnly: %s, visible: %s, obscured: %s, "
+               "direct rendered: %s",
                yn[cw->propertyCache()->isInputOnly()],
-               yn[cw->windowVisible()], yn[cw->isDirectRendered()]);
+               yn[cw->windowVisible()], yn[cw->windowObscured()],
+               yn[cw->isDirectRendered()]);
         qDebug("    window type: %s, is app: %s, needs decoration: %s",
                wintypes[cw->propertyCache()->windowType()],
                yn[cw->isAppWindow()], yn[cw->needDecoration()]);
