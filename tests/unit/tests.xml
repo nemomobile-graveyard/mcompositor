@@ -6,6 +6,9 @@
       <case name="ut_anim" description="ut_anim" requirement="" timeout="300">
         <step expected_result="0">/usr/lib/mcompositor-unit-tests/ut_anim</step>
       </case>
+      <case name="ut_closeapp" description="ut_closeapp" requirement="" timeout="300">
+        <step expected_result="0">/usr/lib/mcompositor-unit-tests/ut_closeapp</step>
+      </case>
       <case name="ut_lockscreen" description="ut_lockscreen" requirement="" timeout="300">
         <step expected_result="0">/usr/lib/mcompositor-unit-tests/ut_lockscreen</step>
       </case>

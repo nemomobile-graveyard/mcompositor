@@ -230,6 +230,7 @@ private:
     friend class ut_Stacking;
     friend class ut_Anim;
     friend class ut_Lockscreen;
+    friend class ut_CloseApp;
 };
 
 #endif
