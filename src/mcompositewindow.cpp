@@ -393,7 +393,7 @@ void MCompositeWindow::q_fadeIn()
         endAnimation();
 }
 
-bool MCompositeWindow::isInanimate()
+bool MCompositeWindow::isInanimate(bool check_pixmap)
 {
     if (static_cast<MCompositeManager*>(qApp)->displayOff())
         return true;
@@ -410,7 +410,7 @@ bool MCompositeWindow::isInanimate()
         return true;
     if (pc->isInputOnly() || pc->isOverrideRedirect())
         return true;
-    if (!windowPixmap())
+    if (check_pixmap && !windowPixmap())
         return true;
     // isAppWindow() returns true for system dialogs
     if (!isAppWindow() && !pc->invokedBy())
@@ -422,7 +422,7 @@ void MCompositeWindow::closeWindowRequest()
 {
     if (!pc || !pc->is_valid || (!isMapped() && !pc->beingMapped()))
         return;
-    if (!isInanimate()) {
+    if (!isInanimate(false)) {
         // get a Pixmap for the possible unmap animation
         MCompositeManager *p = (MCompositeManager *) qApp;
         if (!p->isCompositing())

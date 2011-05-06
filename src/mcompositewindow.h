@@ -369,7 +369,7 @@ private:
       between shader effects */
     virtual MTexturePixmapPrivate* renderer() const = 0;
     void findBehindWindow();
-    bool isInanimate();
+    bool isInanimate(bool check_pixmap = true);
 
     QPointer<MWindowPropertyCache> pc;
     QPointer<MCompositeWindow> behind_window;
