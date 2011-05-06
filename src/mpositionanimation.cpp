@@ -100,6 +100,9 @@ void MSheetAnimation::windowClosed()
     setEnabled(true);
     positionAnimation()->setEasingCurve(QEasingCurve::InOutExpo);
     animationGroup()->setDirection(QAbstractAnimation::Backward);
+    targetWindow()->setVisible(true);
+    if (targetWindow()->behind())
+       targetWindow()->behind()->setVisible(true);
     animationGroup()->start();    
 }
 
