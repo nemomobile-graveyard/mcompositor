@@ -284,7 +284,10 @@ public:
     void waitForPainting();
 
     MCompositeWindowAnimation* windowAnimator() const;
-    
+
+    void startCloseTimer();
+    void stopCloseTimer();
+
 public slots:
 
     void updateIconGeometry();
@@ -338,6 +341,7 @@ private slots:
     void pingWindow(bool restart = false);
     void q_itemRestored();
     void q_fadeIn();
+    void closeTimeout();
     
 signals:
     /*!
@@ -395,6 +399,7 @@ private:
     // Main ping timer
     QTimer *t_ping, *t_reappear;
     QTimer *damage_timer;
+    QTimer close_timer;
     Qt::HANDLE win_id;
 
     friend class MTexturePixmapPrivate;

@@ -528,15 +528,16 @@ static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
     return False;
 }
 
-static void kill_window(Window window)
+static void kill_window(MCompositeWindow *window)
 {
-    int pid = MCompAtoms::instance()->getPid(window);
+    int pid = window->propertyCache()->pid();
     if (pid != 0) {
         // negative PID to kill the whole process group
         ::kill(-pid, SIGKILL);
         ::kill(pid, SIGKILL);
     }
-    XKillClient(QX11Info::display(), window);
+    if (window->isValid())
+        XKillClient(QX11Info::display(), window->window());
 }
 
 static void safe_move(QList<Window>& winlist, int from, int to)
@@ -1187,6 +1188,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
+        item->stopCloseTimer();
         if (!wpc->noAnimations())
             item->closeWindowAnimation();
         // mark obscured so that we send unobscured if it's remapped
@@ -2538,8 +2540,9 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
 void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
 {
     bool delete_sent = false;
-    if ((window->propertyCache()->supportedProtocols().indexOf(
-                                                               ATOM(WM_DELETE_WINDOW)) != -1) && window->status() != MCompositeWindow::Hung) {
+    if (window->propertyCache()->supportedProtocols().contains(
+                                                      ATOM(WM_DELETE_WINDOW))
+        && window->status() != MCompositeWindow::Hung) {
         // send WM_DELETE_WINDOW message to the window that needs to close
         XEvent ev;
         memset(&ev, 0, sizeof(ev));
@@ -2554,10 +2557,14 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
         XSendEvent(QX11Info::display(), window->window(), False,
                    NoEventMask, &ev);
         delete_sent = true;
+        // the window has only some time to unmap even if it replies to the
+        // pings unless it raises itself (which would normally mean asking the
+        // user for confirmation etc.)
+        window->startCloseTimer();
     }
 
     if (!delete_sent || window->status() == MCompositeWindow::Hung)
-        kill_window(window->window());
+        kill_window(window);
     /* DO NOT deleteLater() this window yet because
        a) it can remove a mapped window from stacking_list
        b) delete can be ignored (e.g. "Do you want to exit?" dialog)
@@ -3610,6 +3617,9 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
         MWindowPropertyCache *pc = prop_caches.value(w, 0);
         //qDebug() << __func__ << "to top:" << w;
         if (pc && pc->isMapped()) {
+            MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+            if (cw)
+                cw->stopCloseTimer();
             setWindowState(w, NormalState);
             if (w == stack[DESKTOP_LAYER])
                 // iconify apps for roughSort()
@@ -4404,4 +4414,5 @@ void MCompositeManager::ensureSettingsFile()
     config("lockscreen-map-timeout-ms",        1000);
     config("default-statusbar-height",           36);
     config("default-desktop-angle",             270);
+    config("close-timeout-ms",                 5000);
 }

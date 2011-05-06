@@ -83,6 +83,10 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     damage_timer->setSingleShot(true);
     connect(damage_timer, SIGNAL(timeout()), SLOT(damageReceived()));
 
+    close_timer.setSingleShot(true);
+    close_timer.setInterval(mc->configInt("close-timeout-ms"));
+    connect(&close_timer, SIGNAL(timeout()), SLOT(closeTimeout()));
+
     // Newly-mapped non-decorated application windows are not initially 
     // visible to prevent flickering when animation is started.
     // We initially prevent item visibility from compositor itself
@@ -561,6 +565,23 @@ void MCompositeWindow::reappearTimeout()
     if (window_status == Hung)
         // show "application not responding" UI again
         emit windowHung(this, true);
+}
+
+void MCompositeWindow::closeTimeout()
+{
+    MCompositeManager *p = (MCompositeManager*)qApp;
+    window_status = Hung;
+    p->d->closeHandler(this); // kill
+}
+
+void MCompositeWindow::startCloseTimer()
+{
+    close_timer.start();
+}
+
+void MCompositeWindow::stopCloseTimer()
+{
+    close_timer.stop();
 }
 
 void MCompositeWindow::receivedPing(ulong serverTimeStamp)
