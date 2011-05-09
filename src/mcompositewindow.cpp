@@ -118,7 +118,8 @@ MCompositeWindow::~MCompositeWindow()
     endAnimation();    
     if (pc) {
         pc->damageTracking(false);
-        p->d->prop_caches.remove(window());
+        if (p->d->prop_caches.value(window()) == pc)
+            p->d->prop_caches.remove(window());
         pc->deleteLater();
     }
     if (animator)
