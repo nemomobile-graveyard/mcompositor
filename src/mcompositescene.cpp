@@ -151,23 +151,21 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
             && !cw->group()) // window is not renderered off-screen)
             visible -= r;
     }
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
     if (size > 0) {
-        glClearColor(0, 0, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
         // paint from bottom to top so that blending works
         for (int i = size - 1; i >= 0; --i) {
             int item_i = to_paint[i];
             MCompositeWindow *cw = (MCompositeWindow*)items[item_i];
-            painter->save();
-            if (!desktop_painted) {
-                if (cw->propertyCache()->isDecorator()) {
-                    // don't paint decorator on top of plain black background
-                    // (see NB#182860, NB#192454)
-                    painter->restore();
-                    continue;
-                }
+            if (cw->propertyCache()->isDecorator()
+                && !MDecoratorFrame::instance()->managedClient()) {
+                // don't paint decorator on top of plain black background
+                // (see NB#182860, NB#192454)
+                continue;
             }
             // TODO: paint only the intersected region (glScissor?)
+            painter->save();
             painter->setMatrix(cw->sceneMatrix(), true);
             cw->paint(painter, &options[item_i], widget);
             painter->restore();
