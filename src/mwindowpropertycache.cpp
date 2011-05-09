@@ -941,8 +941,7 @@ const QRect &MWindowPropertyCache::statusbarGeometry()
 {
     QLatin1String me(SLOT(statusbarGeometry()));
     if (!is_valid || !requests[me])
-        // workaround for devlock
-        return meegoStackingLayer() == 1 ? QRect() : statusbar_geom;
+        return statusbar_geom;
 
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
@@ -955,7 +954,7 @@ const QRect &MWindowPropertyCache::statusbarGeometry()
     } else
         statusbar_geom.setRect(0, 0, 0, 0);
     free(r);
-    return meegoStackingLayer() == 1 ? QRect() : statusbar_geom;
+    return statusbar_geom;
 }
 
 const QList<Atom>& MWindowPropertyCache::supportedProtocols()
