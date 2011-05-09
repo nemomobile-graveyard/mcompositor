@@ -1,3 +1,9 @@
+mcompositor (0.9.9-1~unreleased) unstable; urgency=low
+
+  * foo
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Mon, 09 May 2011 17:10:25 +0300
+
 mcompositor (0.9.8-1) unstable; urgency=low
 
   * Fixes: NB#251544 - During a call, QML applications only show a blank window
