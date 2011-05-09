@@ -10,6 +10,9 @@
 
 #include <QtDebug>
 
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 #include <X11/Xlib.h>
 
 static int dheight, dwidth;
@@ -92,20 +95,18 @@ void ut_CloseApp::testKillIconified()
     prepareStack(stack);
     cmgr->d->roughSort();
 
-    QProcess dummy_proc;
-    dummy_proc.start("/usr/lib/mcompositor-unit-tests/dummy_process");
-    for (int i = 0; i < 10 && dummy_proc.state() != QProcess::Running; ++i)
-       QTest::qWait(500);
-    QCOMPARE(dummy_proc.state(), QProcess::Running);
-
-    iconic_lmt.wm_pid = dummy_proc.pid();
+    if (!(iconic_lmt.wm_pid = fork())) {
+        pause();
+        abort();
+    }
     QCOMPARE(iconic_lmt.pid() > 0, true);
 
     // this should start a timer and kill the process after the timeout
+    int status;
     cmgr->d->closeHandler(cw);
     QTest::qWait(cmgr->configInt("close-timeout-ms") + 500);
-
-    QCOMPARE(dummy_proc.state(), QProcess::NotRunning);
+    QCOMPARE(waitpid(-1, &status, WNOHANG), (int)iconic_lmt.wm_pid);
+    QCOMPARE(WIFSIGNALED(status) && WTERMSIG(status) == SIGKILL, true);
 }
 
 void ut_CloseApp::testCloseIconifiedWithRaise()
@@ -123,13 +124,10 @@ void ut_CloseApp::testCloseIconifiedWithRaise()
     prepareStack(stack);
     cmgr->d->roughSort();
 
-    QProcess dummy_proc;
-    dummy_proc.start("/usr/lib/mcompositor-unit-tests/dummy_process");
-    for (int i = 0; i < 10 && dummy_proc.state() != QProcess::Running; ++i)
-       QTest::qWait(500);
-    QCOMPARE(dummy_proc.state(), QProcess::Running);
-
-    iconic_lmt.wm_pid = dummy_proc.pid();
+    if (!(iconic_lmt.wm_pid = fork())) {
+        pause();
+        abort();
+    }
     QCOMPARE(iconic_lmt.pid() > 0, true);
 
     // raise the window before the timer expires and check the process
@@ -147,12 +145,10 @@ void ut_CloseApp::testCloseIconifiedWithRaise()
     e.xclient.data.l[0] = 1;
     cmgr->d->clientMessageEvent(&(e.xclient));
 
+    cmgr->d->closeHandler(cw);
     QTest::qWait(cmgr->configInt("close-timeout-ms") / 2 + 500);
-
-    QCOMPARE(dummy_proc.state(), QProcess::Running);
-    dummy_proc.kill();
-    while (dummy_proc.state() == QProcess::Running)
-        QTest::qWait(500);
+    QCOMPARE(waitpid(-1, NULL, WNOHANG), 0);
+    kill(iconic_lmt.wm_pid, SIGKILL);
 }
 
 int main(int argc, char* argv[])
