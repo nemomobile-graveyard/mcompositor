@@ -551,15 +551,15 @@ static void safe_move(QList<Window>& winlist, int from, int to)
         qWarning("safe_move(%d -> %d); nwins=%d", from, to, slsize);
 }
 
-MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
+MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
     : QObject(p),
       prev_focus(0),
       buttoned_win(0),
       glwidget(0),
       compositing(true),
       changed_properties(false),
-      orientationProvider(qobject_cast<MCompositeManager*>(p)->configInt("default-current-window-angle"),
-                          qobject_cast<MCompositeManager*>(p)->configInt("default-desktop-angle")),
+      orientationProvider(p->configInt("default-current-window-angle"),
+                          p->configInt("default-desktop-angle")),
       prepared(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime),

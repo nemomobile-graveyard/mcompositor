@@ -37,6 +37,7 @@
 class QGraphicsScene;
 class QGLWidget;
 
+class MCompositeManager;
 class MCompositeScene;
 class MSimpleWindowFrame;
 class MCompAtoms;
@@ -64,7 +65,7 @@ class MCompositeManagerPrivate: public QObject
     Q_OBJECT
 public:
 
-    MCompositeManagerPrivate(QObject *p);
+    MCompositeManagerPrivate(MCompositeManager *p);
     ~MCompositeManagerPrivate();
 
     static Window parentWindow(Window child);
