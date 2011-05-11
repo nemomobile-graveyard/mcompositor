@@ -30,6 +30,7 @@ class QGraphicsScene;
 class MCompositeManagerPrivate;
 class MCompAtoms;
 class MCompositeWindow;
+class MDeviceState;
 
 /*!
  * MCompositeManager is responsible for managing window events.
@@ -132,7 +133,12 @@ public:
     /*!
      * Returns if the display is off
      */
-    bool displayOff();
+    bool displayOff() const;
+
+    /*!
+     * Accessor for the MDeviceState object
+     */
+    MDeviceState &deviceState() const;
 
     /*!
      * Is a splash screen waiting for @cw?  If so, return it.
