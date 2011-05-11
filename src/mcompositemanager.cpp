@@ -4358,9 +4358,14 @@ void MCompositeManager::debug(const QString& d)
     _log("%s\n", msg);
 }
 
-bool MCompositeManager::displayOff()
+bool MCompositeManager::displayOff() const
 {
     return d->device_state->displayOff();
+}
+
+MDeviceState &MCompositeManager::deviceState() const
+{
+    return *d->device_state;
 }
 
 MCompositeWindow *MCompositeManager::splashed(MCompositeWindow *cw) const
