@@ -55,6 +55,7 @@ void MDeviceState::callPropChanged()
 void MDeviceState::topPropChanged()
 {
     screen_topedge = top_prop->value().toString();
+    emit screenTopEdgeChange(screen_topedge);
 }
 
 MDeviceState::MDeviceState(QObject* parent)

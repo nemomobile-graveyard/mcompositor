@@ -79,7 +79,8 @@ publicHeaders.files += mcompositewindow.h \
                       mcompatoms_p.h \
                       mcompmgrextensionfactory.h \
                       mcompositewindowanimation.h \
-                      mstatusbartexture.h
+                      mstatusbartexture.h \
+                      mdevicestate.h
 publicHeaders.path = $$M_INSTALL_HEADERS/mcompositor
 INSTALLS += publicHeaders
 
