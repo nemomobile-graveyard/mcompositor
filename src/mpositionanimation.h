@@ -22,8 +22,12 @@
 
 class QPropertyAnimation;
 class MStatusBarCrop;
+class QAbstractAnimation;
 
 #include <mcompositewindowanimation.h>
+#include <QVector>
+
+typedef QVector<QAbstractAnimation*> AnimVector;
 
 class MPositionAnimation: public MCompositeWindowAnimation
 {
@@ -32,9 +36,9 @@ class MPositionAnimation: public MCompositeWindowAnimation
     MPositionAnimation(QObject* parent = 0);
     ~MPositionAnimation();
     void setEnabled(bool enabled);
-
+    AnimVector& activeAnimations();
  private:
-    QPropertyAnimation* position;
+    AnimVector animvec;
 };
 
 class MSheetAnimation: public MPositionAnimation
