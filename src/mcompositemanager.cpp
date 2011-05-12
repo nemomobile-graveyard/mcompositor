@@ -1657,8 +1657,9 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
         /* FIXME: do this based on geometry to cope with TYPE_NORMAL dialogs */
         /* don't focus a window that is obscured (assumes that NORMAL
          * and DESKTOP cover the whole screen) */
-        if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
-            pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+        if (!pc->isInputOnly() && !pc->isOverrideRedirect() &&
+            (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
+             pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP)))
             break;
     }
 
