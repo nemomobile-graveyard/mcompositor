@@ -24,6 +24,7 @@
 #include <mcompositewindow.h>
 #include <mcompositewindowshadereffect.h>
 #include <mstatusbartexture.h>
+#include <mcompositemanager.h>
 
 #include "mpositionanimation.h"
 
@@ -36,35 +37,56 @@ MPositionAnimation::MPositionAnimation(QObject* parent)
     // only use the position animation
     animationGroup()->removeAnimation(scaleAnimation());
     animationGroup()->removeAnimation(opacityAnimation());
-    position = positionAnimation();
     
     if (screen.isEmpty())
         screen = QApplication::desktop()->availableGeometry();  
 }
 
-static void removeExternalAnimations(QAnimationGroup* group, const QAbstractAnimation* skip)
+static void removeExternalAnimations(QAnimationGroup* group, 
+                                     const AnimVector& skipvec)
 {
-    for (int i = 0; i < group->animationCount(); ++i)
-        if (group->animationAt(i) != skip)
-            group->takeAnimation(i);
+    for (int i = 0; i < group->animationCount(); ++i) {
+        bool skip = false;
+        QAbstractAnimation* a = group->animationAt(i);
+        for (int p = 0; p < skipvec.size(); ++p) {
+            if (a == skipvec[p]) { 
+                skip = true;
+                break;
+            }
+        }
+        if (!skip && a)
+            group->removeAnimation(a);
+    }
+}
+
+AnimVector& MPositionAnimation::activeAnimations()
+{
+    return animvec;
 }
 
 MPositionAnimation::~MPositionAnimation()
 {
     // don't delete externally referenced animation objects
-    removeExternalAnimations(animationGroup(), position);
+    removeExternalAnimations(animationGroup(), activeAnimations());
 }
 
 void MPositionAnimation::setEnabled(bool enabled)
 {
-    if (enabled && (animationGroup()->indexOfAnimation(position) == -1)) {
-        animationGroup()->addAnimation(position);
+    if (enabled) {
+        AnimVector s = activeAnimations();
+        for (int i = 0; i < s.size(); ++i) {
+            if (animationGroup()->indexOfAnimation(s[i]) == -1) 
+                animationGroup()->addAnimation(s[i]);
+        }
         // remove external animation objects we don't own
-        removeExternalAnimations(animationGroup(), position);
+        removeExternalAnimations(animationGroup(), activeAnimations());
 
     } else if (!enabled) {
-        animationGroup()->stop();
-        animationGroup()->removeAnimation(position);
+        AnimVector s = activeAnimations();
+        for (int i = 0; i < s.size(); ++i) {
+            if(animationGroup()->indexOfAnimation(s[i]) != -1)
+                animationGroup()->removeAnimation(s[i]);
+        }
     }
 }
 
@@ -73,6 +95,7 @@ MSheetAnimation::MSheetAnimation(QObject* parent)
 {
     // From the UX specs
     positionAnimation()->setDuration(350);
+    activeAnimations().append(positionAnimation());
 }
 
 void MSheetAnimation::windowShown()
@@ -181,6 +204,10 @@ MChainedAnimation::MChainedAnimation(QObject* parent)
     
     connect(animationGroup(), SIGNAL(finished()), SLOT(endAnimation()));
     cropper = new MStatusBarCrop(this);
+
+    activeAnimations().append(positionAnimation());
+    activeAnimations().append(invoker_pos);
+    
 }
 
 void MChainedAnimation::windowShown()
