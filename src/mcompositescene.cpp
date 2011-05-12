@@ -40,12 +40,13 @@
 
 static int error_handler(Display * , XErrorEvent *error)
 {
-    if (error->resourceid == QX11Info::appRootWindow() && error->error_code == BadAccess) {
+    if (error->resourceid == QX11Info::appRootWindow()
+        && error->error_code == BadAccess) {
         qCritical("Another window manager is running.");
         ::exit(0);
     }
-    if (error->error_code == BadMatch)
-        qDebug() << "Bad match error " << error->resourceid;
+    /*if (error->error_code == BadMatch)
+        qDebug() << "Bad match error " << error->resourceid;*/
 
     return 0;
 }
