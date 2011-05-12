@@ -47,6 +47,7 @@ signals:
 
     void callStateChange(bool call_ongoing);
     void displayStateChange(bool display_off);
+    void screenTopEdgeChange(const QString &top_edge);
 
 private slots:
 
