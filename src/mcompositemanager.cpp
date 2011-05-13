@@ -2781,7 +2781,8 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
         }
     } else {
         MWindowPropertyCache *pc;
-        if (!lockscreen_painted && (pc = findLockScreen())) {
+        if (device_state->touchScreenLock() == "locked" &&
+            !lockscreen_painted && (pc = findLockScreen())) {
             // lockscreen not painted yet: wait for painting or timeout
             if (!pc->isMapped())
                 // give it little time to map but not for ever

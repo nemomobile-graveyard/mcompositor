@@ -38,6 +38,30 @@ void MDeviceState::mceDisplayStatusIndSignal(QString mode)
         }
     }
 }
+
+void MDeviceState::mceTouchScreenLockSignal(QString mode)
+{
+    if (tsmode_call) {
+        delete tsmode_call;
+        tsmode_call = 0;
+    }
+    touchScreenLockMode = mode;
+}
+
+void MDeviceState::gotTouchScreenLockMode(QDBusPendingCallWatcher *watcher)
+{
+    QDBusPendingReply<QString> reply = *watcher;
+    if (reply.isError()) {
+        qDebug() << __func__ << "getting touch screen lock mode failed:"
+                 << reply.error().message();
+        goto away;
+    }
+    touchScreenLockMode = reply;
+
+away:
+    delete tsmode_call;
+    tsmode_call = 0;
+}
 #endif
 
 void MDeviceState::callPropChanged()
@@ -71,13 +95,27 @@ MDeviceState::MDeviceState(QObject* parent)
     connect(top_prop, SIGNAL(valueChanged()), this, SLOT(topPropChanged()));
 
 #ifdef GLES2_VERSION
+    touchScreenLockMode = MCE_TK_UNLOCKED;
     systembus_conn = new QDBusConnection(QDBusConnection::systemBus());
+    if (!systembus_conn->isConnected())
+        qWarning("Failed to connect to the D-Bus system bus");
+
     systembus_conn->connect(MCE_SERVICE, MCE_SIGNAL_PATH, MCE_SIGNAL_IF,
                             MCE_DISPLAY_SIG, this,
                             SLOT(mceDisplayStatusIndSignal(QString)));
+    systembus_conn->connect(MCE_SERVICE, MCE_SIGNAL_PATH, MCE_SIGNAL_IF,
+                            MCE_TKLOCK_MODE_SIG, this,
+                            SLOT(mceTouchScreenLockSignal(QString)));
 
-    if (!systembus_conn->isConnected())
-        qWarning("Failed to connect to the D-Bus system bus");
+    // get the initial state of touch screen lock
+    tsmode_call = new QDBusPendingCallWatcher(
+        systembus_conn->asyncCall(
+            QDBusMessage::createMethodCall(MCE_SERVICE,
+                                           MCE_REQUEST_PATH,
+                                           MCE_REQUEST_IF,
+                                           MCE_TKLOCK_MODE_GET)), this);
+    connect(tsmode_call, SIGNAL(finished(QDBusPendingCallWatcher*)),
+            this, SLOT(gotTouchScreenLockMode(QDBusPendingCallWatcher*)));
 
     /* FIXME: Temporary workaround, current MCE does not seem to provide
      * get_display_status interface */
