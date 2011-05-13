@@ -549,6 +549,9 @@ void ut_Anim::testExternalAnimHandler()
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Closing, true); 
     while (cw->windowAnimator()->isActive())
         QTest::qWait(500);
+
+    
+    qDebug()<< cmgr->d->stacking_list;
 }
 
 int main(int argc, char* argv[])

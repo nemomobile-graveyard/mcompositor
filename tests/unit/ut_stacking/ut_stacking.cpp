@@ -29,9 +29,13 @@ public:
         memset(&attrs, 0, sizeof(attrs));
         setIsMapped(is_mapped);
         setRealGeometry(QRect(0, 0, dwidth, dheight));
+        // icon geometry can be required for iconifying animation
+        icon_geometry = QRect(0, 0, dwidth / 2, dheight / 2);
         type_atoms.append(ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE));
         window_state = NormalState;
         has_alpha = 0;
+        // mark valid to create animation object
+        is_valid = true;
     }
 
     xcb_get_window_attributes_reply_t attrs;
@@ -240,6 +244,76 @@ void ut_Stacking::testLotOfUnmapped()
         QCOMPARE(checkOrder(unmapped), true);
     }
     printf("\n");
+}
+
+// excercises the code thoroughly with internal stacking implementation
+// to see if MCompositeWindow::behind() works
+void ut_Stacking::testBehind()
+{    
+    cmgr->d->stacking_list.clear();
+    
+    fake_desktop_window desk(1);
+    fake_LMT_window win1(1000);
+    fake_LMT_window win2(2000);
+    fake_LMT_window win3(3000);
+
+    cmgr->d->prop_caches[1] = &desk;
+    cmgr->d->prop_caches[1000] = &win1;
+    cmgr->d->prop_caches[2000] = &win2;
+    cmgr->d->prop_caches[3000] = &win3;
+   
+    //desktop
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = 1;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+
+    // map 2000
+    memset(&e, 0, sizeof(e));
+    e.window = 2000;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+    
+    QTest::qWait(1000);
+    
+    // map  1000
+    memset(&e, 0, sizeof(e));
+    e.window = 1000;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+    
+    QTest::qWait(1000);
+    MCompositeWindow *cw1 = cmgr->d->windows.value(1000, 0);
+    QCOMPARE(cw1 != 0, true);
+    QCOMPARE(cw1->behind()->window() == 2000, true);
+
+    //  map 3000 
+    memset(&e, 0, sizeof(e));
+    e.window = 3000;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+    
+    QTest::qWait(1000);
+    
+    MCompositeWindow *cw3 = cmgr->d->windows.value(3000, 0);
+    QCOMPARE(cw3 != 0, true);
+    QCOMPARE(cw3->behind()->window() == 1000, true);
+
+    // // unmap 1000 and map 3000. see if we get window below 1000.
+    XUnmapEvent ue;
+    memset(&ue, 0, sizeof(ue));
+    ue.window = 1000;
+    ue.event = QX11Info::appRootWindow();
+    cmgr->d->unmapEvent(&ue);
+
+    memset(&e, 0, sizeof(e));
+    e.window = 3000;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+
+    QTest::qWait(1000);
+    QCOMPARE(cw3->behind()->window() == 2000, true);    
 }
 
 int main(int argc, char* argv[])
