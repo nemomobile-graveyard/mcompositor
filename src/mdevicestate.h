@@ -42,6 +42,7 @@ public:
     virtual bool displayOff() const { return display_off; }
     bool ongoingCall() const { return ongoing_call; }
     const QString &screenTopEdge() const { return screen_topedge; }
+    const QString &touchScreenLock() const { return touchScreenLockMode; }
 
 signals:
 
@@ -53,6 +54,8 @@ private slots:
 
 #ifdef GLES2_VERSION
     void mceDisplayStatusIndSignal(QString mode);
+    void mceTouchScreenLockSignal(QString mode);
+    void gotTouchScreenLockMode(QDBusPendingCallWatcher *watcher);
 #endif
     void callPropChanged();
     void topPropChanged();
@@ -61,11 +64,13 @@ private:
 
 #ifdef GLES2_VERSION
     QDBusConnection *systembus_conn;
+    QDBusPendingCallWatcher *tsmode_call;
 #endif
     ContextProperty *call_prop, *top_prop;
     bool display_off;
     bool ongoing_call;
     QString screen_topedge;
+    QString touchScreenLockMode;
 };
 
 #endif
