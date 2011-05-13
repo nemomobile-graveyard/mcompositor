@@ -13,6 +13,7 @@ private slots:
 
     void testLotOfUnmapped();  
     void testRaisingAndMapping();  
+    void testBehind();
 
 private:
     MCompositeManager *cmgr;

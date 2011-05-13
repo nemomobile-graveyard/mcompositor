@@ -735,14 +735,15 @@ void MCompositeWindow::findBehindWindow()
         if (!w) continue;
         if (w->propertyCache()->windowState() == NormalState 
             && w->propertyCache()->isMapped()
-            && !w->propertyCache()->isDecorator()) 
+            && !w->propertyCache()->isDecorator()) {
             behind_window = w;
-        else if (w->propertyCache()->isDecorator() &&
-                 MDecoratorFrame::instance()->managedClient())
+            return;
+        } else if (w->propertyCache()->isDecorator() &&
+                   MDecoratorFrame::instance()->managedClient()) {
             behind_window = MDecoratorFrame::instance()->managedClient();
-        else
-            behind_window = MCompositeWindow::compositeWindow(p->d->stack[DESKTOP_LAYER]);
-        break;
+            return;
+        } else
+            continue;
     }
 }
 
