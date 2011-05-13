@@ -1468,13 +1468,14 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
                         compositing = false;
                     }
                     MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
-                    if (!cw) {
-                        // first mapping
-                        cw = new MTexturePixmapItem(e->window, pc);
-                        windows[e->window] = cw;
+                    if (cw) {
+                        ((MTexturePixmapItem*)cw)->enableDirectFbRendering();
+                        setWindowDebugProperties(e->window);
+                    } else {
+                        XCompositeUnredirectWindow(QX11Info::display(),
+                                    e->window, CompositeRedirectManual);
+                        pc->damageTracking(false);
                     }
-                    ((MTexturePixmapItem*)cw)->enableDirectFbRendering();
-                    setWindowDebugProperties(e->window);
                 }
             } else {
                 pc->damageTracking(true);
