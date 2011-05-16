@@ -564,6 +564,14 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
         delete pastDamages;
 }
 
+static bool had_xerror;
+static int (*orig_xerror)(Display *, XErrorEvent *);
+static int xerror(Display *, XErrorEvent *)
+{
+  had_xerror = true;
+  return 0;
+}
+
 void MTexturePixmapPrivate::saveBackingStore()
 {
     if (item->propertyCache()->isVirtual()) {
@@ -578,7 +586,16 @@ void MTexturePixmapPrivate::saveBackingStore()
 
     if (windowp)
         XFreePixmap(QX11Info::display(), windowp);
+
+    XSync(QX11Info::display(), False);
+    had_xerror = false;
+    orig_xerror = XSetErrorHandler(xerror);
     windowp = XCompositeNameWindowPixmap(QX11Info::display(), item->window());
+    XSync(QX11Info::display(), False);
+    XSetErrorHandler(orig_xerror);
+    if (had_xerror)
+        windowp = None;
+
     item->rebindPixmap(); // windowp == 0 is also handled here
 }
 
