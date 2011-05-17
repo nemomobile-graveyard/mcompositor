@@ -562,8 +562,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
       glwidget(0),
       compositing(true),
       changed_properties(false),
-      orientationProvider(p->configInt("default-current-window-angle"),
-                          p->configInt("default-desktop-angle")),
+      orientationProvider(p->configInt("default-desktop-angle")),
       prepared(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime),
@@ -4633,7 +4632,6 @@ void MCompositeManager::ensureSettingsFile()
     config("damage-timeout-ms",                 500);
     config("expect-resize-timeout-ms",          800);
     config("splash-timeout-ms",               30000);
-    config("default-current-window-angle",      270);
     config("lockscreen-map-timeout-ms",        1000);
     config("default-statusbar-height",           36);
     config("default-desktop-angle",             270);

@@ -11,7 +11,7 @@ MContextProviderWrapperPrivate::MContextProviderWrapperPrivate() :
     currentWindowAngleProperty(service, "/Screen/CurrentWindow/OrientationAngle"),
     desktopAngleProperty(service, "/Screen/Desktop/OrientationAngle")
 {
-    currentWindowAngleProperty.setValue(defaultCurrentWindowAngle);
+    currentWindowAngleProperty.setValue(QVariant(QVariant::Int));
     desktopAngleProperty.setValue(defaultDesktopAngle);
 }
 
@@ -20,13 +20,11 @@ MContextProviderWrapper::~MContextProviderWrapper()
     // keep QScopedPointer happy
 }
 
-MContextProviderWrapper::MContextProviderWrapper(unsigned defaultCurrentWindowAngle,
-                                                 unsigned defaultDesktopAngle):
+MContextProviderWrapper::MContextProviderWrapper(unsigned defaultDesktopAngle):
     d_ptr(new MContextProviderWrapperPrivate)
 {
     Q_D(MContextProviderWrapper);
     d->q_ptr = this;
-    d->defaultCurrentWindowAngle = defaultCurrentWindowAngle;
     d->defaultDesktopAngle = defaultDesktopAngle;
 }
 
@@ -36,7 +34,7 @@ void MContextProviderWrapper::updateCurrentWindowOrienationAngle(MWindowProperty
     if(pc != 0)
         d->currentWindowAngleProperty.setValue(pc->orientationAngle());
     else
-        d->currentWindowAngleProperty.setValue(d->defaultCurrentWindowAngle);
+        d->currentWindowAngleProperty.setValue(QVariant(QVariant::Int));
 }
 
 void MContextProviderWrapper::updateDesktopOrientationAngle(MWindowPropertyCache *pc)

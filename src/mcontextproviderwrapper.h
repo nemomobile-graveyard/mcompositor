@@ -9,8 +9,7 @@ class MContextProviderWrapperPrivate;
 class MContextProviderWrapper
 {
 public:
-    MContextProviderWrapper(unsigned defaultCurrentWindowAngle = 270,
-                            unsigned defaultDesktopAngle = 270);
+    MContextProviderWrapper(unsigned defaultDesktopAngle = 270);
     ~MContextProviderWrapper();
 
 public:
