@@ -1,6 +1,6 @@
-mcompositor (0.9.10-1~unreleased) unstable; urgency=low
+mcompositor (0.9.9-2) unstable; urgency=low
 
-  * foo
+  * mcompositor-dev: add contextkit dev packages as dependency
 
  -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 17 May 2011 11:38:51 +0300
 
