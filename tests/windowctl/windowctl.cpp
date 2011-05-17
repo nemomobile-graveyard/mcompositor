@@ -645,7 +645,7 @@ static pid_t rotate_screen(char *o, QString& stdOut)
 			return -1;
 		}
 		close(pipefd[0]);
-		sleep(5);
+		sleep(10);
 		kill(pid, SIGKILL);
 		return pid;
 	} else {
