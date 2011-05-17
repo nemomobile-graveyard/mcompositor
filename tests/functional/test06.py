@@ -17,7 +17,7 @@ if os.system('mcompositor-test-init.py'):
 
 def rotate_screen(top_edge):
   print 'rotate_screen:', top_edge
-  os.popen("windowctl R %s" % top_edge)
+  os.spawnlp(os.P_NOWAIT, "/usr/bin/windowctl", "windowctl", "R", top_edge)
   time.sleep(1)
 
 def print_stack_array(a):
@@ -77,24 +77,24 @@ for arg in ['l', 'b', 'r', 't']:
   o_cw = f_cw.read()
   cw = o_cw.split('#')
   print cw[1].strip() 
-  os.popen("xprop -id %s -f _MEEGOTOUCH_ORIENTATION_ANGLE 32c -set _MEEGOTOUCH_ORIENTATION_ANGLE %s"
-                  % ( cw[1].strip(), edge2angle[arg] ))  
+  os.popen("xprop -id %s -f _MEEGOTOUCH_ORIENTATION_ANGLE 32c "
+           "-set _MEEGOTOUCH_ORIENTATION_ANGLE %s"
+           % (cw[1].strip(), edge2angle[arg]))  
   # check if /Screen/CurrentWindow/OrientationAngle was set
   time.sleep(1)
-  f_ca = os.popen("qdbus org.maemo.mcompositor.context /Screen/CurrentWindow/OrientationAngle org.maemo.contextkit.Property.Get")
+  f_ca = os.popen("qdbus org.maemo.mcompositor.context "
+                  "/Screen/CurrentWindow/OrientationAngle "
+                  "org.maemo.contextkit.Property.Get")
   o_ca = f_ca.read()
   if o_ca.splitlines()[0] == edge2angle[arg]:
     print 'Value as expected: ' + edge2angle[arg]
+    time.sleep(9) # sleep the rotation (windowctl R) away
     continue
   ret = 1
   print '/Screen/CurrentWindow/OrientationAngle does not match expected value'
   print 'Current value: ' + clout.splitlines()[0]
   print 'Expected value: ' + edge2angle[arg]
   break
-
-  
-
-    
 
 # cleanup
 os.popen('pkill windowctl')
