@@ -1,8 +1,19 @@
-mcompositor (0.9.9-1~unreleased) unstable; urgency=low
+mcompositor (0.9.9-1) unstable; urgency=low
 
-  * foo
+  * Fixes: NB#251996 - COREWEB: 'MWindowPropertyCache::noAnimations...
+  * Fixes: NB#252268 - mabstractdecorator socket should be moved to /var/run
+  * make ut_closeapp resemble a unit test
+  * add MCompositeManager::deviceState() accessor for the plugin
+  * MDeviceState: add screenTopEdgeChange signal and publish the header
+  * Fixes: NB#253890 - While ... a chained app a wrong window is shown
+  * Further improvements to NB#253473 and related issues.
+  * Fixes: NB#251989 - VKB closes when screen is dimmed
+  * Fixes: NB#253847 - VKB is closed and UI is not updated well...
+  * Fixes: NB#256223 - workaround for "task switcher breaks after restarting
+    mcompositor"
+  * increase "windowctl R" effect to 10s to make a plugin test pass
 
- -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Mon, 09 May 2011 17:10:25 +0300
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 17 May 2011 11:38:51 +0300
 
 mcompositor (0.9.8-1) unstable; urgency=low
 
