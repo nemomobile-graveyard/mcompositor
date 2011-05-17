@@ -14,7 +14,6 @@ public:
     ContextProvider::Property currentWindowAngleProperty;
     ContextProvider::Property desktopAngleProperty;
 
-    unsigned defaultCurrentWindowAngle;
     unsigned defaultDesktopAngle;
 
     MContextProviderWrapper* q_ptr;
