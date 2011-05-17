@@ -100,6 +100,8 @@ MSheetAnimation::MSheetAnimation(QObject* parent)
 
 void MSheetAnimation::windowShown()
 {
+    if (!targetWindow())
+        return;
     setEnabled(true);
     targetWindow()->setOpacity(1.0);
 
@@ -120,6 +122,8 @@ void MSheetAnimation::windowShown()
 
 void MSheetAnimation::windowClosed()
 {
+    if (!targetWindow())
+        return;
     setEnabled(true);
     positionAnimation()->setEasingCurve(QEasingCurve::InOutExpo);
     animationGroup()->setDirection(QAbstractAnimation::Backward);
@@ -212,6 +216,13 @@ MChainedAnimation::MChainedAnimation(QObject* parent)
 
 void MChainedAnimation::windowShown()
 {
+    if (!targetWindow() || !invokerWindow()) {
+        if (invokerWindow())
+            invokerWindow()->setVisible(true);
+        if (targetWindow())
+            targetWindow()->setVisible(true);
+        return;
+    }
     setEnabled(true);
 
     MStatusBarTexture::instance()->updatePixmap();
@@ -245,6 +256,8 @@ void MChainedAnimation::windowShown()
 
 void MChainedAnimation::windowClosed()
 {
+    if (!targetWindow() || !invokerWindow())
+        return;
     setEnabled(true);
     
     MStatusBarTexture::instance()->updatePixmap();
@@ -260,8 +273,9 @@ void MChainedAnimation::windowClosed()
 
 MCompositeWindow* MChainedAnimation::invokerWindow()
 {
-    if (targetWindow()->propertyCache()->invokedBy() != None)
-        return MCompositeWindow::compositeWindow(targetWindow()->propertyCache()->invokedBy());
+    if (targetWindow() && targetWindow()->propertyCache()->invokedBy() != None)
+        return MCompositeWindow::compositeWindow(
+                         targetWindow()->propertyCache()->invokedBy());
     return 0;
 }
 
