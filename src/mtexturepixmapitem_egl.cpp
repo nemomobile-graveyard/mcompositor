@@ -150,7 +150,11 @@ void MTexturePixmapItem::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
     d->saveBackingStore();
-    d->direct_fb_render = d->windowp == None;
+    if (propertyCache()->isVirtual())
+        // splash screen hasn't loaded the pixmap yet
+        d->direct_fb_render = false;
+    else
+        d->direct_fb_render = d->windowp == None;
 
     d->damageRetryTimer.setSingleShot(true);
     connect(&d->damageRetryTimer, SIGNAL(timeout()),
