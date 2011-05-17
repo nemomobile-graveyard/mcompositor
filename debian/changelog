@@ -1,3 +1,9 @@
+mcompositor (0.9.10-1~unreleased) unstable; urgency=low
+
+  * foo
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 17 May 2011 11:38:51 +0300
+
 mcompositor (0.9.9-1) unstable; urgency=low
 
   * Fixes: NB#251996 - COREWEB: 'MWindowPropertyCache::noAnimations...
