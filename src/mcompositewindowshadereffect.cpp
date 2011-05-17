@@ -187,6 +187,8 @@ void MCompositeWindowShaderEffect::drawSource(const QTransform &transform,
 */
 void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 {
+    if (!window)
+        return;
     if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
         return;
 
