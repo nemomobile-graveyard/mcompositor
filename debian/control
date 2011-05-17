@@ -20,7 +20,7 @@ Description: MeeGo Touch UI Compositing Window Manager debug symbols
 
 Package: mcompositor-dev
 Architecture: any
-Depends: mcompositor (= ${Source-Version}), libqt4-dev (>= 4.7), libx11-dev, libx11-xcb-dev, libxext-dev, libxdamage-dev, libxcb-render0-dev, libxcb-shape0-dev
+Depends: mcompositor (= ${Source-Version}), libqt4-dev (>= 4.7), libx11-dev, libx11-xcb-dev, libxext-dev, libxdamage-dev, libxcb-render0-dev, libxcb-shape0-dev, libcontextsubscriber-dev, libcontextprovider-dev
 Description: MeeGo Touch UI Compositing Window Manager header files
  MeeGo Touch UI Compositor header files for plugins.
 

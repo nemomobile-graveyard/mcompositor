@@ -1,8 +1,45 @@
-mcompositor (0.9.8-1~unreleased) unstable; urgency=low
+mcompositor (0.9.10-1~unreleased) unstable; urgency=low
 
   * foo
 
- -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 04 May 2011 10:25:10 +0300
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 17 May 2011 11:38:51 +0300
+
+mcompositor (0.9.9-2) unstable; urgency=low
+
+  * mcompositor-dev: add contextkit dev packages as dependency
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 17 May 2011 11:38:51 +0300
+
+mcompositor (0.9.9-1) unstable; urgency=low
+
+  * Fixes: NB#251996 - COREWEB: 'MWindowPropertyCache::noAnimations...
+  * Fixes: NB#252268 - mabstractdecorator socket should be moved to /var/run
+  * make ut_closeapp resemble a unit test
+  * add MCompositeManager::deviceState() accessor for the plugin
+  * MDeviceState: add screenTopEdgeChange signal and publish the header
+  * Fixes: NB#253890 - While ... a chained app a wrong window is shown
+  * Further improvements to NB#253473 and related issues.
+  * Fixes: NB#251989 - VKB closes when screen is dimmed
+  * Fixes: NB#253847 - VKB is closed and UI is not updated well...
+  * Fixes: NB#256223 - workaround for "task switcher breaks after restarting
+    mcompositor"
+  * increase "windowctl R" effect to 10s to make a plugin test pass
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 17 May 2011 11:38:51 +0300
+
+mcompositor (0.9.8-1) unstable; urgency=low
+
+  * Fixes: NB#251544 - During a call, QML applications only show a blank window
+  * Fixes: NB#249826 - Screen Lock state:Incoming call view is shown for couple
+    of seconds even when the call is ended remotely
+  * Fixes: NB#186194 - an application ignoring QCloseEvent can never be closed
+  * Fixes: NB#253122 - systemwide sheet flickers when pressing cancel button
+  * Add QT_TRY and QT_CATCH for custom_tfp in updateWindowPixmap
+  * Add /Screen/Desktop/OrientationAngle ContextKit property
+  * Fix a crash that happens when closing chained app in switcher
+  * Minor plugin API changes for fixing bug 252623
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Mon, 09 May 2011 17:10:25 +0300
 
 mcompositor (0.9.7-1) unstable; urgency=low
 
