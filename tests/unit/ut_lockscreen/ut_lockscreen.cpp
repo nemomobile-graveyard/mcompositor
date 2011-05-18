@@ -69,6 +69,8 @@ public:
     fake_device_state() : fake_display_off(false) {}
     bool displayOff() const { return fake_display_off; }
     bool fake_display_off;
+    const QString &touchScreenLock() const { return fake_touchScreenLockMode; }
+    QString fake_touchScreenLockMode;
 };
 
 static fake_device_state *device_state;
@@ -84,6 +86,7 @@ void ut_Lockscreen::initTestCase()
     // create an altered MDeviceState
     device_state = new fake_device_state();
     cmgr->d->device_state = device_state;
+    device_state->fake_touchScreenLockMode = "locked";
 
     // create a fake desktop window
     fake_desktop_window *pc = new fake_desktop_window(1000);
