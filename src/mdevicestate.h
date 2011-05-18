@@ -42,7 +42,8 @@ public:
     virtual bool displayOff() const { return display_off; }
     bool ongoingCall() const { return ongoing_call; }
     const QString &screenTopEdge() const { return screen_topedge; }
-    const QString &touchScreenLock() const { return touchScreenLockMode; }
+    virtual const QString &touchScreenLock() const
+    { return touchScreenLockMode; }
 
 signals:
 
