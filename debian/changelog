@@ -1,3 +1,9 @@
+mcompositor (0.9.11-1~unreleased) unstable; urgency=low
+
+  * foo
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 18 May 2011 13:38:32 +0300
+
 mcompositor (0.9.10-1) unstable; urgency=low
 
   * Fix regression with splash screens
