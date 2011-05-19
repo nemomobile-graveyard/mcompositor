@@ -792,6 +792,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         addRequest(SLOT(supportedProtocols()),
                    requestProperty(e->atom, XCB_ATOM_ATOM, 100));
+        return true;
     } else if (e->atom == ATOM(_NET_WM_STATE)) {
         addRequest(SLOT(netWmState()),
                    requestProperty(e->atom, XCB_ATOM_ATOM, 100));
