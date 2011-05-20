@@ -67,9 +67,13 @@ away:
 void MDeviceState::callPropChanged()
 {
     QString val = call_prop->value().toString();
+    incoming_call = false;
     if (val == "active") {
         ongoing_call = true;
         emit callStateChange(true);
+    } else if (val == "alerting") {
+        incoming_call = true;
+        ongoing_call = false;
     } else {
         ongoing_call = false;
         emit callStateChange(false);
@@ -85,6 +89,7 @@ void MDeviceState::topPropChanged()
 MDeviceState::MDeviceState(QObject* parent)
     : QObject(parent),
       ongoing_call(false),
+      incoming_call(false),
       screen_topedge("top")
 {
     display_off = false;

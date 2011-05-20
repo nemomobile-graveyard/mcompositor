@@ -17,8 +17,8 @@
 **
 ****************************************************************************/
 
-#ifndef MPOSITIONANIMATION_H
-#define MPOSITIONANIMATION_H
+#ifndef MDYNAMICANIMATION_H
+#define MDYNAMICANIMATION_H
 
 class QPropertyAnimation;
 class MStatusBarCrop;
@@ -29,19 +29,21 @@ class QAbstractAnimation;
 
 typedef QVector<QAbstractAnimation*> AnimVector;
 
-class MPositionAnimation: public MCompositeWindowAnimation
+class MDynamicAnimation: public MCompositeWindowAnimation
 {
     Q_OBJECT
  public:
-    MPositionAnimation(QObject* parent = 0);
-    ~MPositionAnimation();
+    MDynamicAnimation(QObject* parent = 0);
+    ~MDynamicAnimation();
     void setEnabled(bool enabled);
+    void disableAnimation( QAbstractAnimation * animation );
+    
     AnimVector& activeAnimations();
  private:
     AnimVector animvec;
 };
 
-class MSheetAnimation: public MPositionAnimation
+class MSheetAnimation: public MDynamicAnimation
 {
     Q_OBJECT
  public:
@@ -51,7 +53,7 @@ class MSheetAnimation: public MPositionAnimation
     virtual void windowClosed();
 };
 
-class MChainedAnimation: public MPositionAnimation
+class MChainedAnimation: public MDynamicAnimation
 {
     Q_OBJECT
  public:
@@ -68,5 +70,37 @@ class MChainedAnimation: public MPositionAnimation
     QPropertyAnimation* invoker_pos;
     MStatusBarCrop* cropper;
 };
+
+class MCallUiAnimation: public MDynamicAnimation
+{
+    Q_OBJECT
+ public:
+    enum CallMode {
+        NoCall = 0,
+        IncomingCall, 
+        OutgoingCall 
+    };
+
+    MCallUiAnimation(QObject* parent = 0);
+
+    virtual void windowShown(); 
+    virtual void windowClosed();
+    void setupBehindAnimation();
+    void setupCallMode(bool showWindow = true);
+        
+ private slots:
+    void endAnimation();
+    void stackcallui();
+
+ private:
+    void tempHideDesktop(MCompositeWindow* behind);
+
+    CallMode call_mode;    
+    QPropertyAnimation* currentwin_pos;
+    QPropertyAnimation* currentwin_scale;
+    QPropertyAnimation* currentwin_opac;
+};
+
+//MDYNAMICANIMATION_H
 
 #endif

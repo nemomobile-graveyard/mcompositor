@@ -165,6 +165,7 @@ public:
     Window desktopWindow() const;
     bool debugMode() const;
     int configInt(const char *key) const;
+    int configInt(const char *key, int defaultValue) const;
     QVariant config(const char *key) const;
     void config(const char *key, const QVariant &val) const;
 

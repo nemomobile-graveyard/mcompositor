@@ -26,7 +26,8 @@
 #include "mcompositemanagerextension.h"
 #include "mcompositewindowgroup.h"
 #include "msplashscreen.h"
-#include "mpositionanimation.h"
+#include "mdynamicanimation.h"
+#include "mdevicestate.h"
 
 #include <QX11Info>
 #include <QGraphicsScene>
@@ -105,6 +106,8 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         a = new MSheetAnimation(this);
     else if (pc->invokedBy() != None)
         a = new MChainedAnimation(this);
+    else if (pc->isCallUi())
+        a = new MCallUiAnimation(this);
     else
         a = new MCompositeWindowAnimation(this);
     a->setTargetWindow(this);
@@ -399,6 +402,8 @@ bool MCompositeWindow::isInanimate(bool check_pixmap)
     if (static_cast<MCompositeManager*>(qApp)->displayOff())
         return true;
     if (pc->windowType() == MCompAtoms::SHEET)
+        return false;
+    if (pc->isCallUi())
         return false;
     if (pc->invokedBy() != None)
         return false;

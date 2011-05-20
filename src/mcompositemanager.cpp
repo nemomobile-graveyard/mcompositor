@@ -4423,6 +4423,11 @@ int MCompositeManager::configInt(char const *key) const
     return settings->value(key).toInt();
 }
 
+int MCompositeManager::configInt(char const *key, int defaultValue) const
+{
+    return settings->value(key, defaultValue).toInt();
+}
+
 void MCompositeManager::ensureSettingsFile()
 {
     // $HOME/.config/mcompositor/mcompositor.conf
@@ -4442,4 +4447,8 @@ void MCompositeManager::ensureSettingsFile()
     config("default-statusbar-height",           36);
     config("default-desktop-angle",             270);
     config("close-timeout-ms",                 5000);
+    config("sheet-anim-duration",               350);
+    config("sheet-anim-duration",               350);
+    config("chained-anim-duration",             500);
+    config("callui-anim-duration",              400);
 }
