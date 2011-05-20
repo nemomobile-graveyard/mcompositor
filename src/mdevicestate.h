@@ -41,6 +41,7 @@ public:
 
     virtual bool displayOff() const { return display_off; }
     bool ongoingCall() const { return ongoing_call; }
+    bool incomingCall() const { return incoming_call; }
     const QString &screenTopEdge() const { return screen_topedge; }
     virtual const QString &touchScreenLock() const
     { return touchScreenLockMode; }
@@ -70,6 +71,7 @@ private:
     ContextProperty *call_prop, *top_prop;
     bool display_off;
     bool ongoing_call;
+    bool incoming_call;
     QString screen_topedge;
     QString touchScreenLockMode;
 };

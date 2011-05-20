@@ -686,6 +686,11 @@ bool MWindowPropertyCache::isLockScreen()
     return (meegoStackingLayer() > 0 && wmName() == "Screen Lock");
 }
 
+bool MWindowPropertyCache::isCallUi()
+{
+    return (wmName() == "call-ui");
+}
+
 bool MWindowPropertyCache::wantsFocus()
 {
     bool val = true;

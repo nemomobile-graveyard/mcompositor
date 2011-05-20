@@ -100,6 +100,7 @@ public:
     void setDontIconify(bool s) { dont_iconify = s; }
     bool dontIconify();
     bool isLockScreen();
+    bool isCallUi();
     void setStackedUnmapped(bool s) { stacked_unmapped = s; }
     bool stackedUnmapped() const { return stacked_unmapped; }
 
