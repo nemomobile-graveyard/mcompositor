@@ -48,13 +48,8 @@ static void removeExternalAnimations(QAnimationGroup* group,
 {
     int i = 0;
     while (i < group->animationCount()) {
-        bool skip = false;
         QAbstractAnimation* a = group->animationAt(i);
-        if (skipvec.contains(a)) {
-            skip = true;
-            break;
-        }
-        if (!skip && a) {
+        if (a && !skipvec.contains(a)) {
             group->removeAnimation(a);
             continue;
         }
