@@ -309,6 +309,7 @@ MCallUiAnimation::MCallUiAnimation(QObject* parent)
      call_mode(MCallUiAnimation::NoCall)
 {
     connect(animationGroup(), SIGNAL(finished()), SLOT(endAnimation()));
+    cropper = new MStatusBarCrop(this);
 
     // UX call-ui specs
     const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
@@ -401,6 +402,13 @@ void MCallUiAnimation::windowShown()
     setEnabled(true);
     setupBehindAnimation();
     setupCallMode();
+
+    MStatusBarTexture::instance()->updatePixmap();
+    cropper->setAppWindow(targetWindow());
+    cropper->installEffect(targetWindow());
+    if (targetWindow()->behind())
+        cropper->installEffect(targetWindow()->behind());
+    cropper->setPortrait(targetWindow()->propertyCache()->orientationAngle() % 180);
     
     if (call_mode == MCallUiAnimation::IncomingCall)
         animationGroup()->setDirection(QAbstractAnimation::Forward);
@@ -418,6 +426,11 @@ void MCallUiAnimation::windowClosed()
     setupCallMode(false);
     targetWindow()->setVisible(true);
 
+    MStatusBarTexture::instance()->updatePixmap();
+    cropper->setAppWindow(targetWindow());
+    cropper->installEffect(targetWindow());
+    if (targetWindow()->behind())
+        cropper->installEffect(targetWindow()->behind());
     
     if (call_mode == MCallUiAnimation::IncomingCall)
         animationGroup()->setDirection(QAbstractAnimation::Backward);
@@ -481,12 +494,15 @@ void MCallUiAnimation::endAnimation()
 
     if (!targetWindow())
         return;
-
+    
+    MStatusBarTexture::instance()->untrackDamages();
+    cropper->removeEffect(targetWindow());    
     // reset default values
     targetWindow()->setUntransformed();
     targetWindow()->setPos(targetWindow()->propertyCache()->realGeometry().topLeft());
     MCompositeWindow* behind = targetWindow()->behind();
     if (behind) {
+        cropper->removeEffect(behind);
         behind->setUntransformed();
         behind->setPos(behind->propertyCache()->realGeometry().topLeft());
     }
