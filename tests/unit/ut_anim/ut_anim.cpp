@@ -7,7 +7,7 @@
 #include <mcompositewindow.h>
 #include <mcompositewindowanimation.h>
 #include <mtexturepixmapitem.h>
-#include <mpositionanimation.h>
+#include <mdynamicanimation.h>
 #include "ut_anim.h"
 
 #include <QtDebug>
