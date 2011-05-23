@@ -1,8 +1,8 @@
-mcompositor (0.9.11-1~unreleased) unstable; urgency=low
+mcompositor (0.9.11-1) unstable; urgency=low
 
-  * foo
+  * Fixes: NB#241854 - Window animations for call-ui
 
- -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 18 May 2011 13:38:32 +0300
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Mon, 23 May 2011 23:00:00 +0300
 
 mcompositor (0.9.10-1) unstable; urgency=low
 
