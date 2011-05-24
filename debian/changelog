@@ -1,3 +1,9 @@
+mcompositor (1.0.0~1) unstable; urgency=low
+
+  * [unreleased]
+
+ -- Daniel d'Andrada <daniel.dandrada@nokia.com>  Tue, 24 May 2011 08:59:15 +0300
+
 mcompositor (0.9.11-1) unstable; urgency=low
 
   * Fixes: NB#241854 - Window animations for call-ui
