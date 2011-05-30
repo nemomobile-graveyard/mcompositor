@@ -60,6 +60,7 @@ binary-arch: build install
 	dh_gencontrol $(EXCLUSIONS)
 	dh_md5sums $(EXCLUSIONS)
 	dh_builddeb $(EXCLUSIONS)
+	aegis-deb-add -control debian/mcompositor/DEBIAN/control .. debian/mcompositor.aegis=_aegis
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install configure
