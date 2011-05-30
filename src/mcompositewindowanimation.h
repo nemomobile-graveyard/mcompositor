@@ -110,6 +110,7 @@ class MAbstractAnimationHandler
     QPointer<MCompositeWindow> target_window;
     QPointer<MCompositeWindowAnimation> main_animator;
     friend class MCompositeWindowAnimation;
+    friend class MCompositeWindowAnimationPrivate;
 };
 
 #endif // MCOMPOSITEWINDOWANIMATOR_H

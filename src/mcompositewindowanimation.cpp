@@ -123,19 +123,21 @@ public:
 
     bool handledByInvoker(MCompositeWindowAnimation::AnimationType type)
     {
-        if (animhandler[type]) {
+        MAbstractAnimationHandler* handler = animhandler[type];
+        if (handler) {
+            handler->target_window = target_window;
             switch (type) {
             case MCompositeWindowAnimation::Showing:
-                animhandler[type]->windowShown();
+                handler->windowShown();
                 return true;
             case MCompositeWindowAnimation::Closing:
-                animhandler[type]->windowClosed();
+                handler->windowClosed();
                 return true;
             case MCompositeWindowAnimation::Iconify:
-                animhandler[type]->windowIconified();
+                handler->windowIconified();
                 return true;
             case MCompositeWindowAnimation::Restore:
-                animhandler[type]->windowRestored();
+                handler->windowRestored();
                 return true;
             default:
                 break;
@@ -474,7 +476,6 @@ void MCompositeWindowAnimation::setAnimationHandler(AnimationType type,
 {
     Q_D(MCompositeWindowAnimation);
 
-    handler->target_window = targetWindow();
     handler->main_animator = this;
     d->animhandler[type] = handler;
 }
