@@ -1,8 +1,11 @@
-mcompositor (1.0.0~1) unstable; urgency=low
+mcompositor (1.0.0-1) unstable; urgency=low
 
-  * [unreleased]
+  * Initial 1.0 release	
+  * Fixes: NB#260627 - For a fullscreen application transition from sheet view to Mapplication view
+  * Fixes: NB#260604 - Wrong page opened from Recents-view
+  * Fixes: NB#259079 - Unsetting _NET_WM_PING will not stop compositor pings	
 
- -- Daniel d'Andrada <daniel.dandrada@nokia.com>  Tue, 24 May 2011 08:59:15 +0300
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Tue, 31 May 2011 19:44:15 +0300
 
 mcompositor (0.9.11-1) unstable; urgency=low
 
