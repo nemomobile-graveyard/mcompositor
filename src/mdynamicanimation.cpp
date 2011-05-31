@@ -246,8 +246,10 @@ void MChainedAnimation::windowShown()
     MStatusBarTexture::instance()->updatePixmap();
     // sb geometry is shared by targetwindow and invokerwindow
     cropper->setAppWindow(targetWindow());
-    cropper->installEffect(targetWindow());
-    cropper->installEffect(invokerWindow());
+    if (!targetWindow()->propertyCache()->statusbarGeometry().isEmpty()) {
+        cropper->installEffect(targetWindow());
+        cropper->installEffect(invokerWindow());
+    }
     targetWindow()->setOpacity(1.0);
     invokerWindow()->setVisible(true);
     invoker_pos->setTargetObject(invokerWindow());
@@ -280,8 +282,11 @@ void MChainedAnimation::windowClosed()
     
     MStatusBarTexture::instance()->updatePixmap();
     cropper->setAppWindow(targetWindow());
-    cropper->installEffect(targetWindow());
-    cropper->installEffect(invokerWindow());
+    
+    if (!targetWindow()->propertyCache()->statusbarGeometry().isEmpty()) {
+        cropper->installEffect(targetWindow());
+        cropper->installEffect(invokerWindow());
+    }
     invokerWindow()->setVisible(true);
     invoker_pos->setTargetObject(invokerWindow());
     
