@@ -2,7 +2,7 @@
 
 DOMAIN="Application Framework"
 FEATURE="MCompositor"
-TYPE="Unit"
+TYPE="Functional"
 LEVEL="Component"
 
 UT_TESTCASES=""
