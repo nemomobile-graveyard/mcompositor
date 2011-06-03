@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <testdefinition version="0.1">
-  <suite name="mcompositor-tests" domain="Application Framework" type="Unit" level="Component">
+  <suite name="mcompositor-tests" domain="Application Framework" type="Functional" level="Component">
     <set name="unit_tests" description="Unit Tests" feature="MCompositor">
 
       <case name="ut_anim" description="ut_anim" requirement="" timeout="300">
