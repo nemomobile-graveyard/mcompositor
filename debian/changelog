@@ -1,8 +1,8 @@
-mcompositor (1.0.1~1) unstable; urgency=low
+mcompositor (1.0.0-2) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Kudos build.
 
- -- Abdiel Janulgue <abj@abj-ThinkPad-W510>  Wed, 01 Jun 2011 17:40:38 +0300
+ -- Jani Mikkonen <jani.3.mikkonen@nokia.com>  Fri, 03 Jun 2011 14:01:00 +0300
 
 mcompositor (1.0.0-1) unstable; urgency=low
 
