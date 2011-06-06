@@ -2167,7 +2167,7 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
     return false;
 }
 
-void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
+void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
 {
     Window win = e->window;
 
@@ -2271,7 +2271,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
 
     // only composite top-level windows
     if (pc->parentWindow() == RootWindow(QX11Info::display(), 0)) {
-        item = bindWindow(win);
+        item = bindWindow(win, startup);
         if (!item)
             return;
         pc = item->propertyCache();
@@ -2321,8 +2321,8 @@ stack_and_return:
             setWindowState(win, IconicState);
         else
             setWindowState(win, NormalState);
-    } else if (pc->alwaysMapped() > 0 ||
-               ((h.flags & StateHint) && h.initial_state == IconicState)) {
+    } else if (pc->alwaysMapped() > 0 || (!startup && (h.flags & StateHint)
+                                          && h.initial_state == IconicState)) {
         setWindowState(win, IconicState);
         STACKING("positionWindow 0x%lx -> bottom", win);
         positionWindow(win, false);
@@ -2875,7 +2875,7 @@ void MCompositeManager::queryDialogAnswer(unsigned int window, bool yes_answer)
         cw->startDialogReappearTimer();
 }
 
-bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
+bool MCompositeManagerPrivate::x11EventFilter(XEvent *event, bool startup)
 {
     // Core non-subclassable events
     static const int damage_ev = damage_event + XDamageNotify;
@@ -2930,7 +2930,7 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     case ConfigureRequest:
         configureRequestEvent(&event->xconfigurerequest); break;
     case MapNotify:
-        mapEvent(&event->xmap); break;
+        mapEvent(&event->xmap, startup); break;
     case MapRequest:
         mapRequestEvent(&event->xmaprequest); break;
     case ClientMessage:
@@ -3096,7 +3096,7 @@ void MCompositeManagerPrivate::redirectWindows()
             p->realGeometry().width() > 1 &&
             p->realGeometry().height() > 1) {
             // TODO: remove this bindWindow call -- shouldn't be needed
-            MCompositeWindow* window = bindWindow(kids[i]);
+            MCompositeWindow* window = bindWindow(kids[i], true);
             if (window) {
                 window->setNewlyMapped(false);
                 window->setVisible(true);
@@ -3108,9 +3108,7 @@ void MCompositeManagerPrivate::redirectWindows()
                 e.event = RootWindow(QX11Info::display(), 0);
                 e.window = kids[i];
                 e.override_redirect = False;
-                XSendEvent(QX11Info::display(),
-                           RootWindow(QX11Info::display(), 0),
-                           False, SubstructureNotifyMask, (XEvent*)&e);
+                x11EventFilter((XEvent*)&e, true);
             }
         }
     }
@@ -3458,7 +3456,8 @@ void MCompositeManagerPrivate::roughSort()
              dumpWindows(stacking_list).toLatin1().constData());
 }
 
-MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
+MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
+                                                       bool startup)
 {
     Display *display = QX11Info::display();
 
@@ -3484,7 +3483,8 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
             setWindowState(window, IconicState);
         else
             setWindowState(window, NormalState);
-    } else if ((h.flags & StateHint) && (h.initial_state == IconicState)) {
+    } else if (!startup && (h.flags & StateHint)
+               && h.initial_state == IconicState) {
         setWindowState(window, IconicState);
         item->setZValue(-1);
     } else {
