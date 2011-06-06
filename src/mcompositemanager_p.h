@@ -69,7 +69,7 @@ public:
     ~MCompositeManagerPrivate();
 
     static Window parentWindow(Window child);
-    MCompositeWindow *bindWindow(Window w);
+    MCompositeWindow *bindWindow(Window w, bool startup = false);
     QGraphicsScene *scene();
 
     MWindowPropertyCache* getPropertyCache(Window window,
@@ -96,7 +96,7 @@ public:
     void unmapEvent(XUnmapEvent *);
     void configureEvent(XConfigureEvent *, bool nostacking = false);
     void configureRequestEvent(XConfigureRequestEvent *);
-    void mapEvent(XMapEvent *);
+    void mapEvent(XMapEvent *e, bool startup = false);
     void mapRequestEvent(XMapRequestEvent *);
     void rootMessageEvent(XClientMessageEvent *);
     void clientMessageEvent(XClientMessageEvent *);
@@ -123,7 +123,7 @@ public:
 
     bool possiblyUnredirectTopmostWindow();
     bool haveMappedWindow() const;
-    bool x11EventFilter(XEvent *event);
+    bool x11EventFilter(XEvent *event, bool startup = false);
     bool processX11EventFilters(XEvent *event, bool after);
     void removeWindow(Window w);
     bool needDecoration(MWindowPropertyCache *pc);
