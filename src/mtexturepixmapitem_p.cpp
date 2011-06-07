@@ -445,7 +445,9 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform,
     glDisableVertexAttribArray(D_VERTEX_COORDS);
     glDisableVertexAttribArray(D_TEXTURE_COORDS);
 
+#ifdef DESKTOP_VERSION
     glwidget->paintEngine()->syncState();
+#endif
     glActiveTexture(GL_TEXTURE0);
 }
 
