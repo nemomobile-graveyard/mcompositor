@@ -480,7 +480,7 @@ void MCallUiAnimation::tempHideDesktop(MCompositeWindow* behind)
 {
     if (behind) {
         MCompositeWindow* d = MCompositeWindow::compositeWindow(((MCompositeManager *) qApp)->desktopWindow());
-        if (behind != d)
+        if (d && behind != d)
             d->setVisible(false);
     }
 }
@@ -494,7 +494,7 @@ void MCallUiAnimation::endAnimation()
     
     MCompositeManager* m = (MCompositeManager *) qApp;
     MCompositeWindow* d = MCompositeWindow::compositeWindow(m->desktopWindow());
-    if (!d->isVisible())
+    if (d && !d->isVisible())
         d->setVisible(true);
 
     if (!targetWindow())
