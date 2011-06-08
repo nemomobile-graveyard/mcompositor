@@ -2392,7 +2392,9 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             // before transitions are started but after redirection
             if (event->window != stack[DESKTOP_LAYER])
                 setExposeDesktop(false);
-            if (i && i->propertyCache()->windowState() == IconicState) {
+            if (i && (i->propertyCache()->windowState() == IconicState
+                      // if it's not iconic, let the plugin decide
+                      || !m_extensions.values(MapNotify).isEmpty())) {
                 if (i->propertyCache()->noAnimations()) {
                     STACKING("positionWindow 0x%lx -> top", i->window());
                     positionWindow(i->window(), true);
