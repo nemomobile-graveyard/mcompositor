@@ -2384,10 +2384,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         if (!m_extensions.values(MapNotify).isEmpty() || !getTopmostApp()) {
             // Not necessary to animate if not in desktop view or we have a plugin.
             Window raise = event->window;
-            MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
             bool needComp = false;
-            if (d_item && d_item->isDirectRendered()
-                && raise != stack[DESKTOP_LAYER]) 
+            if (!compositing && raise != stack[DESKTOP_LAYER])
                 needComp = true;
             // Visibility notification to desktop window. Ensure this is sent
             // before transitions are started but after redirection
