@@ -645,9 +645,10 @@ static pid_t rotate_screen(char *o, QString& stdOut)
 			return -1;
 		}
 		close(pipefd[0]);
-		sleep(10);
+		sleep(15);
 		kill(pid, SIGKILL);
-		return pid;
+                stdOut = "killed the fake property provider\n";
+		return 0;
 	} else {
 		/*
 		context-provide org.freedesktop.ContextKit.Commander \
