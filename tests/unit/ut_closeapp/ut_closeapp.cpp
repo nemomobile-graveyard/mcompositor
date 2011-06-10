@@ -66,6 +66,8 @@ public:
 void ut_CloseApp::initTestCase()
 {
     cmgr = (MCompositeManager*)qApp;
+    cmgr->setSurfaceWindow(0);
+    cmgr->d->prepare();
 }
 
 void ut_CloseApp::prepareStack(QVector<MWindowPropertyCache *> &t)

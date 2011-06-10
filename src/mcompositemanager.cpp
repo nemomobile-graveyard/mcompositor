@@ -674,7 +674,6 @@ static void setup_key_grabs()
 void MCompositeManagerPrivate::prepare()
 {
     MDecoratorFrame::instance();
-    watch->prepareRoot();
     QString wm_name = "MCompositor";
 
     wm_window = XCreateSimpleWindow(QX11Info::display(),
@@ -4332,6 +4331,7 @@ void MCompositeManager::prepareEvents()
         ::exit(0);
     }
 
+    d->watch->prepareRoot();
     d->prepare();
 }
 

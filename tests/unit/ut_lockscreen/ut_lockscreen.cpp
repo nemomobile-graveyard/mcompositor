@@ -80,6 +80,8 @@ static Window lockscreen_win = 1;
 void ut_Lockscreen::initTestCase()
 {
     cmgr = (MCompositeManager*)qApp;
+    cmgr->setSurfaceWindow(0);
+    cmgr->d->prepare();
     cmgr->d->stacking_list.clear();
     cmgr->d->prop_caches.clear();
 
