@@ -401,6 +401,10 @@ bool MCompositeWindow::isInanimate(bool check_pixmap)
 {
     if (static_cast<MCompositeManager*>(qApp)->displayOff())
         return true;
+    if (pc->isInputOnly() || pc->isOverrideRedirect() || pc->noAnimations() ||
+        pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU) ||
+        pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
+        return true;
     if (pc->windowType() == MCompAtoms::SHEET)
         return false;
     if (pc->isCallUi())
@@ -411,10 +415,6 @@ bool MCompositeWindow::isInanimate(bool check_pixmap)
         return true;
     if (window_status == MCompositeWindow::Hung
           || pc->windowState() == IconicState)
-        return true;
-    if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
-        return true;
-    if (pc->isInputOnly() || pc->isOverrideRedirect())
         return true;
     if (check_pixmap && !windowPixmap())
         return true;
