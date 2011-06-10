@@ -76,6 +76,9 @@ public:
 void ut_Anim::initTestCase()
 {
     cmgr = (MCompositeManager*)qApp;
+    // initialize MCompositeManager
+    cmgr->setSurfaceWindow(0);
+    cmgr->d->prepare();
 
     // create a fake desktop window
     fake_desktop_window *pc = new fake_desktop_window(1000);

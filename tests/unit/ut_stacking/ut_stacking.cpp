@@ -64,6 +64,8 @@ public:
 void ut_Stacking::initTestCase()
 {
     cmgr = (MCompositeManager*)qApp;
+    cmgr->setSurfaceWindow(0);
+    cmgr->d->prepare();
 }
 
 // Ensure that windows are in the order specified by t.
