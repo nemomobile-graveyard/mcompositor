@@ -32,7 +32,7 @@ time.sleep(1)
 # create a fullscreen application window
 fd = os.popen('windowctl fn')
 app_win = fd.readline().strip()
-time.sleep(1)
+time.sleep(5)
 
 ret = 0
 fd = os.popen('windowstack m')
