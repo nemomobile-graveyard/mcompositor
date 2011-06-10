@@ -589,7 +589,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
 
 MCompositeManagerPrivate::~MCompositeManagerPrivate()
 {
-    if (prepared)
+    if (prepared && localwin != None)
         // Advertise the world we're gone.
         XDeleteProperty(QX11Info::display(), QX11Info::appRootWindow(),
                         ATOM(_NET_SUPPORTING_WM_CHECK));
@@ -679,9 +679,10 @@ void MCompositeManagerPrivate::prepare()
                             RootWindow(QX11Info::display(), 0),
                             0, 0, 1, 1, 0,
                             None, None);
-    XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
-                    ATOM(_NET_SUPPORTING_WM_CHECK), XA_WINDOW, 32,
-                    PropModeReplace, (unsigned char *)&wm_window, 1);
+    if (localwin != None)
+        XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
+                        ATOM(_NET_SUPPORTING_WM_CHECK), XA_WINDOW, 32,
+                        PropModeReplace, (unsigned char *)&wm_window, 1);
     XChangeProperty(QX11Info::display(), wm_window,
                     ATOM(_NET_SUPPORTING_WM_CHECK),
                     XA_WINDOW, 32, PropModeReplace,
