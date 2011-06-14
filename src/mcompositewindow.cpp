@@ -263,7 +263,7 @@ void MCompositeWindow::restore(bool defer)
     setVisible(true);
     iconified = false;
      // Restore handler
-    if (animator) {
+    if (animator && !static_cast<MCompositeManager *>(qApp)->splashed(this)) {
         if (defer)
             animator->deferAnimation(MCompositeWindowAnimation::Restore);
         else
