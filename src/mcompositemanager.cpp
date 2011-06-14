@@ -3380,6 +3380,19 @@ static bool compareWindows(Window w_a, Window w_b)
     if (type_a == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         SORTING(true, "DESK");
 
+    // Sort a splashed window behind its splash screen.
+    MCompositeWindow *cw, *splash;
+    if ((cw = COMPOSITE_WINDOW(pc_a->winId()))
+        && (splash = cmgr->splashed(cw))
+        && splash->propertyCache() == pc_b)
+        // @pc_a is splashed and @pc_b is the splash
+        return true;
+    else if ((cw = COMPOSITE_WINDOW(pc_b->winId()))
+             && (splash = cmgr->splashed(cw))
+             && splash->propertyCache() == pc_a)
+        // v.v.
+        return false;
+
     // Order transient windows below what they are transient for.
     // Since the sorting algorithm can infer that if trfor(@a) == @b
     // and trfor(@b) == @c then @a is transient for @c it is not
