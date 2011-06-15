@@ -513,15 +513,8 @@ void MCallUiAnimation::endAnimation()
     }
     // always stack the call-ui on top when finishing the animation 
     if (targetWindow()->propertyCache()->windowState() != IconicState)
-        QTimer::singleShot(0, this, SLOT(stackcallui()));
-}
-
-void MCallUiAnimation::stackcallui()
-{    
-    if (!targetWindow())
-        return;
-    MCompositeManager* m = (MCompositeManager *) qApp;
-    m->positionWindow(targetWindow()->window(), MCompositeManager::STACK_TOP);
+        m->positionWindow(targetWindow()->window(),
+                          MCompositeManager::STACK_TOP);
 }
 
 #include "mdynamicanimation.moc"
