@@ -411,8 +411,8 @@ void MCallUiAnimation::windowShown()
     MStatusBarTexture::instance()->updatePixmap();
     cropper->setAppWindow(targetWindow());
     cropper->installEffect(targetWindow());
-    if (targetWindow()->behind())
-        cropper->installEffect(targetWindow()->behind());
+    if ((behindTarget = targetWindow()->behind()) != NULL)
+        cropper->installEffect(behindTarget);
     cropper->setPortrait(targetWindow()->propertyCache()->orientationAngle() % 180);
     
     if (call_mode == MCallUiAnimation::IncomingCall)
@@ -434,8 +434,8 @@ void MCallUiAnimation::windowClosed()
     MStatusBarTexture::instance()->updatePixmap();
     cropper->setAppWindow(targetWindow());
     cropper->installEffect(targetWindow());
-    if (targetWindow()->behind())
-        cropper->installEffect(targetWindow()->behind());
+    if ((behindTarget = targetWindow()->behind()) != NULL)
+        cropper->installEffect(behindTarget);
     
     if (call_mode == MCallUiAnimation::IncomingCall)
         animationGroup()->setDirection(QAbstractAnimation::Backward);
@@ -505,7 +505,8 @@ void MCallUiAnimation::endAnimation()
     // reset default values
     targetWindow()->setUntransformed();
     targetWindow()->setPos(targetWindow()->propertyCache()->realGeometry().topLeft());
-    MCompositeWindow* behind = targetWindow()->behind();
+    MCompositeWindow* behind = behindTarget;
+    behindTarget = NULL;
     if (behind) {
         cropper->removeEffect(behind);
         behind->setUntransformed();
