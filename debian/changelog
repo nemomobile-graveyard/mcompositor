@@ -1,14 +1,17 @@
-mcompositor (1.0.2-1~unreleased) unstable; urgency=low
+mcompositor (1.0.2-1) unstable; urgency=low
 
-  * foo
+  * Revert part of the NB#258377 fix
+  * Fixes: NB#265220 - opening calculator application flickers desktop icons
+  * Fixes: NB#265226 - rotating message-ui with VKB form portrait to
+    landscape..
 
- -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Mon, 13 Jun 2011 10:25:36 +0300
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 15 Jun 2011 13:25:32 +0300
 
 mcompositor (1.0.1-1) unstable; urgency=low
 
   * Fixes: NB#261560 - Call UI not visible when in Cherry startup screen
   * Fixes: NB#257044 - color distortions in low-power mode
-  * Fixes: NB#258377 - already open app comes without transition from QLB
+  * Almost fixes NB#258377 - already open app comes without transition from QLB
   * add missing MCompositeManager initialization to unit tests
   * rootMessageEvent(): redirected desktop != all windows are redirected
   * do paintEngine()->syncState() call in GLX side only
