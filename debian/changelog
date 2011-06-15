@@ -1,3 +1,9 @@
+mcompositor (1.0.3-1~unreleased) unstable; urgency=low
+
+  * foo
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 15 Jun 2011 13:25:32 +0300
+
 mcompositor (1.0.2-1) unstable; urgency=low
 
   * Revert part of the NB#258377 fix
