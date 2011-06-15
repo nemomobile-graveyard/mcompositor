@@ -41,13 +41,37 @@
 #include <mcompositemanager_p.h>
 #include <QVector>
 
-class McParallelAnimation: public QParallelAnimationGroup
+/*!
+   if true, then the group's handlers (e.g. endAnimation()) should not
+   do anything
+ */
+void MParallelAnimationGroup::setDisableGroupHandlers(bool)
+{
+}
+
+bool MParallelAnimationGroup::disableGroupHandlers() const
+{
+     return false;
+}
+
+class McParallelAnimation: public MParallelAnimationGroup
 {
 public:
     McParallelAnimation(MCompositeWindowAnimation* p)
-        :QParallelAnimationGroup(p),
-         parent(p)
+        :MParallelAnimationGroup(p),
+         parent(p),
+         disable_group_handlers(false)
     {}
+
+    void setDisableGroupHandlers(bool disable)
+    {
+        disable_group_handlers = disable;
+    }
+
+    bool disableGroupHandlers() const
+    {
+        return disable_group_handlers;
+    }
         
 protected:
     virtual void updateCurrentTime(int currentTime)
@@ -76,6 +100,7 @@ protected:
     }
 private:
     MCompositeWindowAnimation* parent;
+    bool disable_group_handlers;
 };
 
 class MCompositeWindowAnimationPrivate
@@ -195,7 +220,7 @@ void MCompositeWindowAnimation::finalizeState()
 }
 
 // returns a group animation for this animator 
-QParallelAnimationGroup* MCompositeWindowAnimation::animationGroup() const
+MParallelAnimationGroup* MCompositeWindowAnimation::animationGroup() const
 {
     Q_D(const MCompositeWindowAnimation);
     return d->scalepos;

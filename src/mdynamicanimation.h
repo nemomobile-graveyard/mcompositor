@@ -87,10 +87,9 @@ class MCallUiAnimation: public MDynamicAnimation
     virtual void windowClosed();
     void setupBehindAnimation();
     void setupCallMode(bool showWindow = true);
-        
+
  private slots:
     void endAnimation();
-    void stackcallui();
 
  private:
     void tempHideDesktop(MCompositeWindow* behind);

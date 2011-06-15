@@ -313,7 +313,9 @@ MCallUiAnimation::MCallUiAnimation(QObject* parent)
     :MDynamicAnimation(parent),
      call_mode(MCallUiAnimation::NoCall)
 {
-    connect(animationGroup(), SIGNAL(finished()), SLOT(endAnimation()));
+    // QueuedConnection so that it is run after the plugin's handlers
+    connect(animationGroup(), SIGNAL(finished()), SLOT(endAnimation()),
+            Qt::QueuedConnection);
     cropper = new MStatusBarCrop(this);
 
     // UX call-ui specs
@@ -370,9 +372,11 @@ void MCallUiAnimation::setupCallMode(bool showWindow)
     if (!targetWindow() || !targetWindow()->behind())
         return;
     
-    // TODO: deviceState() this should be a pointer instead of a reference
-    bool ongoingcall = showWindow ? ((MCompositeManager *) qApp)->deviceState().ongoingCall() : (call_mode == MCallUiAnimation::OutgoingCall);
-    bool incomingcall = showWindow? ((MCompositeManager *) qApp)->deviceState().incomingCall() : (call_mode == MCallUiAnimation::IncomingCall);
+    MCompositeManager *m = (MCompositeManager*)qApp;
+    bool ongoingcall = showWindow ? m->deviceState().ongoingCall()
+                                  : (call_mode == OutgoingCall);
+    bool incomingcall = showWindow ? m->deviceState().incomingCall()
+                                   : (call_mode == IncomingCall);
     
     MCompositeWindow* behind = targetWindow()->behind();
     if (ongoingcall) {
@@ -386,6 +390,7 @@ void MCallUiAnimation::setupCallMode(bool showWindow)
         currentwin_scale->setTargetObject(targetWindow());
         currentwin_opac->setTargetObject(targetWindow());
     } else if (incomingcall) {
+        animationGroup()->setDisableGroupHandlers(true);
         call_mode = MCallUiAnimation::IncomingCall;
         
         positionAnimation()->setTargetObject(targetWindow());
@@ -395,7 +400,7 @@ void MCallUiAnimation::setupCallMode(bool showWindow)
         currentwin_pos->setTargetObject(behind);
         currentwin_scale->setTargetObject(behind);
         currentwin_opac->setTargetObject(behind);
-    } else 
+    } else
         call_mode = MCallUiAnimation::NoCall;
 }
 
@@ -487,6 +492,7 @@ void MCallUiAnimation::tempHideDesktop(MCompositeWindow* behind)
 
 void MCallUiAnimation::endAnimation()
 {
+    animationGroup()->setDisableGroupHandlers(false);
     // is MCallUiAnimation disabled and this animation was triggered 
     // in a plugin?
     if (animationGroup()->animationCount() < activeAnimations().count())
@@ -513,15 +519,8 @@ void MCallUiAnimation::endAnimation()
     }
     // always stack the call-ui on top when finishing the animation 
     if (targetWindow()->propertyCache()->windowState() != IconicState)
-        QTimer::singleShot(0, this, SLOT(stackcallui()));
-}
-
-void MCallUiAnimation::stackcallui()
-{    
-    if (!targetWindow())
-        return;
-    MCompositeManager* m = (MCompositeManager *) qApp;
-    m->positionWindow(targetWindow()->window(), MCompositeManager::STACK_TOP);
+        m->positionWindow(targetWindow()->window(),
+                          MCompositeManager::STACK_TOP);
 }
 
 #include "mdynamicanimation.moc"
