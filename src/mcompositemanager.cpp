@@ -2381,7 +2381,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
 
     if (pc && pc->isMapped()
         && event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
-        if (!m_extensions.values(MapNotify).isEmpty() || !getTopmostApp()) {
+        Window topmost = getTopmostApp();
+        if (!m_extensions.values(MapNotify).isEmpty() || !topmost) {
             // Not necessary to animate if not in desktop view or we have a plugin.
             Window raise = event->window;
             bool needComp = false;
@@ -2393,7 +2394,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                 setExposeDesktop(false);
             if (i && (i->propertyCache()->windowState() == IconicState
                       // if it's not iconic, let the plugin decide
-                      || !m_extensions.values(MapNotify).isEmpty())) {
+                      || (raise != topmost &&
+                          !m_extensions.values(MapNotify).isEmpty()))) {
                 if (i->propertyCache()->noAnimations()) {
                     STACKING("positionWindow 0x%lx -> top", i->window());
                     positionWindow(i->window(), true);
