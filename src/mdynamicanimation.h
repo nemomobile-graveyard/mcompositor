@@ -99,6 +99,7 @@ class MCallUiAnimation: public MDynamicAnimation
     QPropertyAnimation* currentwin_scale;
     QPropertyAnimation* currentwin_opac;
     MStatusBarCrop* cropper;
+    QPointer<MCompositeWindow> behindTarget;
 };
 
 //MDYNAMICANIMATION_H
