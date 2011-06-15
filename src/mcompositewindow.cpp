@@ -93,7 +93,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     // We initially prevent item visibility from compositor itself
     // or it's corresponding thumbnail rendered by the switcher
     bool is_app = isAppWindow();
-    newly_mapped = is_app;
+    newly_mapped = is_app || pc->invokedBy() != None;
     if (!pc->isInputOnly()) {
         // never paint InputOnly windows
         window_visible = !is_app;
