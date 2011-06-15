@@ -22,24 +22,14 @@
 
 #include <QObject>
 #include <QPointer>
-#include <QParallelAnimationGroup>
 #include <X11/Xlib.h>
 
 class MCompositeWindow;
 class QPropertyAnimation;
 class McParallelAnimation;
+class QParallelAnimationGroup;
 class MCompositeWindowAnimationPrivate;
 class MAbstractAnimationHandler;
-
-class MParallelAnimationGroup : public QParallelAnimationGroup
-{
-    Q_OBJECT        
-public:
-    MParallelAnimationGroup(QObject* parent = 0)
-         : QParallelAnimationGroup(parent) {}
-    virtual bool disableGroupHandlers() const;
-    virtual void setDisableGroupHandlers(bool);
-};
 
 class MCompositeWindowAnimation: public QObject
 {
@@ -70,7 +60,7 @@ class MCompositeWindowAnimation: public QObject
     bool isReplaceable() const;
     void setReplaceable(bool);
     
-    MParallelAnimationGroup* animationGroup() const;
+    QParallelAnimationGroup* animationGroup() const;
     QPropertyAnimation* scaleAnimation() const;
     QPropertyAnimation* positionAnimation() const;
     QPropertyAnimation* opacityAnimation() const;
