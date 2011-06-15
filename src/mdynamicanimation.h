@@ -90,7 +90,6 @@ class MCallUiAnimation: public MDynamicAnimation
         
  private slots:
     void endAnimation();
-    void stackcallui();
 
  private:
     void tempHideDesktop(MCompositeWindow* behind);
