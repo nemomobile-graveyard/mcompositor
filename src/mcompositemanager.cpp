@@ -2331,8 +2331,21 @@ stack_and_return:
 
     /* do this after bindWindow() so that the window is in stacking_list */
     if (pc->windowState() != IconicState &&
-        (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win, true)))
-        activateWindow(win, CurrentTime, false, stacked);
+        (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win, true))) {
+        bool activate = true;
+        if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)) {
+            if (Window transient = pc->transientFor()) {
+                MWindowPropertyCache *tpc = getPropertyCache(transient);
+                if (tpc && tpc->isMapped()) {
+                    // do not raise the transient parent with the input method window
+                    // it is not necessarily supposed to be visible
+                    activate = false;
+                }
+            }
+        }
+        if (activate)
+            activateWindow(win, CurrentTime, false, stacked);
+    }
     else {
         // desktop is stacked below the active application
         if (!stacked) {
