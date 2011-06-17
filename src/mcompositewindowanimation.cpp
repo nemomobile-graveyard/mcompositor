@@ -89,25 +89,31 @@ public:
           animhandler(MCompositeWindowAnimation::AnimationTotal, 0)
     {
         const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
-        int duration = mc->configInt("startup-anim-duration");
+        int duration = false ? mc->configInt("startup-anim-duration") : 1;
 
         scale = new QPropertyAnimation(animation);
         scale->setPropertyName("scale");
         scale->setDuration(duration);
-        
+        scale->setStartValue(1);
+        scale->setEndValue(1);
+
         position = new QPropertyAnimation(animation);
         position->setPropertyName("pos");
         position->setDuration(duration);
-        
+        position->setStartValue(QPoint(0, 0));
+        position->setEndValue(QPoint(0, 0));
+
         opacity = new QPropertyAnimation(animation);
         opacity->setPropertyName("opacity");
         opacity->setDuration(duration);
-        
+        opacity->setStartValue(1);
+        opacity->setEndValue(1);
+
         scalepos = new McParallelAnimation(animation);
         scalepos->addAnimation(scale);
         scalepos->addAnimation(position);
         scalepos->addAnimation(opacity);
-        
+
         QObject::connect(scalepos, SIGNAL(finished()), animation,
                          SLOT(finalizeState()));
     }
