@@ -2158,10 +2158,6 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
             continue;
         if (tmp->meegoStackingLayer() > pc->meegoStackingLayer())
             return true;
-        if (pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION)
-            && tmp->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION)
-            && !getLastVisibleParent(tmp))
-            return true;
     }
     return false;
 }
