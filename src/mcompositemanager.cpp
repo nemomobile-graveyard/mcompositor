@@ -2486,6 +2486,9 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
         if (event->data.l[0] == IconicState && event->format == 32) {
             MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
             MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
+            if (i == d_item)
+                // not funny
+                return;
             if (d_item && i && i->isMapped()
                 && i->propertyCache()->windowState() == NormalState
                 && !i->propertyCache()->dontIconify()
