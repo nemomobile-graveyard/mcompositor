@@ -4213,7 +4213,8 @@ void MCompositeManager::remoteControl(int cmdfd)
 
         delete d;
 #ifdef GLES2_VERSION
-        eglTerminate(QX11Info::display());
+        eglTerminate(eglGetDisplay(EGLNativeDisplayType(EGL_DEFAULT_DISPLAY)));
+        eglTerminate(eglGetDisplay(EGLNativeDisplayType(QX11Info::display())));
 #endif
         XFlush(QX11Info::display());
 
