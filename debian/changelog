@@ -1,3 +1,9 @@
+mcompositor (1.0.4-1~unreleased) unstable; urgency=low
+
+  * foo
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 17 Jun 2011 16:53:39 +0300
+
 mcompositor (1.0.3-1) unstable; urgency=low
 
   * Fixes: NB#264334 - Sometimes a landscape status bar appears in the
