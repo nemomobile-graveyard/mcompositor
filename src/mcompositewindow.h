@@ -234,7 +234,16 @@ public:
      * Tells if this window is transitioning.
      */
     bool isWindowTransitioning() const { return is_transitioning; }
-    
+
+    /*!
+     * Tells if this window is currently transitioning so that the
+     * stacking does not change.
+     */
+    bool isNotChangingStacking() const { return is_transitioning
+                                                && is_not_stacking; }
+
+    void setNotChangingStacking(bool value) { is_not_stacking = value; }
+
     /*!
      * Returns whether this object represents a valid (i.e. viewable) window
      */
@@ -388,7 +397,7 @@ private:
     short window_obscured;
     bool is_valid;
     bool newly_mapped;
-    bool is_transitioning;
+    bool is_transitioning, is_not_stacking;
     bool dimmed_effect;
     char waiting_for_damage;
     bool resize_expected;
