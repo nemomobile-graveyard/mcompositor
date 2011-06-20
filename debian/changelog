@@ -1,8 +1,64 @@
-mcompositor (0.9.10-1~unreleased) unstable; urgency=low
+mcompositor (1.0.4-1~unreleased) unstable; urgency=low
 
   * foo
 
- -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 17 May 2011 11:38:51 +0300
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 17 Jun 2011 16:53:39 +0300
+
+mcompositor (1.0.3-1) unstable; urgency=low
+
+  * Fixes: NB#264334 - Sometimes a landscape status bar appears in the
+    portrait
+  * Fixes: NB#266407 - Legal bug in compositor
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 17 Jun 2011 16:53:39 +0300
+
+mcompositor (1.0.2-1) unstable; urgency=low
+
+  * Revert part of the NB#258377 fix
+  * Fixes: NB#265220 - opening calculator application flickers desktop icons
+  * Fixes: NB#265226 - rotating message-ui with VKB form portrait to
+    landscape..
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 15 Jun 2011 13:25:32 +0300
+
+mcompositor (1.0.1-1) unstable; urgency=low
+
+  * Fixes: NB#261560 - Call UI not visible when in Cherry startup screen
+  * Fixes: NB#257044 - color distortions in low-power mode
+  * Almost fixes NB#258377 - already open app comes without transition from QLB
+  * add missing MCompositeManager initialization to unit tests
+  * rootMessageEvent(): redirected desktop != all windows are redirected
+  * do paintEngine()->syncState() call in GLX side only
+  * unit test fixes
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Mon, 13 Jun 2011 10:25:36 +0300
+
+mcompositor (1.0.0-2) unstable; urgency=low
+
+  * Kudos build.
+
+ -- Jani Mikkonen <jani.3.mikkonen@nokia.com>  Fri, 03 Jun 2011 14:01:00 +0300
+
+mcompositor (1.0.0-1) unstable; urgency=low
+
+  * Initial 1.0 release	
+  * Fixes: NB#260627 - For a fullscreen application transition from sheet view to Mapplication view
+  * Fixes: NB#260604 - Wrong page opened from Recents-view
+  * Fixes: NB#259079 - Unsetting _NET_WM_PING will not stop compositor pings	
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Tue, 31 May 2011 19:44:15 +0300
+
+mcompositor (0.9.11-1) unstable; urgency=low
+
+  * Fixes: NB#241854 - Window animations for call-ui
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Mon, 23 May 2011 23:00:00 +0300
+
+mcompositor (0.9.10-1) unstable; urgency=low
+
+  * Fix regression with splash screens
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 18 May 2011 13:38:32 +0300
 
 mcompositor (0.9.9-2) unstable; urgency=low
 
