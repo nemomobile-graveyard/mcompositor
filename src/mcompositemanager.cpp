@@ -1830,13 +1830,43 @@ void MCompositeManagerPrivate::fixZValues()
 
     // fix Z-values always to make sure we do it after an animation
     for (int i = 0; i <= last_i; ++i) {
-         MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
-         if (witem && witem->hasTransitioningWindow())
-             // don't change Z values until animation is over
-             break;
-         if (witem)
-             witem->requestZValue(i);
+        MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
+        if (!witem)
+            continue;
+        if (witem->hasTransitioningWindow())
+            // don't change Z values until animation is over
+            break;
+        witem->requestZValue(i);
     }
+
+    // @notifs <- notification windows above which there are only
+    // unmapped windows
+    bool sg_above_notifs = false;
+    QVector<MCompositeWindow *> notifs;
+    for (int i = last_i; i >= 0; i--) {
+        MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
+        if (!witem)
+            continue;
+        if (!sg_above_notifs && witem->isMapped()) {
+            if (witem->propertyCache()->windowType()
+                == MCompAtoms::NOTIFICATION)
+                notifs.prepend(witem);
+            else if (witem->window() != home_button_win
+                     && witem->window() != close_button_win) {
+                sg_above_notifs = true;
+            }
+        }
+        if (witem->hasTransitioningWindow())
+            // don't change Z values until animation is over
+            break;
+    }
+
+    // MCompositeWindowAnimation::ensureAnimationVisible() raises
+    // the actors of the animated windows right above the highest
+    // one in the stack.  Raise notifications even higher to make
+    // them visible during animations.
+    for (int i = 0; i < notifs.size(); i++)
+        notifs[i]->requestZValue(last_i+1 + 2 + 1+i);
 }
 
 // index of the covering window in stacking_list, or 0
@@ -2535,7 +2565,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                         setWindowState(cw->window(), IconicState);
                     else if (cw && cw->isMapped())
                         // show desktop under non-minimizable windows
-                        d_zeta = cw->zValue() - 1;
+                        d_zeta = cw->indexInStack() - 1;
                 }
                 // exposeSwitcher() can choose 'lower' so that lower_i < 0
                 if (lower_i > 0) {
