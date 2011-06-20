@@ -1001,7 +1001,8 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
         if (pc->windowState() != NormalState) {
             GTA("  not in normal state");
             continue;
-        } else if (cw->isWindowTransitioning()) {
+        } else if (cw->isWindowTransitioning() &&
+                   !cw->isNotChangingStacking()) {
             GTA("  is transitioning");
             continue;
         }
