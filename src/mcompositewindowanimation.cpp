@@ -90,7 +90,7 @@ public:
     {
         const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
         // default duration of 1 ms to keep "NOP animation" short 
-        int duration = 1;
+        int duration = 2;
 
         scale = new QPropertyAnimation(animation);
         scale->setPropertyName("scale");
