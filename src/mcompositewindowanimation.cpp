@@ -89,7 +89,8 @@ public:
           animhandler(MCompositeWindowAnimation::AnimationTotal, 0)
     {
         const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
-        int duration = false ? mc->configInt("startup-anim-duration") : 1;
+        // default duration of 1 ms to keep "NOP animation" short 
+        int duration = 1;
 
         scale = new QPropertyAnimation(animation);
         scale->setPropertyName("scale");
