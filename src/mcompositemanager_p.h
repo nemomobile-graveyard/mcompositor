@@ -28,6 +28,7 @@
 #include <QTimer>
 #include <QDir>
 #include <QPointer>
+#include <QSocketNotifier>
 
 #include <X11/Xutil.h>
 #include <X11/Xlib.h>
@@ -194,6 +195,7 @@ public:
     MSplashScreen *splash;
     QPointer<MCompositeWindow> waiting_damage;
     QTimer lockscreen_map_timer;
+    QSocketNotifier *sighupNotifier;
 
 signals:
     void compositingEnabled();

@@ -222,11 +222,14 @@ public slots:
 
 private slots:
     void lockScreenPainted();
+    void handleSigHup();
 
 private:
     void ensureSettingsFile();
+    static void sighupHandler(int signo);
     MCompositeManagerPrivate *d;
     QSettings *settings;
+    static int sighupFd[2];
 
     friend class MCompositeWindow;
     friend class MCompositeWindowAnimation;

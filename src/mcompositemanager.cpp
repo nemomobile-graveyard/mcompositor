@@ -54,6 +54,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 
 #define TRANSLUCENT 0xe0000000
 #define OPAQUE      0xffffffff
@@ -85,6 +86,7 @@ Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
 MCompAtoms *MCompAtoms::d = 0;
 static KeyCode switcher_key = 0;
 static bool lockscreen_painted = false;
+int MCompositeManager::sighupFd[2];
 
 static bool should_be_pinged(MCompositeWindow *cw);
 static bool compareWindows(Window w_a, Window w_b);
@@ -3888,10 +3890,20 @@ void MCompositeManagerPrivate::installX11EventFilter(long xevent,
     m_extensions.insert(xevent, extension);
 }
 
-static void sighup_handler(int signo)
+void MCompositeManager::sighupHandler(int signo)
 {
     Q_UNUSED(signo)
-    ((MCompositeManager*)qApp)->reloadConfig();
+    char a = 1;
+    ::write(sighupFd[0], &a, sizeof(a));
+}
+
+void MCompositeManager::handleSigHup()
+{
+    d->sighupNotifier->setEnabled(false);
+    char tmp;
+    ::read(sighupFd[1], &tmp, sizeof(tmp));
+    reloadConfig();
+    d->sighupNotifier->setEnabled(true);
 }
 
 #ifdef WINDOW_DEBUG
@@ -4346,7 +4358,14 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     new MDecoratorFrame(this);
 
     // SIGHUP can be sent to force us to reload the configuration
-    signal(SIGHUP, sighup_handler);
+    signal(SIGHUP, sighupHandler);
+    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sighupFd))
+        qFatal("Couldn't create HUP socketpair");
+    d->sighupNotifier = new QSocketNotifier(sighupFd[1],
+                                            QSocketNotifier::Read, this);
+    connect(d->sighupNotifier, SIGNAL(activated(int)),
+            this, SLOT(handleSigHup()));
+
 #ifdef WINDOW_DEBUG
     signal(SIGUSR1, sigusr1_handler);
 
