@@ -3888,6 +3888,12 @@ void MCompositeManagerPrivate::installX11EventFilter(long xevent,
     m_extensions.insert(xevent, extension);
 }
 
+static void sighup_handler(int signo)
+{
+    Q_UNUSED(signo)
+    ((MCompositeManager*)qApp)->reloadConfig();
+}
+
 #ifdef WINDOW_DEBUG
 static void sigusr1_handler(int signo)
 {
@@ -4339,6 +4345,8 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     // Publish ourselves
     new MDecoratorFrame(this);
 
+    // SIGHUP can be sent to force us to reload the configuration
+    signal(SIGHUP, sighup_handler);
 #ifdef WINDOW_DEBUG
     signal(SIGUSR1, sigusr1_handler);
 
@@ -4488,12 +4496,21 @@ int MCompositeManager::configInt(char const *key, int defaultValue) const
     return settings->value(key, defaultValue).toInt();
 }
 
+void MCompositeManager::reloadConfig()
+{
+    settings->sync();
+    if (settings->status() == QSettings::AccessError)
+        qDebug() << __func__ << "can't access" << settings->fileName();
+    else if (settings->status() == QSettings::FormatError)
+        qDebug() << __func__ << "config file" << settings->fileName()
+                 << "is in invalid format";
+}
+
 void MCompositeManager::ensureSettingsFile()
 {
     // $HOME/.config/mcompositor/mcompositor.conf
     settings = new QSettings("mcompositor", "mcompositor", this);
 
-    config("startup-anim-duration",             200);
     config("crossfade-duration",                250);
     config("switcher-keysym",           "BackSpace");
     config("ping-interval-ms",                 5000);
@@ -4507,7 +4524,6 @@ void MCompositeManager::ensureSettingsFile()
     config("default-statusbar-height",           36);
     config("default-desktop-angle",             270);
     config("close-timeout-ms",                 5000);
-    config("sheet-anim-duration",               350);
     config("sheet-anim-duration",               350);
     config("chained-anim-duration",             500);
     config("callui-anim-duration",              400);

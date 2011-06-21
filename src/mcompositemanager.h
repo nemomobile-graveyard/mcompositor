@@ -168,6 +168,7 @@ public:
     int configInt(const char *key, int defaultValue) const;
     QVariant config(const char *key) const;
     void config(const char *key, const QVariant &val) const;
+    void reloadConfig();
 
 #ifdef WINDOW_DEBUG
     // Dump the current state of MCompositeManager and MCompositeWindow:s

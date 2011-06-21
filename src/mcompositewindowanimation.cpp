@@ -88,7 +88,6 @@ public:
           is_replaceable(true),
           animhandler(MCompositeWindowAnimation::AnimationTotal, 0)
     {
-        const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
         // default duration of 1 ms to keep "NOP animation" short 
         int duration = 2;
 
