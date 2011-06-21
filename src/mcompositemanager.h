@@ -168,6 +168,7 @@ public:
     int configInt(const char *key, int defaultValue) const;
     QVariant config(const char *key) const;
     void config(const char *key, const QVariant &val) const;
+    void reloadConfig();
 
 #ifdef WINDOW_DEBUG
     // Dump the current state of MCompositeManager and MCompositeWindow:s
@@ -221,11 +222,14 @@ public slots:
 
 private slots:
     void lockScreenPainted();
+    void handleSigHup();
 
 private:
     void ensureSettingsFile();
+    static void sighupHandler(int signo);
     MCompositeManagerPrivate *d;
     QSettings *settings;
+    static int sighupFd[2];
 
     friend class MCompositeWindow;
     friend class MCompositeWindowAnimation;

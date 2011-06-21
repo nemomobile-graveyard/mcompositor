@@ -54,6 +54,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 
 #define TRANSLUCENT 0xe0000000
 #define OPAQUE      0xffffffff
@@ -85,6 +86,7 @@ Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
 MCompAtoms *MCompAtoms::d = 0;
 static KeyCode switcher_key = 0;
 static bool lockscreen_painted = false;
+int MCompositeManager::sighupFd[2];
 
 static bool should_be_pinged(MCompositeWindow *cw);
 static bool compareWindows(Window w_a, Window w_b);
@@ -3887,6 +3889,22 @@ void MCompositeManagerPrivate::installX11EventFilter(long xevent,
     m_extensions.insert(xevent, extension);
 }
 
+void MCompositeManager::sighupHandler(int signo)
+{
+    Q_UNUSED(signo)
+    char a = 1;
+    ::write(sighupFd[0], &a, sizeof(a));
+}
+
+void MCompositeManager::handleSigHup()
+{
+    d->sighupNotifier->setEnabled(false);
+    char tmp;
+    ::read(sighupFd[1], &tmp, sizeof(tmp));
+    reloadConfig();
+    d->sighupNotifier->setEnabled(true);
+}
+
 #ifdef WINDOW_DEBUG
 static void sigusr1_handler(int signo)
 {
@@ -4338,6 +4356,15 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     // Publish ourselves
     new MDecoratorFrame(this);
 
+    // SIGHUP can be sent to force us to reload the configuration
+    signal(SIGHUP, sighupHandler);
+    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sighupFd))
+        qFatal("Couldn't create HUP socketpair");
+    d->sighupNotifier = new QSocketNotifier(sighupFd[1],
+                                            QSocketNotifier::Read, this);
+    connect(d->sighupNotifier, SIGNAL(activated(int)),
+            this, SLOT(handleSigHup()));
+
 #ifdef WINDOW_DEBUG
     signal(SIGUSR1, sigusr1_handler);
 
@@ -4487,12 +4514,21 @@ int MCompositeManager::configInt(char const *key, int defaultValue) const
     return settings->value(key, defaultValue).toInt();
 }
 
+void MCompositeManager::reloadConfig()
+{
+    settings->sync();
+    if (settings->status() == QSettings::AccessError)
+        qDebug() << __func__ << "can't access" << settings->fileName();
+    else if (settings->status() == QSettings::FormatError)
+        qDebug() << __func__ << "config file" << settings->fileName()
+                 << "is in invalid format";
+}
+
 void MCompositeManager::ensureSettingsFile()
 {
     // $HOME/.config/mcompositor/mcompositor.conf
     settings = new QSettings("mcompositor", "mcompositor", this);
 
-    config("startup-anim-duration",             200);
     config("crossfade-duration",                250);
     config("switcher-keysym",           "BackSpace");
     config("ping-interval-ms",                 5000);
@@ -4506,7 +4542,6 @@ void MCompositeManager::ensureSettingsFile()
     config("default-desktop-angle",             270);
     config("close-timeout-ms",                 5000);
     config("sheet-anim-duration",               350);
-    config("sheet-anim-duration",               350);
-    config("chained-anim-duration",             400);
+    config("chained-anim-duration",             500);
     config("callui-anim-duration",              400);
 }
