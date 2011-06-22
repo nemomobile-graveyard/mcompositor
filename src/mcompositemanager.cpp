@@ -2421,8 +2421,14 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
     MWindowPropertyCache *pc = prop_caches.value(event->window, 0);
 
-    if (pc && pc->isMapped()
+    if (pc && !pc->isMapped() && pc->beingMapped()
         && event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
+        // _NET_ACTIVE_WINDOW came between MapRequest and MapNotify,
+        // mark it as "stacked unmapped" to ignore initial_state==Iconic
+        positionWindow(event->window, true);
+        pc->setStackedUnmapped(true);
+    } else if (pc && pc->isMapped()
+               && event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
         Window topmost = getTopmostApp();
         if (!m_extensions.values(MapNotify).isEmpty() || !topmost) {
             // Not necessary to animate if not in desktop view or we have a plugin.
