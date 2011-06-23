@@ -4476,6 +4476,6 @@ void MCompositeManager::ensureSettingsFile()
     config("close-timeout-ms",                 5000);
     config("sheet-anim-duration",               350);
     config("sheet-anim-duration",               350);
-    config("chained-anim-duration",             500);
+    config("chained-anim-duration",             400);
     config("callui-anim-duration",              400);
 }
