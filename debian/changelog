@@ -1,3 +1,9 @@
+mcompositor (1.0.5~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Wed, 29 Jun 2011 14:04:26 +0300
+
 mcompositor (1.0.4-1) unstable; urgency=low
 
   * Fixes: NB#264601 - Call log is not opened in foreground after...
