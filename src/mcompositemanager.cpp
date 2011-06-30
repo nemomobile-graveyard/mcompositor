@@ -4556,7 +4556,7 @@ void MCompositeManager::ensureSettingsFile()
     config("damages-for-starting-anim",           2);
     config("damage-timeout-ms",                 500);
     config("expect-resize-timeout-ms",          800);
-    config("splash-timeout-ms",               15000);
+    config("splash-timeout-ms",               30000);
     config("default-current-window-angle",      270);
     config("lockscreen-map-timeout-ms",        1000);
     config("default-statusbar-height",           36);
