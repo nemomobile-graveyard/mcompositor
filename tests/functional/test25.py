@@ -98,7 +98,7 @@ time.sleep(1)
 check_order([app2, '\'MSplashScreen\'', app1, home_win], 'app2 appeared correctly')
 
 # wait for the splash timeout (2s already waited)
-time.sleep(13)
+time.sleep(28)
 
 check_order([app2, app1, home_win], 'splash disappeared on timeout',
             '\'MSplashScreen\'')
