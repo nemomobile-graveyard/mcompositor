@@ -4256,6 +4256,15 @@ void MCompositeManager::remoteControl(int cmdfd)
             man->startPing(true);
         else
             qWarning("nothing to unhang");
+    } else if (!strcmp(cmd, "debug")) {
+        debug_mode = true;
+        qDebug("debug mode on");
+    } else if (!strcmp(cmd, "nodebug")) {
+        debug_mode = false;
+        qDebug("debug mode off");
+    } else if (!strcmp(cmd, "reload")) {
+        reloadConfig();
+        qDebug("config reloaded");
     } else if (!strcmp(cmd, "restart")) {
         QString me = qApp->applicationFilePath();
         QStringList args = qApp->arguments();
@@ -4290,8 +4299,12 @@ void MCompositeManager::remoteControl(int cmdfd)
         qDebug("  state [<tag>]   dump MCompositeManager, MCompositeWindow:s ");
         qDebug("                  and QGraphicsScene state information");
         qDebug("  save [<fname>]  dump it into <fname>");
+        qDebug("  hang            take it as if the topmost application hung");
+        qDebug("  unhang          take it as if the hung application ponged");
+        qDebug("  debug, nodebug  turn the SIGUSR1 debug mode on/off");
         qDebug("  exit, quit      geez");
         qDebug("  restart         re-execute mcompositor");
+        qDebug("  reload          reload the settings");
     } else
         qDebug("%s: unknown command", cmd);
 }
