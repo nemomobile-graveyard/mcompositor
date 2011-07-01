@@ -261,10 +261,14 @@ void MCompositeWindow::updateIconGeometry()
 // TODO: have an option of disabling the animation
 void MCompositeWindow::restore(bool defer)
 {
+    if (window_status == Restoring)
+        return;
+
     setVisible(true);
     iconified = false;
      // Restore handler
     if (animator && !static_cast<MCompositeManager *>(qApp)->splashed(this)) {
+        window_status = Restoring;
         if (defer)
             animator->deferAnimation(MCompositeWindowAnimation::Restore);
         else
