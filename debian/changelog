@@ -1,6 +1,7 @@
-mcompositor (1.0.5~1) unstable; urgency=low
+mcompositor (1.0.5-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#267629 - Splash screen sequence looks ugly due to high CPU and IO load in background
+  * Fixes: NB#257744 - Window always get updated by damage when auto transitioning
 
  -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Wed, 29 Jun 2011 14:04:26 +0300
 
