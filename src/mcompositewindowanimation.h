@@ -59,6 +59,13 @@ class MCompositeWindowAnimation: public QObject
     bool isActive();
     bool isReplaceable() const;
     void setReplaceable(bool);
+    /*!
+     * This animator's timeline is manually updated by hand and not running 
+     * thru a timer
+     */
+    bool isManuallyUpdated() const;
+    
+    static bool hasActiveAnimation();
     
     QParallelAnimationGroup* animationGroup() const;
     QPropertyAnimation* scaleAnimation() const;
@@ -83,15 +90,19 @@ class MCompositeWindowAnimation: public QObject
 
  public slots:    
     virtual void finalizeState();
-    virtual void startTransition();
+    virtual void startTransition(); 
 
  private:
+    /* internal only between priv implementation! */
+    void setManuallyUpdated(bool updatemode);
     void disconnectHandler(MAbstractAnimationHandler*);
+    void requestStackTop();
     
     Q_DECLARE_PRIVATE(MCompositeWindowAnimation)
     QScopedPointer<MCompositeWindowAnimationPrivate> d_ptr;
 
     friend class MAbstractAnimationHandler;
+    friend class McParallelAnimation;
 };
 
 class MAbstractAnimationHandler

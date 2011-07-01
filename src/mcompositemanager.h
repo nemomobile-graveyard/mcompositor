@@ -118,6 +118,11 @@ public:
      */
     void loadPlugins(const QString &overridePluginPath,
                      const QString &regularPluginDir);
+    
+    /*!
+     * Returns true if compositor has loaded any external plugins
+     */
+    bool hasPlugins() const;
 
     /*
      * Returns the current state of windows whether it is being composited

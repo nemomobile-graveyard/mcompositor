@@ -907,9 +907,11 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         }
         if (e->atom == ATOM(_MEEGOTOUCH_OPAQUE_WINDOW))
             recheck_visibility = true;
-        dirtyStacking(recheck_visibility, e->time);
         MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
-        if (cw && !cw->isNewlyMapped()) {
+        bool restoring = (cw && cw->status() == MCompositeWindow::Restoring);
+        if (!restoring)
+            dirtyStacking(recheck_visibility, e->time);
+        if (cw && !cw->isNewlyMapped() && !restoring) {
             checkStacking(recheck_visibility, e->time);
             // window on top could have changed
             if (!possiblyUnredirectTopmostWindow() && !compositing)
@@ -1323,8 +1325,16 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
                 STACKING("positionWindow 0x%lx -> top", parent);
                 positionWindow(parent, true);
             } else {
-                STACKING("positionWindow 0x%lx -> top",e-> window);
-                positionWindow(e->window, true);
+                MCompositeWindow* cw = COMPOSITE_WINDOW(e->window);
+                bool restoring = (cw && cw->status() == MCompositeWindow::Restoring);                
+                // For restoring windows, they are positioned on top only
+                // ONCE the animation has begun so it doesn't flicker
+                // briefly while animating in.
+                if (!restoring) {
+                    STACKING("positionWindow 0x%lx -> top",e-> window);
+                    positionWindow(e->window, true);
+                } else
+                    return; // dont honor raise
             }
         }
     } else if (win_i >= 0 && e->detail == Below
@@ -2747,6 +2757,8 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
     if (pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP) &&
         pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK) &&
         !pc->isDecorator()) {
+        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+        bool restoring = (cw && cw->status() == MCompositeWindow::Restoring);
         if (!stacked) {
             // if this is a transient window, raise the "parent" instead
             Window last = getLastVisibleParent(pc);
@@ -2754,10 +2766,12 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
             if (last) to_stack = prop_caches.value(last, 0);
             // move it to the correct position in the stack
             STACKING("positionWindow 0x%lx -> top", to_stack->winId());
-            positionWindow(to_stack->winId(), true);
+            if (!restoring)
+                positionWindow(to_stack->winId(), true);
         }
         // possibly set decorator
-        dirtyStacking(false);
+        if (!restoring)
+            dirtyStacking(false);
     } else if (pc->isDecorator()) {
         // if decorator crashes and reappears, stack it to bottom, raise later
         if (!stacked) {
@@ -4453,6 +4467,11 @@ void MCompositeManager::loadPlugins(const QString &overridePluginPath,
         qWarning("no plugins loaded");
 }
 
+bool MCompositeManager::hasPlugins() const
+{
+    return !d->m_extensions.isEmpty();
+}
+
 bool MCompositeManager::x11EventFilter(XEvent *event)
 {
     return d->x11EventFilter(event);
@@ -4548,6 +4567,7 @@ void MCompositeManager::ensureSettingsFile()
     // $HOME/.config/mcompositor/mcompositor.conf
     settings = new QSettings("mcompositor", "mcompositor", this);
 
+    config("startup-anim-duration",             200);
     config("crossfade-duration",                250);
     config("switcher-keysym",           "BackSpace");
     config("ping-interval-ms",                 5000);
@@ -4564,4 +4584,5 @@ void MCompositeManager::ensureSettingsFile()
     config("sheet-anim-duration",               350);
     config("chained-anim-duration",             500);
     config("callui-anim-duration",              400);
+    config("restore-delay",                     200);
 }

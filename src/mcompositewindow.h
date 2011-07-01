@@ -53,6 +53,7 @@ public:
         Normal = 0,
         Hung,
         Minimizing,
+        Restoring,
         Closing
     };
     enum IconifyState {

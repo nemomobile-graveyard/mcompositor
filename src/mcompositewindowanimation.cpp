@@ -41,6 +41,8 @@
 #include <mcompositemanager_p.h>
 #include <QVector>
 
+static QAtomicInt animrefcount;
+
 class McParallelAnimation: public QParallelAnimationGroup
 {
 public:
@@ -48,6 +50,12 @@ public:
         :QParallelAnimationGroup(p),
          parent(p)
     {}
+
+    ~McParallelAnimation()
+    {
+        if (state() != QAbstractAnimation::Stopped)
+            animrefcount.deref();
+    }
         
 protected:
     virtual void updateCurrentTime(int currentTime)
@@ -62,34 +70,49 @@ protected:
         if (newState == QAbstractAnimation::Running && 
             oldState == QAbstractAnimation::Stopped) {
             parent->ensureAnimationVisible();
-            if (parent->targetWindow())
+            if (parent->targetWindow()) {
+                animrefcount.ref();
+                parent->setManuallyUpdated(false);
                 parent->targetWindow()->beginAnimation();
-            if (parent->targetWindow2())
+                parent->requestStackTop();
+            } if (parent->targetWindow2())
                 parent->targetWindow2()->beginAnimation();
+        } else if (newState == QAbstractAnimation::Paused &&
+                   oldState == QAbstractAnimation::Running) {
+            parent->setManuallyUpdated(true);
         } else if (newState == QAbstractAnimation::Stopped) {
-            if (parent->targetWindow())
+            animrefcount.deref();
+            if (parent->targetWindow()) {
+                parent->setManuallyUpdated(false);
                 parent->targetWindow()->endAnimation();
-            if (parent->targetWindow2())
-                parent->targetWindow2()->endAnimation();
-        }
+            } if (parent->targetWindow2())
+                  parent->targetWindow2()->endAnimation();
+        } 
         QParallelAnimationGroup::updateState(newState, oldState);
     }
 private:
     MCompositeWindowAnimation* parent;
 };
 
-class MCompositeWindowAnimationPrivate
+class MCompositeWindowAnimationPrivate: public QObject
 {
+    Q_OBJECT
 public:
     
     MCompositeWindowAnimationPrivate(MCompositeWindowAnimation* animation)
-        : crossfade(0),
+        : QObject(animation),
+          crossfade(0),
           pending_animation(MCompositeWindowAnimation::NoAnimation),
           is_replaceable(true),
+          manually_updated(false),
           animhandler(MCompositeWindowAnimation::AnimationTotal, 0)
     {
+        const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
         // default duration of 1 ms to keep "NOP animation" short 
-        int duration = 2;
+        int duration = 1;
+        if (!mc->hasPlugins())
+            // dont bork the animation if we dont have a plugin
+            duration = mc->configInt("startup-anim-duration");
 
         scale = new QPropertyAnimation(animation);
         scale->setPropertyName("scale");
@@ -153,6 +176,14 @@ public:
         return false;
     }
 
+public slots:
+    void delayedRestoreHandler()
+    {
+        ((MCompositeWindowAnimation*)parent())->windowRestored();
+    }
+    
+public:
+    
     QPointer<MCompositeWindow> target_window, target_window2;
     QPointer<QPropertyAnimation> scale;
     QPointer<QPropertyAnimation> position;
@@ -160,6 +191,7 @@ public:
     McParallelAnimation* scalepos, *crossfade;
     MCompositeWindowAnimation::AnimationType pending_animation;
     bool is_replaceable;
+    bool manually_updated;
     QVector< MAbstractAnimationHandler* > animhandler;
 };
 
@@ -171,6 +203,11 @@ MCompositeWindowAnimation::MCompositeWindowAnimation(QObject* parent)
 
 MCompositeWindowAnimation::~MCompositeWindowAnimation()
 {
+}
+
+bool MCompositeWindowAnimation::hasActiveAnimation()
+{
+    return animrefcount;
 }
 
 void MCompositeWindowAnimation::setTargetWindow(MCompositeWindow* window)
@@ -347,10 +384,20 @@ void MCompositeWindowAnimation::crossFadeTo(MCompositeWindow *cw)
     d->crossfade->setDirection(QAbstractAnimation::Forward);
 }
 
+void MCompositeWindowAnimation::requestStackTop()
+{
+    if (targetWindow() && 
+        targetWindow()->status() == MCompositeWindow::Restoring) {
+        MCompositeManager *m = (MCompositeManager*) qApp;
+        m->positionWindow(targetWindow()->window(), MCompositeManager::STACK_TOP);
+    }
+}
+
 void MCompositeWindowAnimation::startTransition()
 {        
     Q_D(MCompositeWindowAnimation);
-    
+    const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
+
     switch (d->pending_animation) {
     case Showing:
         windowShown();
@@ -365,7 +412,12 @@ void MCompositeWindowAnimation::startTransition()
         d->pending_animation = NoAnimation;
         break;
     case Restore:
-        windowRestored();
+        // Restore is a special case requiring a slight delay because the 
+        // window is already created unlike the initial show animation. Without
+        // the delay, the animation goes too quickly and not as smooth as the 
+        // show window animation
+        QTimer::singleShot(mc->configInt("restore-delay"), d, 
+                           SLOT(delayedRestoreHandler()));
         d->pending_animation = NoAnimation;
         break;
     case CrossFade:
@@ -494,6 +546,18 @@ void MCompositeWindowAnimation::disconnectHandler(MAbstractAnimationHandler* han
         d->animhandler[type] = 0;
 }
 
+bool MCompositeWindowAnimation::isManuallyUpdated() const
+{
+    Q_D(const MCompositeWindowAnimation);
+    return d->manually_updated;
+}
+
+void MCompositeWindowAnimation::setManuallyUpdated(bool updatemode)
+{
+    Q_D(MCompositeWindowAnimation);
+    d->manually_updated = updatemode;
+}
+
 void MAbstractAnimationHandler::windowShown()
 {// NOOP
 }
@@ -520,3 +584,5 @@ MAbstractAnimationHandler::~MAbstractAnimationHandler()
     if (main_animator)
         main_animator->disconnectHandler(this);
 }
+
+#include "mcompositewindowanimation.moc"
