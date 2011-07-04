@@ -96,9 +96,7 @@ private:
 
 class MCompositeWindowAnimationPrivate: public QObject
 {
-    Q_OBJECT
-public:
-    
+public:    
     MCompositeWindowAnimationPrivate(MCompositeWindowAnimation* animation)
         : QObject(animation),
           crossfade(0),
@@ -175,13 +173,7 @@ public:
         
         return false;
     }
-
-public slots:
-    void delayedRestoreHandler()
-    {
-        ((MCompositeWindowAnimation*)parent())->windowRestored();
-    }
-    
+   
 public:
     
     QPointer<MCompositeWindow> target_window, target_window2;
@@ -396,8 +388,7 @@ void MCompositeWindowAnimation::requestStackTop()
 void MCompositeWindowAnimation::startTransition()
 {        
     Q_D(MCompositeWindowAnimation);
-    const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
-
+    
     switch (d->pending_animation) {
     case Showing:
         windowShown();
@@ -412,12 +403,7 @@ void MCompositeWindowAnimation::startTransition()
         d->pending_animation = NoAnimation;
         break;
     case Restore:
-        // Restore is a special case requiring a slight delay because the 
-        // window is already created unlike the initial show animation. Without
-        // the delay, the animation goes too quickly and not as smooth as the 
-        // show window animation
-        QTimer::singleShot(mc->configInt("restore-delay"), d, 
-                           SLOT(delayedRestoreHandler()));
+        windowRestored();
         d->pending_animation = NoAnimation;
         break;
     case CrossFade:
@@ -585,4 +571,3 @@ MAbstractAnimationHandler::~MAbstractAnimationHandler()
         main_animator->disconnectHandler(this);
 }
 
-#include "mcompositewindowanimation.moc"
