@@ -1,3 +1,9 @@
+mcompositor (1.0.6-1) unstable; urgency=low
+
+  * Fixes: NB#270282 - Unable to bring 'settings' to the foreground after opening 'help' from settings
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Mon, 04 Jul 2011 18:20:53 +0300
+
 mcompositor (1.0.5-1) unstable; urgency=low
 
   * Fixes: NB#267629 - Splash screen sequence looks ugly due to high CPU and IO load in background
