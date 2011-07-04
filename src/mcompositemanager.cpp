@@ -909,7 +909,10 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         if (e->atom == ATOM(_MEEGOTOUCH_OPAQUE_WINDOW))
             recheck_visibility = true;
         MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
-        bool restoring = (cw && cw->status() == MCompositeWindow::Restoring);
+        // handle stacking on the animator for single (non-chained) window
+        bool restoring = (cw && 
+                          cw->propertyCache()->invokedBy() == None &&
+                          cw->status() == MCompositeWindow::Restoring);
         if (!restoring)
             dirtyStacking(recheck_visibility, e->time);
         if (cw && !cw->isNewlyMapped() && !restoring) {
@@ -1327,10 +1330,14 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
                 positionWindow(parent, true);
             } else {
                 MCompositeWindow* cw = COMPOSITE_WINDOW(e->window);
-                bool restoring = (cw && cw->status() == MCompositeWindow::Restoring);                
                 // For restoring windows, they are positioned on top only
                 // ONCE the animation has begun so it doesn't flicker
                 // briefly while animating in.
+                // Handle stacking on the animator for single (non-chained) 
+                // window
+                bool restoring = (cw && 
+                                  cw->propertyCache()->invokedBy() == None &&
+                                  cw->status() == MCompositeWindow::Restoring);
                 if (!restoring) {
                     STACKING("positionWindow 0x%lx -> top",e-> window);
                     positionWindow(e->window, true);
@@ -2759,7 +2766,10 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK) &&
         !pc->isDecorator()) {
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        bool restoring = (cw && cw->status() == MCompositeWindow::Restoring);
+        // handle stacking on the animator for single (non-chained) window
+        bool restoring = (cw && 
+                          cw->propertyCache()->invokedBy() == None &&
+                          cw->status() == MCompositeWindow::Restoring);
         if (!stacked) {
             // if this is a transient window, raise the "parent" instead
             Window last = getLastVisibleParent(pc);
@@ -4585,5 +4595,4 @@ void MCompositeManager::ensureSettingsFile()
     config("sheet-anim-duration",               350);
     config("chained-anim-duration",             500);
     config("callui-anim-duration",              400);
-    config("restore-delay",                     200);
 }
