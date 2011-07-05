@@ -1060,7 +1060,7 @@ bool MCompositeManagerPrivate::haveMappedWindow() const
 
 bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 {
-    if (splash || watch->keep_black)
+    if (watch->keep_black || (splash && !device_state->displayOff()))
         return false;
     static const QRegion fs_r(0, 0,
                     ScreenOfDisplay(QX11Info::display(),
