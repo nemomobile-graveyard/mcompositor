@@ -226,7 +226,6 @@ void ut_Anim::testRestoreAnimation()
     cme.type = ClientMessage;
     cme.message_type = ATOM(_NET_ACTIVE_WINDOW);
     cmgr->d->rootMessageEvent(&cme);
-    QTest::qWait(cmgr->configInt("restore-delay")+100);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(1000); // wait the animation to finish
@@ -475,7 +474,6 @@ void ut_Anim::testDerivedAnimHandler()
     cme.type = ClientMessage;
     cme.message_type = ATOM(_NET_ACTIVE_WINDOW);
     cmgr->d->rootMessageEvent(&cme);
-    QTest::qWait(cmgr->configInt("restore-delay")+100);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Restore, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;    
     while (cw->windowAnimator()->isActive())
@@ -537,7 +535,6 @@ void ut_Anim::testExternalAnimHandler()
     cme.type = ClientMessage;
     cme.message_type = ATOM(_NET_ACTIVE_WINDOW);
     cmgr->d->rootMessageEvent(&cme);
-    QTest::qWait(cmgr->configInt("restore-delay")+100);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Restore, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;    
     while (cw->windowAnimator()->isActive())
