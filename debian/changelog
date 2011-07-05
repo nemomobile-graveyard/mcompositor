@@ -1,4 +1,4 @@
-mcompositor (1.0.6-1) unstable; urgency=low
+mcompositor (1.0.6-2) unstable; urgency=low
 
   * Fixes: NB#270282 - Unable to bring 'settings' to the foreground after opening 'help' from settings
 
