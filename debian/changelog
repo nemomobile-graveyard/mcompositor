@@ -1,8 +1,8 @@
-mcompositor (1.0.8~1) unstable; urgency=low
+mcompositor (1.0.8-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#270926 calling from phonebook shows completely wrong transition
 
- -- Abdiel Janulgue <abj@abj-ThinkPad-W510>  Wed, 06 Jul 2011 17:42:43 +0300
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Wed, 06 Jul 2011 17:42:43 +0300
 
 mcompositor (1.0.7-1) unstable; urgency=low
 
