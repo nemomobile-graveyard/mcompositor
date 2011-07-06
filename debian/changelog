@@ -1,6 +1,6 @@
-mcompositor (1.0.6~3) unstable; urgency=low
+mcompositor (1.0.7-1) unstable; urgency=low
 
-  * unreleased
+  * Fixes: NB#267767 - Entering LPM mode flickers badly if power key is pressed when application
 
  -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Wed, 06 Jul 2011 12:27:48 +0200
 
