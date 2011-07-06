@@ -367,13 +367,25 @@ MCallUiAnimation::MCallUiAnimation(QObject* parent)
 
 void MCallUiAnimation::setupCallMode(bool showWindow)
 {
+    bool incomingcall, ongoingcall;
+    const MDeviceState &dev = static_cast<MCompositeManager*>(qApp)->deviceState();
+
     if (!targetWindow() || !targetWindow()->behind())
         return;
     
-    // TODO: deviceState() this should be a pointer instead of a reference
-    bool ongoingcall = showWindow ? ((MCompositeManager *) qApp)->deviceState().ongoingCall() : (call_mode == MCallUiAnimation::OutgoingCall);
-    bool incomingcall = showWindow? ((MCompositeManager *) qApp)->deviceState().incomingCall() : (call_mode == MCallUiAnimation::IncomingCall);
-    
+    if (showWindow) {
+        incomingcall = dev.incomingCall();
+        ongoingcall  = dev.ongoingCall();
+    } else {
+        incomingcall = call_mode == MCallUiAnimation::IncomingCall;
+        ongoingcall  = call_mode == MCallUiAnimation::OutgoingCall;
+    }
+
+    if (!incomingcall && !ongoingcall)
+        // call-ui should only be shown when there's a call beginning.
+        // If we have no information assume it's an outgoing call.
+        ongoingcall = true;
+
     MCompositeWindow* behind = targetWindow()->behind();
     if (ongoingcall) {
         call_mode = MCallUiAnimation::OutgoingCall;
@@ -385,7 +397,8 @@ void MCallUiAnimation::setupCallMode(bool showWindow)
         currentwin_pos->setTargetObject(targetWindow());
         currentwin_scale->setTargetObject(targetWindow());
         currentwin_opac->setTargetObject(targetWindow());
-    } else if (incomingcall) {
+    } else {
+        Q_ASSERT(incomingcall);
         call_mode = MCallUiAnimation::IncomingCall;
         
         positionAnimation()->setTargetObject(targetWindow());
@@ -395,8 +408,7 @@ void MCallUiAnimation::setupCallMode(bool showWindow)
         currentwin_pos->setTargetObject(behind);
         currentwin_scale->setTargetObject(behind);
         currentwin_opac->setTargetObject(behind);
-    } else 
-        call_mode = MCallUiAnimation::NoCall;
+    }
 }
 
 void MCallUiAnimation::windowShown()
