@@ -2829,21 +2829,24 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
         if (!(pc = findLockScreen()) || !(cw = COMPOSITE_WINDOW(pc->winId()))
             || !pc->isMapped() || !cw->paintedAfterMapping())
             lockscreen_painted = false;
-        // check whether there is a low-power mode window visible
-        int covering_i = indexOfCoveringWindow();
-        bool lpm_window = false;
-        for (int i = stacking_list.size() - 1; i >= covering_i; --i) {
-            Window w = stacking_list[i];
-            MWindowPropertyCache *pc = prop_caches.value(w, 0);
-            if (pc && pc->isMapped() && pc->lowPowerMode() > 0) {
-                lpm_window = true;
-                break;
-            }
-        }
+        // check whether there is a low-power mode window visible -- when the lockscreen is visible
+        // we trust it to become the low-power mode window even if the flag is not yet set
+        bool lpm_window = lockscreen_painted;
         if (!lpm_window) {
-            watch->keep_black = true;
-            if (!compositing)
-                enableCompositing();
+            int covering_i = indexOfCoveringWindow();
+            for (int i = stacking_list.size() - 1; i >= covering_i; --i) {
+                Window w = stacking_list[i];
+                MWindowPropertyCache *pc = prop_caches.value(w, 0);
+                if (pc && pc->isMapped() && pc->lowPowerMode() > 0) {
+                    lpm_window = true;
+                    break;
+                }
+            }
+            if (!lpm_window) {
+                watch->keep_black = true;
+                if (!compositing)
+                    enableCompositing();
+            }
         }
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
