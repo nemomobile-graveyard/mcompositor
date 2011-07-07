@@ -1,3 +1,9 @@
+mcompositor (1.1.0~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@abj-ThinkPad-W510>  Thu, 07 Jul 2011 14:32:48 +0300
+
 mcompositor (1.0.9-1) unstable; urgency=low
 
   * Fixes: NB#270999 - Screen goes black for ~250ms when going from touch screen lock to the standby screen
