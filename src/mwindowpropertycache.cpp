@@ -865,16 +865,29 @@ int MWindowPropertyCache::windowState()
 {
     QLatin1String me(SLOT(windowState()));
     if (requests[me]) {
+        xcb_generic_error_t *error = 0;
+
         xcb_get_property_cookie_t c = { requests[me] };
         xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, c, 0);
+        r = xcb_get_property_reply(xcb_conn, c, &error);
         replyCollected(me);
         if (r && xcb_get_property_value_length(r) >= int(sizeof(CARD32)))
             window_state = ((CARD32*)xcb_get_property_value(r))[0];
-        else {
-            // mark it so that MCompositeManagerPrivate::setWindowState sets it
+        else if (window_state < 0 || window_state == WithdrawnState
+                 || error) {
+            // Qt deleted WM_STATE, but we don't mind.  Mark it so
+            // that MCompositeManagerPrivate::setWindowState() will set it.
             window_state = -1;
-        }
+            free(error);
+        } else // Ei, vittu!
+            // We have an idea about this window's state and Qt is trying
+            // to interfere because it doesn't know yet that we are in
+            // command.  Don't let this happen.
+            XChangeProperty(QX11Info::display(), window,
+                            ATOM(WM_STATE), ATOM(WM_STATE),
+                            32, PropModeReplace,
+                            (unsigned char *)(CARD32[]){window_state, None},
+                            2);
         free(r);
     }
     return window_state;
