@@ -1,3 +1,9 @@
+mcompositor (1.1.1~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Fri, 08 Jul 2011 13:04:52 +0300
+
 mcompositor (1.1.0-1) unstable; urgency=low
 
   * Fixes: NB#269406 - Swipe on notification doesn't bring mail UI to foreground when other application on foreground
