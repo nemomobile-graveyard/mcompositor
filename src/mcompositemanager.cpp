@@ -533,12 +533,14 @@ static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
 static void kill_window(MCompositeWindow *window)
 {
     int pid = window->propertyCache()->pid();
+    if (pid == getpid())
+        return;
     if (pid != 0) {
         // negative PID to kill the whole process group
         ::kill(-pid, SIGKILL);
         ::kill(pid, SIGKILL);
     }
-    if (window->isValid())
+    if (window->isValid() && window->type() != MSplashScreen::Type)
         XKillClient(QX11Info::display(), window->window());
 }
 
