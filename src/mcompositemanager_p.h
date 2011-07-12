@@ -128,7 +128,7 @@ public:
     bool processX11EventFilters(XEvent *event, bool after);
     void removeWindow(Window w);
     bool needDecoration(MWindowPropertyCache *pc);
-    bool skipStartupAnim(MWindowPropertyCache *pc);
+    bool skipStartupAnim(MWindowPropertyCache *pc, bool iconic_is_ok = false);
     MCompositeWindow *getHighestDecorated(int *index = 0);
     void setWindowStateForTransients(MWindowPropertyCache *pc, int state,
                                      int level = 0);

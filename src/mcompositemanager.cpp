@@ -2178,14 +2178,16 @@ void MCompositeManagerPrivate::stackingTimeout()
 }
 
 // check if there is a categorically higher mapped window than pc
-bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
+// iconic_is_ok: true if animation will raise the window above desktop
+bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc,
+                                               bool iconic_is_ok)
 {
     if (pc->noAnimations())
         return true;
     // Ignore initial_state == IconicState if the client stacked the window
     // somewhere, then only skip if it's below the desktop (which is still
     // not correct but better than nothing).
-    if (stack[DESKTOP_LAYER] && !pc->stackedUnmapped()) {
+    if (!iconic_is_ok && stack[DESKTOP_LAYER] && !pc->stackedUnmapped()) {
         const XWMHints &h = pc->getWMHints();
         if ((h.flags & StateHint) && h.initial_state == IconicState)
             return true;
@@ -2200,11 +2202,14 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
         Window w = stacking_list.at(i);
         if (w == pc->winId())
             above = true;
-        if (w && w == stack[DESKTOP_LAYER])
+        if (w && w == stack[DESKTOP_LAYER]) {
+            if (iconic_is_ok)
+                return false;
             // skip the animation if the window is below the desktop,
             // but not if the window hasn't been stacked, because then
             // the animation *would* raise it
             return !above && pc->stackedUnmapped();
+        }
         if (!(tmp = prop_caches.value(w, 0)) || tmp->isInputOnly()
             || tmp == pc || !tmp->isMapped() || tmp->isDecorator())
             continue;
@@ -2462,7 +2467,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                       // if it's not iconic, let the plugin decide
                       || (raise != topmost &&
                           !m_extensions.values(MapNotify).isEmpty()))) {
-                if (skipStartupAnim(i->propertyCache())) {
+                if (skipStartupAnim(i->propertyCache(), true)) {
                     STACKING("positionWindow 0x%lx -> top", i->window());
                     positionWindow(i->window(), true);
                 } else {
