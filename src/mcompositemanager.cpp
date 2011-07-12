@@ -2461,7 +2461,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                       // if it's not iconic, let the plugin decide
                       || (raise != topmost &&
                           !m_extensions.values(MapNotify).isEmpty()))) {
-                if (i->propertyCache()->noAnimations()) {
+                if (skipStartupAnim(i->propertyCache())) {
                     STACKING("positionWindow 0x%lx -> top", i->window());
                     positionWindow(i->window(), true);
                 } else {
