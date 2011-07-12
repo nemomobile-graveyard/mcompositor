@@ -1,8 +1,8 @@
-mcompositor (1.1.1~1) unstable; urgency=low
+mcompositor (1.1.1-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#272193 - Swiping the splash screen away four time causes reboot.
 
- -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Fri, 08 Jul 2011 13:04:52 +0300
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 12 Jul 2011 13:26:12 +0300
 
 mcompositor (1.1.0-1) unstable; urgency=low
 
