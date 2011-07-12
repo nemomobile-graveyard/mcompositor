@@ -440,6 +440,7 @@ void MCallUiAnimation::windowClosed()
         return;
     
     setEnabled(true);
+    setupBehindAnimation();
     setupCallMode(false);
     targetWindow()->setVisible(true);
 
@@ -448,6 +449,7 @@ void MCallUiAnimation::windowClosed()
     cropper->installEffect(targetWindow());
     if ((behindTarget = targetWindow()->behind()) != NULL)
         cropper->installEffect(behindTarget);
+    cropper->setPortrait(targetWindow()->propertyCache()->orientationAngle() % 180);
     
     if (call_mode == MCallUiAnimation::IncomingCall)
         animationGroup()->setDirection(QAbstractAnimation::Backward);
@@ -459,6 +461,11 @@ void MCallUiAnimation::windowClosed()
         targetWindow()->behind()->setVisible(true);
     }
     start();
+}
+
+void MCallUiAnimation::windowIconified()
+{
+    windowClosed();
 }
 
 void MCallUiAnimation::setupBehindAnimation()
@@ -524,10 +531,13 @@ void MCallUiAnimation::endAnimation()
         behind->setUntransformed();
         behind->setPos(behind->propertyCache()->realGeometry().topLeft());
     }
-    // always stack the call-ui on top when finishing the animation 
-    if (targetWindow()->propertyCache()->windowState() != IconicState)
+    // stack the call-ui when finishing the animation 
+    if (targetWindow()->propertyCache()->windowState() == NormalState)
         m->positionWindow(targetWindow()->window(),
                           MCompositeManager::STACK_TOP);
+    else if (targetWindow()->propertyCache()->windowState() == IconicState)
+        m->positionWindow(targetWindow()->window(),
+                          MCompositeManager::STACK_BOTTOM);
 }
 
 #include "mdynamicanimation.moc"

@@ -85,6 +85,7 @@ class MCallUiAnimation: public MDynamicAnimation
 
     virtual void windowShown(); 
     virtual void windowClosed();
+    void windowIconified();
     void setupBehindAnimation();
     void setupCallMode(bool showWindow = true);
         
