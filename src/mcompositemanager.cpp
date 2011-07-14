@@ -1473,6 +1473,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         if (pc) {
             // allow input method window to composite its client window
             Window parent;
+            bool unredir = false;
             MCompositeWindow *p_cw;
             if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)
                 && (parent = pc->transientFor()) &&
@@ -1483,21 +1484,33 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
                     ((MTexturePixmapItem*)p_cw)->enableRedirectedRendering();
                     setWindowDebugProperties(parent);
                 }
+
                 // unredirect the input method window if possible
-                if (!pc->hasAlphaAndIsNotOpaque()) {
-                    if (compositing) {
-                        showOverlayWindow(false);
-                        compositing = false;
-                    }
-                    MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
-                    if (cw) {
-                        ((MTexturePixmapItem*)cw)->enableDirectFbRendering();
-                        setWindowDebugProperties(e->window);
-                    } else {
-                        XCompositeUnredirectWindow(QX11Info::display(),
-                                    e->window, CompositeRedirectManual);
-                        pc->damageTracking(false);
-                    }
+                unredir = !pc->hasAlphaAndIsNotOpaque();
+                if (compositing) {
+                    // It's not if we're showing any hasAlphaAndIsNotOpaque()
+                    // windows, for example notifications.  If we did unredir,
+                    // those windows would disappear until we realize our
+                    // mistake and undo.
+                    QHash<Window, MCompositeWindow*>::const_iterator it;
+                    for (it = windows.begin();
+                         unredir && it != windows.end(); ++it)
+                        unredir = !it.value()->isVisible() || !it.value()->propertyCache()->hasAlphaAndIsNotOpaque();
+                }
+            }
+            if (unredir) {
+                if (compositing) {
+                    showOverlayWindow(false);
+                    compositing = false;
+                }
+                MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
+                if (cw) {
+                    ((MTexturePixmapItem*)cw)->enableDirectFbRendering();
+                    setWindowDebugProperties(e->window);
+                } else {
+                    XCompositeUnredirectWindow(QX11Info::display(),
+                                e->window, CompositeRedirectManual);
+                    pc->damageTracking(false);
                 }
             } else {
                 pc->damageTracking(true);
