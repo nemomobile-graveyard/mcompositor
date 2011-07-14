@@ -2194,7 +2194,7 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc,
             return true;
     }
     // lock-screen window dont animate
-    if (pc->isLockScreen())
+    if (pc->isLockScreen() || pc->windowType() == MCompAtoms::NOTIFICATION)
         return true;
     
     bool above = false; // is the window above the desktop?
@@ -2544,16 +2544,21 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
     // Handle iconify requests
     if (event->message_type == ATOM(WM_CHANGE_STATE))
         if (event->data.l[0] == IconicState && event->format == 32) {
-            MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
-            MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
+            MCompositeWindow *i, *d_item;
+
+            if (!(i = COMPOSITE_WINDOW(event->window)))
+                return;
+            if (!(d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER])))
+                return;
             if (i == d_item)
                 // not funny
                 return;
-            if (d_item && i && i->isMapped()
-                && i->propertyCache()->windowState() == NormalState
-                && !i->propertyCache()->dontIconify()
+
+            MWindowPropertyCache *pc = i->propertyCache();
+            if (i->isMapped()
+                && pc->windowState() == NormalState && !pc->dontIconify()
                 && i->status() != MCompositeWindow::Minimizing) {
-                if (i->propertyCache()->noAnimations()) {
+                if (pc->noAnimations()) {
                     // iconify all without the animation
                     iconifyApps();
                     checkStacking(false);
@@ -2564,6 +2569,13 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                     lower = topmost;
                 else
                     lower = event->window;
+                if (pc->windowType() == MCompAtoms::NOTIFICATION
+                    || pc->windowType() == MCompAtoms::INPUT) {
+                    if (!topmost || !(i = COMPOSITE_WINDOW(topmost)))
+                        return;
+                    // Animate the iconification of the @topmost and
+                    // leave the notification or the input window alone.
+                }
                 setExposeDesktop(false); // don't update thumbnails now
 
                 bool needComp = !compositing;
