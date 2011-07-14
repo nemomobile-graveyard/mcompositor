@@ -2753,6 +2753,8 @@ MWindowPropertyCache *MCompositeManagerPrivate::findLockScreen() const
 void MCompositeManagerPrivate::displayOff(bool display_off)
 {
     if (display_off) {
+        if (splash)
+            splashTimeout();
         lockscreen_map_timer.stop();
         if (!haveMappedWindow())
             enableCompositing();
