@@ -2556,7 +2556,8 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
 
                     if (needComp)
                         enableCompositing();
-                    if (!i->iconify())
+                    if (skipStartupAnim(i->propertyCache())
+                        || !i->iconify())
                         // signal will not come, set it iconic now
                         setWindowState(i->window(), IconicState);
                 } else
