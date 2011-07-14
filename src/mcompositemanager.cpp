@@ -2607,7 +2607,8 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                     stacking_list.move(stacking_list.indexOf(stack[DESKTOP_LAYER]),
                                        lower_i - 1);
 
-                    if (!i->iconify(needComp))
+                    if (skipStartupAnim(i->propertyCache())
+                        || !i->iconify(needComp))
                         // signal will not come, set it iconic now
                         setWindowState(i->window(), IconicState);
 
