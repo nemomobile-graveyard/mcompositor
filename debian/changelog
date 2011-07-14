@@ -1,6 +1,49 @@
-mcompositor (1.0.5~1) unstable; urgency=low
+mcompositor (1.1.2-1~unreleased) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * foo
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 12 Jul 2011 13:26:12 +0300
+
+mcompositor (1.1.1-1) unstable; urgency=low
+
+  * Fixes: NB#272193 - Swiping the splash screen away four time causes reboot.
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 12 Jul 2011 13:26:12 +0300
+
+mcompositor (1.1.0-1) unstable; urgency=low
+
+  * Fixes: NB#269406 - Swipe on notification doesn't bring mail UI to foreground when other application on foreground
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Thu, 07 Jul 2011 14:32:48 +0300
+
+mcompositor (1.0.9-1) unstable; urgency=low
+
+  * Fixes: NB#270999 - Screen goes black for ~250ms when going from touch screen lock to the standby screen
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Thu, 07 Jul 2011 09:51:35 +0000
+
+mcompositor (1.0.8-1) unstable; urgency=low
+
+  * Fixes: NB#270926 calling from phonebook shows completely wrong transition
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Wed, 06 Jul 2011 17:42:43 +0300
+
+mcompositor (1.0.7-1) unstable; urgency=low
+
+  * Fixes: NB#267767 - Entering LPM mode flickers badly if power key is pressed when application
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Wed, 06 Jul 2011 12:27:48 +0200
+
+mcompositor (1.0.6-2) unstable; urgency=low
+
+  * Fixes: NB#270282 - Unable to bring 'settings' to the foreground after opening 'help' from settings
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Mon, 04 Jul 2011 18:20:53 +0300
+
+mcompositor (1.0.5-1) unstable; urgency=low
+
+  * Fixes: NB#267629 - Splash screen sequence looks ugly due to high CPU and IO load in background
+  * Fixes: NB#257744 - Window always get updated by damage when auto transitioning
 
  -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Wed, 29 Jun 2011 14:04:26 +0300
 
