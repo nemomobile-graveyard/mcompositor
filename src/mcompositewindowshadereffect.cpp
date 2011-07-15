@@ -224,7 +224,7 @@ void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
                    this, SLOT(compWindowDestroyed()));
     comp_window = 0;
 #ifdef QT_OPENGL_LIB
-    if (window)
+    if (window && window->renderer()->current_effect == this)
         window->renderer()->installEffect(0);    
 #endif
 }
