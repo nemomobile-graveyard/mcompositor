@@ -195,7 +195,8 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
     if (comp_window != window) {
         if (comp_window) {
 #ifdef QT_OPENGL_LIB
-            comp_window->renderer()->installEffect(0);
+            if (comp_window->renderer()->current_effect == this)
+                comp_window->renderer()->installEffect(0);
 #endif
             disconnect(comp_window, SIGNAL(destroyed()),
                        this, SLOT(compWindowDestroyed()));
