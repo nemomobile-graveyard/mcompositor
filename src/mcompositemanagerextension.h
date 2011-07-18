@@ -64,6 +64,9 @@ class MCompositeManagerExtension: public QObject
     //! to be included in MCompositeManager::dumpState()'s output.
     virtual void dumpState() const;
 
+    // for unit tests
+    void addToStack(MCompositeWindow *cw, bool to_top);
+
  signals:    
     void currentAppChanged(Qt::HANDLE window);
     

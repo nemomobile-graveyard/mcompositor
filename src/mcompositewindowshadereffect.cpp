@@ -195,7 +195,8 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
     if (comp_window != window) {
         if (comp_window) {
 #ifdef QT_OPENGL_LIB
-            if (comp_window->renderer()->current_effect == this)
+            if (comp_window->renderer()
+                && comp_window->renderer()->current_effect == this)
                 comp_window->renderer()->installEffect(0);
 #endif
             disconnect(comp_window, SIGNAL(destroyed()),
@@ -206,7 +207,7 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
     }
 
 #ifdef QT_OPENGL_LIB
-    if (window->renderer()->current_effect != this)
+    if (window->renderer() && window->renderer()->current_effect != this)
         window->renderer()->installEffect(this);
 #endif
 }
@@ -224,7 +225,7 @@ void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
                    this, SLOT(compWindowDestroyed()));
     comp_window = 0;
 #ifdef QT_OPENGL_LIB
-    if (window && window->renderer()->current_effect == this)
+    if (window && window->renderer() && window->renderer()->current_effect == this)
         window->renderer()->installEffect(0);    
 #endif
 }
