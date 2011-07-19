@@ -278,7 +278,7 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
     Q_UNUSED(num);
     Q_UNUSED(when);
 
-    if (isWindowTransitioning() || d->direct_fb_render || !windowVisible()
+    if (isWindowTransitioning() || d->direct_fb_render
         || propertyCache()->isInputOnly())
         return;
 

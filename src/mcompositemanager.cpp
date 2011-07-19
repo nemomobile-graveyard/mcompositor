@@ -617,7 +617,7 @@ void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
         return;
 
     CARD32 d[1];
-    if (i->windowVisible())
+    if (i->isVisible())
         d[0] = i->isDirectRendered() ? ATOM(_M_WM_WINDOW_DIRECT_VISIBLE)
                                      : ATOM(_M_WM_WINDOW_COMPOSITED_VISIBLE);
     else
@@ -4061,7 +4061,6 @@ void MCompositeManager::dumpState(const char *heading)
         static const char *appstates[] = {
             "normal", "hung", "minimizing", "closing"
         };
-        static const char *iconstates[] = { "none", "manual", "transition" };
         MCompositeWindow *cw, *behind;
         int winstate;
         char *name;
@@ -4106,10 +4105,10 @@ void MCompositeManager::dumpState(const char *heading)
         qDebug("    mapped: %s, newly mapped: %s, stacked unmapped: %s",
                yn[cw->isMapped()], yn[cw->isNewlyMapped()],
                yn[cw->propertyCache()->stackedUnmapped()]);
-        qDebug("    InputOnly: %s, visible: %s, obscured: %s, "
+        qDebug("    InputOnly: %s, obscured: %s, "
                "direct rendered: %s",
                yn[cw->propertyCache()->isInputOnly()],
-               yn[cw->windowVisible()], yn[cw->windowObscured()],
+               yn[cw->windowObscured()],
                yn[cw->isDirectRendered()]);
         qDebug("    window type: %s, is app: %s, needs decoration: %s",
                wintypes[cw->propertyCache()->windowType()],
@@ -4117,15 +4116,11 @@ void MCompositeManager::dumpState(const char *heading)
         qDebug("    status: %s, state: %s", appstates[cw->status()],
                winstate < (int)(sizeof(winstates)/sizeof(winstates[0]))
                   ? winstates[winstate] : NULL);
-        qDebug("    iconified: %s, iconification status: %s",
-               yn[cw->isIconified()], iconstates[cw->iconifyState()]);
         qDebug("    has transitioning windows: %s, transitioning: %s, "
                    "closing: %s",
                    yn[cw->hasTransitioningWindow()],
                    yn[cw->isWindowTransitioning()],
                    yn[cw->isClosing()]);
-        qDebug("    dimmed: %s, blurred: %s",
-                    yn[cw->dimmedEffect()], yn[cw->blurred()]);
         behind = cw->behind();
         qDebug("    stack index: %d, behind window: 0x%lx, "
                    "last visible parent: 0x%lx", cw->indexInStack(),

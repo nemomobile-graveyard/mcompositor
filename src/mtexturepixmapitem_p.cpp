@@ -306,7 +306,7 @@ void MTexturePixmapPrivate::paint(QPainter *painter,
 void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
 {
     if (item->propertyCache()->hasAlphaAndIsNotOpaque() ||
-        (item->opacity() < 1.0f && !item->dimmedEffect())) {
+        item->opacity() < 1.0f) {
         // Blend differently if fading in on the top of a splash screen.
         glEnable(GL_BLEND);
         glBlendFunc(static_cast<MCompositeManager*>(qApp)->splashed(item)
@@ -389,9 +389,7 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform,
     if (current_effect)
         glresource->updateVertices(transform, current_effect->activeShaderFragment());
     else
-        glresource->updateVertices(transform, item->blurred() ?
-                                   MGLResourceManager::BlurShader :
-                                   MGLResourceManager::NormalShader);
+        glresource->updateVertices(transform, MGLResourceManager::NormalShader);
     GLfloat vertexCoords[] = {
         drawRect.left(),  drawRect.top(),
         drawRect.left(),  drawRect.bottom(),
@@ -436,8 +434,6 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform,
     
     if (current_effect)
         current_effect->setUniforms(glresource->currentShader);
-    else if (item->blurred())
-        glresource->currentShader->setBlurStep((GLfloat) 0.5);
     glresource->currentShader->setOpacity((GLfloat) opacity);
     glresource->currentShader->setTexture(0);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -512,7 +508,7 @@ void MTexturePixmapPrivate::activateEffect(bool enabled)
 
 void MTexturePixmapPrivate::init()
 {
-    if (!item->is_valid)
+    if (!item->isValid())
         return;
 
     if (!glresource) {
