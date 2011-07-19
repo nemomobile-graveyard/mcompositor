@@ -282,7 +282,7 @@ void MCompositeWindowGroup::paint(QPainter* painter,
 
     glBindTexture(GL_TEXTURE_2D, d->texture);    
     if (d->main_window->propertyCache()->hasAlphaAndIsNotOpaque() || 
-        (opacity() < 1.0f && !dimmedEffect()) ) {
+        opacity() < 1.0f) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }

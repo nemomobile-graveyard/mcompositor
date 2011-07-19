@@ -42,20 +42,16 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     : QGraphicsItem(p),
       pc(mpc),
       animator(0),
-      zval(1),
       sent_ping_timestamp(0),
       received_ping_timestamp(0),
-      blur(false),
       iconified(false),
-      iconified_final(false),
       iconify_state(NoIconifyState),
-      destroyed(false),
+      in_destructor(false),
       window_status(Normal),
       need_decor(false),
       window_obscured(-1),
       is_transitioning(false),
       is_not_stacking(false),
-      dimmed_effect(false),
       waiting_for_damage(0),
       resize_expected(false),
       painted_after_mapping(false),
@@ -64,13 +60,10 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
 
     if (!mpc || (mpc && !mpc->is_valid && !mpc->isVirtual())) {
-        is_valid = false;
         newly_mapped = false;
         t_ping = t_reappear = damage_timer = 0;
-        window_visible = false;
         return;
-    } else
-        is_valid = true;
+    }
     connect(mpc, SIGNAL(iconGeometryUpdated()), SLOT(updateIconGeometry()));
 
     t_ping = new QTimer(this);
@@ -97,10 +90,8 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     newly_mapped = is_app || pc->invokedBy() != None;
     if (!pc->isInputOnly()) {
         // never paint InputOnly windows
-        window_visible = !is_app;
-        setVisible(window_visible); // newly_mapped used here
-    } else
-        window_visible = false;
+        setVisible(!is_app); // newly_mapped used here
+    }
 
     MCompositeWindowAnimation* a = 0;
     if (pc->windowType() == MCompAtoms::SHEET) 
@@ -118,6 +109,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 MCompositeWindow::~MCompositeWindow()
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
+    in_destructor = true;
 
     endAnimation();    
     if (pc) {
@@ -128,17 +120,6 @@ MCompositeWindow::~MCompositeWindow()
     }
     if (animator)
         delete animator;
-}
-
-void MCompositeWindow::setBlurred(bool b)
-{
-    blur = b;
-    update();
-}
-
-bool MCompositeWindow::blurred()
-{
-    return blur;
 }
 
 /* This is a delayed animation. Actual animation is triggered
@@ -188,22 +169,11 @@ void MCompositeWindow::setUntransformed()
 
 void MCompositeWindow::setIconified(bool iconified)
 {
-    iconified_final = iconified;
     iconify_state = ManualIconifyState;
     if (iconified && !animator->pendingAnimation())
         emit itemIconified(this);
     else if (!iconified && !animator->pendingAnimation())
         iconify_state = NoIconifyState;
-}
-
-MCompositeWindow::IconifyState MCompositeWindow::iconifyState() const
-{
-    return iconify_state;
-}
-
-void MCompositeWindow::setIconifyState(MCompositeWindow::IconifyState state)
-{
-    iconify_state = state;
 }
 
 void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
@@ -480,29 +450,25 @@ bool MCompositeWindow::event(QEvent *e)
 
 void MCompositeWindow::finalizeState()
 {
+    if (in_destructor)
+        return;
     // as far as this window is concerned, it's OK to direct render
     window_status = Normal;
 
     // iconification status
     if (iconified) {
         iconified = false;
-        iconified_final = true;
         hide();
         iconify_state = TransitionIconifyState;
         emit itemIconified(this);
     } else {
         iconify_state = NoIconifyState;
-        iconified_final = false;
         show();
         // no delay: window does not need to be repainted when restoring
         // from the switcher (even then the animation should take long enough
         // to allow it)
         q_itemRestored();
     }
-    
-    // item lifetime
-    if (destroyed)
-        deleteLater();
 }
 
 void MCompositeWindow::q_itemRestored()
@@ -518,24 +484,12 @@ void MCompositeWindow::requestZValue(int zvalue)
         setZValue(zvalue);
 }
 
-bool MCompositeWindow::isIconified() const
-{
-    if (animator->isActive())
-        return false;
-
-    return iconified_final;
-}
-
 void MCompositeWindow::setVisible(bool visible)
 {
     if ((pc && pc->isInputOnly())
         || (visible && newly_mapped && isAppWindow()) 
         || (!visible && is_transitioning)) 
         return;
-
-    // Set the iconification status as well
-    iconified_final = !visible;
-    window_visible = visible;
 
     QGraphicsItem::setVisible(visible);
     MCompositeManager *p = (MCompositeManager *) qApp;
@@ -603,8 +557,6 @@ void MCompositeWindow::receivedPing(ulong serverTimeStamp)
         window_status = Normal;
         emit windowHung(this, false);
     }
-    if (blurred())
-        setBlurred(false);
     t_reappear->stop();
 }
 
@@ -761,11 +713,6 @@ void MCompositeWindow::update()
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
     p->d->glwidget->update();
-}
-
-bool MCompositeWindow::windowVisible() const
-{
-    return window_visible;
 }
 
 bool MCompositeWindow::isAppWindow(bool include_transients)

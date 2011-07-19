@@ -95,11 +95,6 @@ public:
     bool windowObscured() { return window_obscured; }
 
     /*!
-     * Returns whether this item is iconified or not
-     */
-    bool isIconified() const;
-
-    /*!
      * Request a Z value for this item. Useful if this window is still animating
      * and setting the zValue prevents the animation from being displayed.
      * This function defers the setting of the zValue until the animation for
@@ -117,12 +112,6 @@ public:
     void setVisible(bool visible);
 
     /*!
-     * Own visibility getter. We can't rely on QGraphicsItem's visibility
-     * information because of rendering optimizations.
-     */
-    bool windowVisible() const;
-
-    /*!
      * Set iconify status manually.
      */
     void setIconified(bool iconified);
@@ -131,16 +120,6 @@ public:
      * Set scale, opacity etc. to normal values.
      */
     void setUntransformed();
-
-    /*!
-     * Returns how this window was iconified.
-     */
-    IconifyState iconifyState() const;
-
-    /*!
-     * Sets how this window was iconified.
-     */
-    void setIconifyState(IconifyState state);
 
     /*!
      * Returns true if this window needs a decoration
@@ -174,8 +153,6 @@ public:
      * updates.
      */
     static void update();
-
-    bool blurred();
 
     /*!
      * Returns true if we should give focus to this window.
@@ -248,7 +225,7 @@ public:
     /*!
      * Returns whether this object represents a valid (i.e. viewable) window
      */
-    bool isValid() const { return is_valid; }
+    bool isValid() const { return pc && pc->is_valid; }
 
     /*! 
      * Returns whether this is an application window
@@ -285,11 +262,7 @@ public:
      * if 0 if not a member
      */
     MCompositeWindowGroup* group() const;
-    
-    /*! Disabled alpha-blending for a dim-effect instead */
-    void setDimmedEffect(bool dimmed) { dimmed_effect = dimmed; }
-    
-    bool dimmedEffect() const { return dimmed_effect; }
+
     bool paintedAfterMapping() const { return painted_after_mapping; }
     void waitForPainting();
 
@@ -302,7 +275,6 @@ public slots:
 
     void updateIconGeometry();
     void startTransition();
-    void setBlurred(bool);
     
     /* Operations with transition animations*/
     // set to Closing state and send delete/kill
@@ -384,22 +356,16 @@ private:
     QPointer<MWindowPropertyCache> pc;
     QPointer<MCompositeWindow> behind_window;
     QPointer<MCompositeWindowAnimation> animator, orig_animator;
-    int zval;
     ulong sent_ping_timestamp;
     ulong received_ping_timestamp;
-    bool blur;
     bool iconified;
-    bool iconified_final;
     IconifyState iconify_state;
-    bool destroyed;
+    bool in_destructor;
     WindowStatus window_status;
     bool need_decor;
-    bool window_visible;
     short window_obscured;
-    bool is_valid;
     bool newly_mapped;
     bool is_transitioning, is_not_stacking;
-    bool dimmed_effect;
     char waiting_for_damage;
     bool resize_expected;
     bool painted_after_mapping;
