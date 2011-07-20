@@ -93,7 +93,6 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
     QRegion visible(sceneRect().toRect());
     QVector<int> to_paint(10);
     int size = 0;
-    bool desktop_painted = false;
     // visibility is determined from top to bottom
     for (int i = numItems - 1; i >= 0; --i) {
         MCompositeWindow *cw = (MCompositeWindow *) items[i];
@@ -131,8 +130,11 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         // is skipped when another window above it is scaled or moved to an 
         // area that exposed the lower window and causes an ugly flicker.
         // r reflects the applied transformation and position of the window
-        QRegion r = cw->sceneTransform().map(cw->propertyCache()->shapeRegion());
-        
+        QRegion shape = cw->propertyCache()->shapeRegion();
+        shape.translate(cw->propertyCache()->realGeometry().x(),
+                        cw->propertyCache()->realGeometry().y());
+        QRegion r = cw->sceneTransform().map(shape);
+
         // transitioning window can be smaller than shapeRegion(), so paint
         // all transitioning windows
         if (cw->isWindowTransitioning() || visible.intersects(r)
@@ -140,16 +142,13 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
             if (size >= 9)
                 to_paint.resize((unsigned)to_paint.size()+1);
             to_paint[size++] = i;
-            if (cw->propertyCache()->windowTypeAtom()
-                                         == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
-                desktop_painted = true;
         }
 
         // subtract opaque regions
         if (!cw->isWindowTransitioning()
             && !cw->propertyCache()->hasAlphaAndIsNotOpaque()
             && cw->opacity() == 1.0
-            && !cw->group()) // window is not renderered off-screen)
+            && !cw->group()) // window is not renderered off-screen
             visible -= r;
     }
     glClearColor(0, 0, 0, 0);
@@ -170,7 +169,6 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
             painter->setMatrix(cw->sceneMatrix(), true);
             cw->paint(painter, &options[item_i], widget);
             painter->restore();
-            desktop_painted = true; // desktop or something else painted
         }
     }
 }

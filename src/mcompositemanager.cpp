@@ -1281,7 +1281,10 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
             // restack & reset decorator's managed window
             (item && pc->isMapped() && item->needDecoration()))
             dirtyStacking(check_visibility);
-    }
+    } else if (check_visibility)
+        // this is a must because when the real ConfigureEvent comes,
+        // there is no change in realGeometry() so check_visibility is false
+        sendSyntheticVisibilityEventsForOurBabies();
 }
 
 // used to handle ConfigureRequest when we have the object for the window
@@ -1903,44 +1906,44 @@ void MCompositeManagerPrivate::fixZValues()
         notifs[i]->requestZValue(last_i+1 + 2 + 1+i);
 }
 
-// index of the covering window in stacking_list, or 0
-int MCompositeManagerPrivate::indexOfCoveringWindow() const
+// index of the last visible window in stacking_list, or 0
+int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
 {
     static int xres = ScreenOfDisplay(QX11Info::display(),
                                DefaultScreen(QX11Info::display()))->width;
     static int yres = ScreenOfDisplay(QX11Info::display(),
                                DefaultScreen(QX11Info::display()))->height;
-    static const QRegion fs_r(0, 0, xres, yres);
-    int last_i = stacking_list.size() - 1, covering_i = 0;
+    QRegion fs_r(0, 0, xres, yres);
+    int last_i = stacking_list.size() - 1;
 
     for (int i = last_i; i >= 0; --i) {
          Window w = stacking_list.at(i);
-         if (w == stack[DESKTOP_LAYER]) {
-             covering_i = i;
-             break;
-         }
+         if (w == stack[DESKTOP_LAYER])
+             return i;
          MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-         MWindowPropertyCache *pc = 0;
-         if (cw && cw->isMapped())
-             pc = cw->propertyCache();
-         if (cw && cw->isMapped() && !pc->hasAlphaAndIsNotOpaque() &&
-             !pc->isInputOnly() &&
-             !pc->isDecorator() && !cw->hasTransitioningWindow() &&
+         MWindowPropertyCache *pc;
+         if (!cw || !(pc = cw->propertyCache()) || !pc->isMapped()
+             || cw->opacity() < 1.0
+             || pc->hasAlphaAndIsNotOpaque() || pc->isInputOnly()
              // allow input windows to composite their app, see NB#223280
-             pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
-             /* FIXME: decorated window is assumed to be fullscreen */
-             (cw->needDecoration() ||
-              fs_r.subtracted(pc->shapeRegion()).isEmpty())) {
-             covering_i = i;
-             break;
-         }
+             || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)
+             || cw->isWindowTransitioning()
+             // don't subtract hidden items during transition (example:
+             // a hidden window between the desktop and swiped window)
+             || (cw->hasTransitioningWindow() && !cw->isVisible()))
+             continue;
+         QRegion shape = pc->shapeRegion();
+         shape.translate(pc->realGeometry().x(), pc->realGeometry().y());
+         fs_r -= shape;
+         if (fs_r.isEmpty())
+             return i;
     }
-    return covering_i;
+    return 0;
 }
 
 void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
 {
-    int covering_i = indexOfCoveringWindow();
+    int covering_i = indexOfLastVisibleWindow();
     Window duihome = stack[DESKTOP_LAYER];
     int last_i = stacking_list.size() - 1;
     bool statusbar_visible = false;
@@ -1963,7 +1966,10 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
                 setWindowState(cw->window(), NormalState);
             continue;
         }
-        if (i >= covering_i) {
+        if (i >= covering_i &&
+            // don't expose a window that is hidden during transition
+            // (visibility was set before by the animation)
+            (!cw->hasTransitioningWindow() || cw->isVisible())) {
             cw->setWindowObscured(false);
             if (!cw->hasTransitioningWindow())
                 cw->setVisible(true);
@@ -2868,7 +2874,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
         // we trust it to become the low-power mode window even if the flag is not yet set
         bool lpm_window = lockscreen_painted;
         if (!lpm_window) {
-            int covering_i = indexOfCoveringWindow();
+            int covering_i = indexOfLastVisibleWindow();
             for (int i = stacking_list.size() - 1; i >= covering_i; --i) {
                 Window w = stacking_list[i];
                 MWindowPropertyCache *pc = prop_caches.value(w, 0);
