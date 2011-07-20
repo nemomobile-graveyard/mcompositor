@@ -371,7 +371,10 @@ const QRegion &MWindowPropertyCache::shapeRegion()
     if (isInputOnly() || !requests.contains(me)) {
         // InputOnly window obstructs nothing
         cancelRequest(me);
-        shape_region = QRegion(realGeometry());
+        QRect r = realGeometry();
+        // shape is relative to window's position, unlike geometry
+        r.translate(-r.x(), -r.y());
+        shape_region = QRegion(r);
         return shape_region;
     }
 
@@ -380,7 +383,9 @@ const QRegion &MWindowPropertyCache::shapeRegion()
     r = xcb_shape_get_rectangles_reply(xcb_conn, c, 0);
     replyCollected(me);
     if (!r) {
-        shape_region = QRegion(realGeometry());
+        QRect r = realGeometry();
+        r.translate(-r.x(), -r.y());
+        shape_region = QRegion(r);
         return shape_region;
     }
     xcb_rectangle_iterator_t i;
@@ -389,8 +394,11 @@ const QRegion &MWindowPropertyCache::shapeRegion()
     for (; i.rem; xcb_rectangle_next(&i))
         shape_region += QRect(i.data->x, i.data->y, i.data->width,
                               i.data->height);
-    if (shape_region.isEmpty())
-        shape_region = QRegion(realGeometry());
+    if (shape_region.isEmpty()) {
+        QRect r = realGeometry();
+        r.translate(-r.x(), -r.y());
+        shape_region = QRegion(r);
+    }
     free(r);
     return shape_region;
 }

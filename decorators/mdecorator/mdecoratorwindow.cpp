@@ -281,6 +281,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     setFocusPolicy(Qt::NoFocus);
     setSceneSize();
     setMDecoratorWindowProperty();
+    setMeegotouchOpaqueProperty(true);
 
     setProperty("animatedOrientationChange", false);
     setOrientationAngle(M::Angle0);
@@ -471,6 +472,7 @@ void MDecoratorWindow::setInputRegion()
     if (messageBox || menuVisible) {
         // Occupy all space.
         region = fs;
+        setMeegotouchOpaqueProperty(false);
     } else {
         // Decoration includes the status bar, and possibly other elements.
         QRect sbrect;
@@ -504,6 +506,7 @@ void MDecoratorWindow::setInputRegion()
                 trans.translate(0, -fs.width());
             region = trans.map(region);
         }
+        setMeegotouchOpaqueProperty(true);
     }
 
     // Set our input and bounding shape to @region if changed.
@@ -550,7 +553,6 @@ void MDecoratorWindow::setSceneSize()
 
 void MDecoratorWindow::setMDecoratorWindowProperty()
 {
-
     long on = 1;
 
     XChangeProperty(QX11Info::display(), winId(),
@@ -561,6 +563,21 @@ void MDecoratorWindow::setMDecoratorWindowProperty()
                     (unsigned char *) &on, 1);
 }
 
+void MDecoratorWindow::setMeegotouchOpaqueProperty(bool enable)
+{
+    static long prev = -1;
+    long new_value = enable ? 1 : 0;
+
+    if (prev != new_value) {
+        XChangeProperty(QX11Info::display(), winId(),
+                        XInternAtom(QX11Info::display(),
+                                    "_MEEGOTOUCH_OPAQUE_WINDOW", False),
+                        XA_CARDINAL,
+                        32, PropModeReplace,
+                        (unsigned char *) &new_value, 1);
+        prev = new_value;
+    }
+}
 
 const QRect MDecoratorWindow::availableClientRect() const
 {
@@ -623,7 +640,5 @@ void MDecoratorWindow::menuDisappeared()
     setInputRegion();
     setBackgroundBrush(QBrush(Qt::NoBrush));
 }
-
-
 
 #include "mdecoratorwindow.moc"

@@ -88,6 +88,7 @@ signals:
 private:
     void setSceneSize();
     void setMDecoratorWindowProperty();
+    void setMeegotouchOpaqueProperty(bool enable);
 
     MHomeButtonPanel *homeButtonPanel;
     MEscapeButtonPanel *escapeButtonPanel;
