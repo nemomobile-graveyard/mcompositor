@@ -2,6 +2,12 @@ TEMPLATE = subdirs
 SUBDIRS  = src mcompositor mdecorator libdecorator translations
 SUBDIRS += tests appinterface_test unittests
 
+NODOCS:{
+  message("Not building the documentation for this package")
+} else {
+  SUBDIRS += doc
+}
+
 libdecorator.subdir = decorators/libdecorator
 mdecorator.subdir = decorators/mdecorator
 mdecorator.depends = libdecorator

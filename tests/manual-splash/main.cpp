@@ -22,7 +22,7 @@ int argsLength(int argc, char *argv[]) {
 int main(int argc, char *argv[]) {
     if(argc == 1) {
 	cerr << "Usage: " << argv[0] << "arg1 arg2 ..." << endl
-	     << "       Sets property _NET_SUPPORTING_WM_CHECK in the mcompositor window" << endl
+	     << "       Sets property _MEEGO_SPLASH_SCREEN in the mcompositor window" << endl
 	     << "       to the list of strings arg1, arg2, ..." << endl
 	     << "       This fakes the invoker requesting a splash screen." << endl;
 	exit(0);

@@ -13,48 +13,53 @@ else
 	qmake_options += TESTABILITY=on
 endif
 
+ifneq (,$(findstring nodoc,$(DEB_BUILD_OPTIONS)))
+     qmake_options += CONFIG+=NODOCS
+     EXCLUSIONS += --no-package=mcompositor-doc
+endif
+
 clean:
-	dh_testdir
-	dh_testroot
+	dh_testdir $(EXCLUSIONS)
+	dh_testroot $(EXCLUSIONS)
 	rm -f build-stamp configure-stamp
 	-make clean
-	dh_clean 
+	dh_clean $(EXCLUSIONS)
 
 configure: configure-stamp
 configure-stamp:
-	dh_testdir
+	dh_testdir $(EXCLUSIONS)
 	qmake -r $(qmake_options)
 	touch configure-stamp
 
 build: build-stamp
 build-stamp: configure-stamp 
-	dh_testdir
+	dh_testdir $(EXCLUSIONS)
 	make $(parallel_build)
 	touch build-stamp
 
 install: build
-	dh_testdir
-	dh_testroot
-	dh_clean -k 
-	dh_installdirs
+	dh_testdir $(EXCLUSIONS)
+	dh_testroot $(EXCLUSIONS)
+	dh_clean -k $(EXCLUSIONS)
+	dh_installdirs $(EXCLUSIONS)
 	INSTALL_ROOT=$(CURDIR)/debian/tmp make install
 
 binary-indep: build install
 
 binary-arch: build install
-	dh_testdir
-	dh_testroot
-	dh_install --sourcedir=debian/tmp -v 
-	dh_installdocs
-	dh_link
-	dh_strip --dbg-package=mcompositor-dbg
-	dh_fixperms
-	dh_makeshlibs -V 'mcompositor (= $(mcompositor_version))'
-	dh_installdeb
-	dh_shlibdeps -- --warnings=0
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
+	dh_testdir $(EXCLUSIONS)
+	dh_testroot $(EXCLUSIONS)
+	dh_install --sourcedir=debian/tmp $(EXCLUSIONS) -v 
+	dh_installdocs $(EXCLUSIONS)
+	dh_link $(EXCLUSIONS)
+	dh_strip --dbg-package=mcompositor-dbg $(EXCLUSIONS)
+	dh_fixperms $(EXCLUSIONS)
+	dh_makeshlibs -V 'mcompositor (= $(mcompositor_version))' $(EXCLUSIONS)
+	dh_installdeb $(EXCLUSIONS)
+	dh_shlibdeps $(EXCLUSIONS) -- --warnings=0
+	dh_gencontrol $(EXCLUSIONS)
+	dh_md5sums $(EXCLUSIONS)
+	dh_builddeb $(EXCLUSIONS)
 	aegis-deb-add -control debian/mcompositor/DEBIAN/control .. debian/mcompositor.aegis=_aegis
 
 binary: binary-indep binary-arch

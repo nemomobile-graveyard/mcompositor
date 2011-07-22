@@ -49,3 +49,8 @@ Section: devel
 Architecture: all
 Enhances: mcompositor
 Description: Engineering English translations for mcompositor
+
+Package: mcompositor-doc
+Section: doc
+Architecture: all
+Description: API documentation for mcompositor
