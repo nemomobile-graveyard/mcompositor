@@ -118,16 +118,8 @@ void MSheetAnimation::windowShown()
     setEnabled(true);
     targetWindow()->setOpacity(1.0);
 
-    bool portrait = targetWindow()->propertyCache()->orientationAngle() % 180;
+    initializePositionAnimation();
     positionAnimation()->setEasingCurve(QEasingCurve::OutExpo);
-    
-    if (portrait) {    
-        positionAnimation()->setStartValue(screen.topRight());
-        positionAnimation()->setEndValue(QPointF(0,0));
-    } else {
-        positionAnimation()->setStartValue(screen.bottomLeft());
-        positionAnimation()->setEndValue(QPointF(0,0));
-    }
     
     animationGroup()->setDirection(QAbstractAnimation::Forward);
     start();
@@ -138,12 +130,21 @@ void MSheetAnimation::windowClosed()
     if (!targetWindow())
         return;
     setEnabled(true);
+    initializePositionAnimation();
     positionAnimation()->setEasingCurve(QEasingCurve::InOutExpo);
+    
     animationGroup()->setDirection(QAbstractAnimation::Backward);
     targetWindow()->setVisible(true);
     if (targetWindow()->behind())
        targetWindow()->behind()->setVisible(true);
     animationGroup()->start();    
+}
+
+void MSheetAnimation::initializePositionAnimation()
+{
+    const bool portrait = targetWindow()->propertyCache()->orientationAngle() % 180;
+    positionAnimation()->setStartValue(portrait ? screen.topRight() : screen.bottomLeft());
+    positionAnimation()->setEndValue(QPointF(0,0));
 }
 
 class MStatusBarCrop: public MCompositeWindowShaderEffect
