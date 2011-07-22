@@ -51,6 +51,14 @@ class MSheetAnimation: public MDynamicAnimation
 
     virtual void windowShown(); 
     virtual void windowClosed();
+    
+private:
+    /**
+     * Initializes the start-value and end-value of the
+     * position-animation dependent on the rotation
+     * of the target window.
+     */
+    void initializePositionAnimation();
 };
 
 class MChainedAnimation: public MDynamicAnimation
