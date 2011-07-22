@@ -358,6 +358,11 @@ void MCompositeWindowAnimation::crossFadeTo(MCompositeWindow *cw)
     Q_D(MCompositeWindowAnimation);
     const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
 
+    if (animationGroup()->state() == QAbstractAnimation::Running) {
+        animationGroup()->setCurrentTime(animationGroup()->duration());
+        animationGroup()->stop();
+    }
+
     if (d->crossfade)
         delete d->crossfade;
     d->crossfade = new McParallelAnimation(this);
