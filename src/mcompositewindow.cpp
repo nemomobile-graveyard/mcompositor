@@ -103,7 +103,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         window_visible = false;
 
     MCompositeWindowAnimation* a = 0;
-    if (pc->windowType() == MCompAtoms::SHEET) 
+    if (pc->windowType() == MCompAtoms::SHEET && lastVisibleParent() != None)
         a = new MSheetAnimation(this);
     else if (pc->invokedBy() != None)
         a = new MChainedAnimation(this);
