@@ -49,8 +49,11 @@ class MSheetAnimation: public MDynamicAnimation
  public:
     MSheetAnimation(QObject* parent = 0);
 
-    virtual void windowShown(); 
-    virtual void windowClosed();
+    void windowShown(); 
+    void windowClosed();
+
+private slots:
+    void endAnimation();
     
 private:
     /**
@@ -59,6 +62,7 @@ private:
      * of the target window.
      */
     void initializePositionAnimation();
+    MStatusBarCrop* cropper;
 };
 
 class MChainedAnimation: public MDynamicAnimation
@@ -67,8 +71,8 @@ class MChainedAnimation: public MDynamicAnimation
  public:
     MChainedAnimation(QObject* parent = 0);
 
-    virtual void windowShown(); 
-    virtual void windowClosed();
+    void windowShown(); 
+    void windowClosed();
 
  private slots:
     void endAnimation();
@@ -91,8 +95,8 @@ class MCallUiAnimation: public MDynamicAnimation
 
     MCallUiAnimation(QObject* parent = 0);
 
-    virtual void windowShown(); 
-    virtual void windowClosed();
+    void windowShown(); 
+    void windowClosed();
     void windowIconified();
     void setupBehindAnimation();
     void setupCallMode(bool showWindow = true);
