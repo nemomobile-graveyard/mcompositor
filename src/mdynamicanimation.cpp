@@ -31,6 +31,66 @@
 
 static QRectF screen;
 
+class MStatusBarCrop: public MCompositeWindowShaderEffect
+{
+    Q_OBJECT
+ public:
+    MStatusBarCrop(QObject* parent)
+        :MCompositeWindowShaderEffect(parent),
+         appwindow(0),
+         portrait(false)
+    {
+         p_transform.rotate(90);
+         p_transform.translate(0, -screen.height());
+         p_transform = p_transform.inverted();
+    }
+    
+    void drawTexture(const QTransform &transform,
+                     const QRectF &drawRect, qreal opacity)
+    {
+        const MStatusBarTexture *sbtex = MStatusBarTexture::instance();
+        QRectF draw_rect(drawRect);
+        if (appwindow && appwindow->propertyCache()
+            && !appwindow->propertyCache()->statusbarGeometry().isEmpty()) {
+            // subtract statusbar
+            if (portrait)
+                draw_rect.setLeft(sbtex->portraitRect().height());
+            else
+                draw_rect.setTop(sbtex->landscapeRect().height());
+        }
+        
+        // original texture with cropped statusbar
+        glBindTexture(GL_TEXTURE_2D, texture());
+        drawSource(transform, draw_rect, opacity, true); 
+
+        // draw status bar texture
+        if (!portrait) {
+            glBindTexture(GL_TEXTURE_2D, sbtex->landscapeTexture());
+            drawSource(QTransform(),
+                       sbtex->landscapeRect(), 1.0);
+        } else {
+            glBindTexture(GL_TEXTURE_2D, sbtex->portraitTexture());
+            drawSource(p_transform,
+                       sbtex->portraitRect(), 1.0);
+        }
+    }
+
+    void setAppWindow(MCompositeWindow* a)
+    {
+        appwindow = a;
+    }
+
+    void setPortrait(bool p)
+    {
+        portrait = p;
+    }
+
+private:
+    QPointer<MCompositeWindow> appwindow;
+    QTransform p_transform;
+    bool portrait;
+};
+
 /*!
  * Dynamic animators are window animators that can have their internal
  * animation objects switched and shared between windows
@@ -109,6 +169,8 @@ MSheetAnimation::MSheetAnimation(QObject* parent)
     int duration = mc->configInt("sheet-anim-duration", 350);
     positionAnimation()->setDuration(duration);
     activeAnimations().append(positionAnimation());
+    cropper = new MStatusBarCrop(this);
+    connect(animationGroup(), SIGNAL(finished()), SLOT(endAnimation()));
 }
 
 void MSheetAnimation::windowShown()
@@ -120,6 +182,14 @@ void MSheetAnimation::windowShown()
 
     initializePositionAnimation();
     positionAnimation()->setEasingCurve(QEasingCurve::OutExpo);
+
+    if (!targetWindow()->propertyCache()->statusbarGeometry().isEmpty()) {
+        MStatusBarTexture::instance()->updatePixmap();
+        cropper->setAppWindow(targetWindow());
+        cropper->installEffect(targetWindow());
+        bool p = targetWindow()->propertyCache()->orientationAngle() % 180;
+        cropper->setPortrait(p);
+    }
     
     animationGroup()->setDirection(QAbstractAnimation::Forward);
     start();
@@ -132,6 +202,14 @@ void MSheetAnimation::windowClosed()
     setEnabled(true);
     initializePositionAnimation();
     positionAnimation()->setEasingCurve(QEasingCurve::InOutExpo);
+
+    if (!targetWindow()->propertyCache()->statusbarGeometry().isEmpty()) {
+        MStatusBarTexture::instance()->updatePixmap();
+        cropper->setAppWindow(targetWindow());
+        cropper->installEffect(targetWindow());
+        bool p = targetWindow()->propertyCache()->orientationAngle() % 180;
+        cropper->setPortrait(p);
+    }
     
     animationGroup()->setDirection(QAbstractAnimation::Backward);
     targetWindow()->setVisible(true);
@@ -140,72 +218,18 @@ void MSheetAnimation::windowClosed()
     animationGroup()->start();    
 }
 
+void MSheetAnimation::endAnimation()
+{
+    cropper->removeEffect(targetWindow());
+    MStatusBarTexture::instance()->untrackDamages();
+}
+
 void MSheetAnimation::initializePositionAnimation()
 {
     const bool portrait = targetWindow()->propertyCache()->orientationAngle() % 180;
     positionAnimation()->setStartValue(portrait ? screen.topRight() : screen.bottomLeft());
     positionAnimation()->setEndValue(QPointF(0,0));
 }
-
-class MStatusBarCrop: public MCompositeWindowShaderEffect
-{
-    Q_OBJECT
- public:
-    MStatusBarCrop(QObject* parent)
-        :MCompositeWindowShaderEffect(parent),
-         appwindow(0),
-         portrait(false)
-    {
-         p_transform.rotate(90);
-         p_transform.translate(0, -screen.height());
-         p_transform = p_transform.inverted();
-    }
-    
-    virtual void drawTexture(const QTransform &transform,
-                     const QRectF &drawRect, qreal opacity)
-    {
-        const MStatusBarTexture *sbtex = MStatusBarTexture::instance();
-        QRectF draw_rect(drawRect);
-        if (appwindow && appwindow->propertyCache()
-            && !appwindow->propertyCache()->statusbarGeometry().isEmpty()) {
-            // subtract statusbar
-            if (portrait)
-                draw_rect.setLeft(sbtex->portraitRect().height());
-            else
-                draw_rect.setTop(sbtex->landscapeRect().height());
-        }
-        
-        // original texture with cropped statusbar
-        glBindTexture(GL_TEXTURE_2D, texture());
-        drawSource(transform, draw_rect, opacity, true); 
-
-        // draw status bar texture
-        if (!portrait) {
-            glBindTexture(GL_TEXTURE_2D, sbtex->landscapeTexture());
-            drawSource(QTransform(),
-                       sbtex->landscapeRect(), 1.0);
-        } else {
-            glBindTexture(GL_TEXTURE_2D, sbtex->portraitTexture());
-            drawSource(p_transform,
-                       sbtex->portraitRect(), 1.0);
-        }
-    }
-
-    void setAppWindow(MCompositeWindow* a)
-    {
-        appwindow = a;
-    }
-
-    void setPortrait(bool p)
-    {
-        portrait = p;
-    }
-
-private:
-    MCompositeWindow* appwindow;
-    QTransform p_transform;
-    bool portrait;
-};
 
 MChainedAnimation::MChainedAnimation(QObject* parent)
     :MDynamicAnimation(parent)
