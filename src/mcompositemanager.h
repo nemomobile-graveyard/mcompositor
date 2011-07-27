@@ -247,6 +247,7 @@ private:
     friend class ut_Anim;
     friend class ut_Lockscreen;
     friend class ut_CloseApp;
+    friend class ut_Compositing;
 };
 
 #endif
