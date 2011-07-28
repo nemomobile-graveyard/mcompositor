@@ -80,6 +80,10 @@
         ((X)->netWmState().contains(ATOM(_NET_WM_STATE_FULLSCREEN)))
 #define MODAL_WINDOW(X) \
         ((X)->netWmState().contains(ATOM(_NET_WM_STATE_MODAL)))
+#define DECORATED_FS_WINDOW(X) (device_state->ongoingCall() && \
+                     FULLSCREEN_WINDOW(X) && \
+                     X->statusbarGeometry().isEmpty() && \
+                     X->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU))
 
 Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
 Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
@@ -767,13 +771,10 @@ bool MCompositeManagerPrivate::needDecoration(MWindowPropertyCache *pc)
     Q_ASSERT(pc);
     if (pc->isInputOnly() || pc->isDecorator() || pc->isOverrideRedirect())
         return false;
-    bool fs = FULLSCREEN_WINDOW(pc);
-    if (device_state->ongoingCall() && fs &&
-        pc->windowTypeAtom() != ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) &&
-        pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU))
+    if (DECORATED_FS_WINDOW(pc))
         // fullscreen window is decorated during call
         return true;
-    if (fs)
+    if (FULLSCREEN_WINDOW(pc))
         return false;
     MCompAtoms::Type t = pc->windowType();
     return (t != MCompAtoms::FRAMELESS
@@ -910,6 +911,8 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         if (e->atom == ATOM(_MEEGOTOUCH_OPAQUE_WINDOW))
             recheck_visibility = true;
         MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
+        if (cw)
+            cw->setDecorated(needDecoration(pc));
         // handle stacking on the animator for single (non-chained) window
         bool restoring = (cw && 
                           cw->propertyCache()->invokedBy() == None &&
@@ -1036,10 +1039,7 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated(int *index)
             pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT) &&
             !pc->isOverrideRedirect() &&
             (cw->needDecoration() || cw->status() == MCompositeWindow::Hung
-             || (FULLSCREEN_WINDOW(cw->propertyCache()) &&
-                 pc->windowTypeAtom() != ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE)
-                 && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
-                 && device_state->ongoingCall()))) {
+             || DECORATED_FS_WINDOW(pc))) {
             if (index) *index = i;
             return cw;
         }
@@ -1547,8 +1547,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         if ((cw = getHighestDecorated())) {
             if (cw->status() == MCompositeWindow::Hung)
                 deco->setManagedWindow(cw, true);
-            else if (FULLSCREEN_WINDOW(cw->propertyCache())
-                     && device_state->ongoingCall())
+            else if (DECORATED_FS_WINDOW(cw->propertyCache()))
                 deco->setManagedWindow(cw, true, true);
             else
                 deco->setManagedWindow(cw);
@@ -2032,8 +2031,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     if (highest_d && !highest_d->isWindowTransitioning()) {
         if (highest_d->status() == MCompositeWindow::Hung)
             deco->setManagedWindow(highest_d, true);
-        else if (FULLSCREEN_WINDOW(highest_d->propertyCache())
-                 && device_state->ongoingCall())
+        else if (DECORATED_FS_WINDOW(highest_d->propertyCache()))
             deco->setManagedWindow(highest_d, true, true);
         else
             deco->setManagedWindow(highest_d);
@@ -2042,9 +2040,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     /* raise/lower decorator */
     if (highest_d && top_decorated_i >= 0 && deco->decoratorItem()
         && deco->managedWindow() == highest_d->window()
-        && (!FULLSCREEN_WINDOW(highest_d->propertyCache())
-            || highest_d->status() == MCompositeWindow::Hung
-            || device_state->ongoingCall())) {
+        && (DECORATED_FS_WINDOW(highest_d->propertyCache())
+            || highest_d->status() == MCompositeWindow::Hung)) {
         // TODO: would be more robust to set decorator's managed window here
         // instead of in many different places in the code...
         Window deco_w = deco->decoratorItem()->window();
@@ -2528,8 +2525,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                     && !ping_source->needDecoration()) {
                     // reset decorator's managed window & check compositing
                     dirtyStacking(false);
-                } else if (was_hung && ping_source->window() == managed
-                           && FULLSCREEN_WINDOW(ping_source->propertyCache())) {
+                } else if (was_hung && ping_source->window() == managed &&
+                           DECORATED_FS_WINDOW(ping_source->propertyCache())) {
                     // ongoing call decorator
                     MDecoratorFrame::instance()->setOnlyStatusbar(true);
                 }
@@ -3258,8 +3255,6 @@ static bool compareDecorator(MWindowPropertyCache *win)
 {
     MDecoratorFrame *deco;
     MCompositeWindow *man;
-    const QList<Window> &stack =
-        static_cast<MCompositeManager*>(qApp)->stackingList();
 
     if (!(deco = MDecoratorFrame::instance()))
         // the decorator is so unused that we don't even know about it
@@ -3270,14 +3265,7 @@ static bool compareDecorator(MWindowPropertyCache *win)
     if (man->propertyCache() == win)
         // @win is the decorator's managed window, keep them together
         return false;
-    if (compareWindows(man->window(), win->winId()))
-        return true;
-    if (compareWindows(win->winId(), man->window()))
-        return false;
-    if (stack.indexOf(man->window()) < stack.indexOf(win->winId()))
-        return true;
-    else
-        return false;
+    return compareWindows(man->window(), win->winId());
 }
 
 // -1: pc_a is pc_b's ancestor; 1: pc_b is pc_a's ancestor; 0: no relation
