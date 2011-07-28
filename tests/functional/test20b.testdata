@@ -6,5 +6,7 @@ CaseDescription="Check that fullscreen apps during callare decorated.
 - Test steps
 	- simulate an ongoing call
 	- show a fullscreen application window
+	- the decorator is on top of it
+        - show a fullscreen application window that paints its statusbar
 - Post-conditions
-	- the decorator is on top of it\n"
+        - the decorator is not on top of it\n"
