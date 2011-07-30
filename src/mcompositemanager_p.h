@@ -82,7 +82,7 @@ public:
     void activateWindow(Window w, Time timestamp,
 		        bool disableCompositing = true,
                         bool stacked = false);
-    void updateWinList();
+    bool updateNetClientList(Window w, bool addit);
     void setWindowState(Window, int, int level = 0);
 #ifdef WINDOW_DEBUG
     void setWindowDebugProperties(Window w);
@@ -151,7 +151,7 @@ public:
     QGLWidget *glwidget;
 
     QList<Window> stacking_list;
-    QList<Window> windows_as_mapped;
+    QVector<Window> netClientList;
 
     QHash<Window, MCompositeWindow *> windows;
     struct FrameData {
