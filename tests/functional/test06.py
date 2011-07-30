@@ -17,8 +17,9 @@ if os.system('mcompositor-test-init.py'):
 
 def rotate_screen(top_edge):
   print 'rotate_screen:', top_edge
-  os.spawnlp(os.P_NOWAIT, "/usr/bin/windowctl", "windowctl", "R", top_edge)
+  pid = os.spawnlp(os.P_NOWAIT, "/usr/bin/windowctl", "windowctl", "R", top_edge)
   time.sleep(1)
+  return pid
 
 def print_stack_array(a):
   i = 0
@@ -54,7 +55,7 @@ for l in s.splitlines():
 # rotate 90 degrees and check the stack
 ret = 0
 for arg in ['l', 'b', 'r', 't']:
-  rotate_screen(arg)
+  rotpid = rotate_screen(arg)
   new_stack = []
   fd = os.popen('windowstack m')
   s = fd.read(5000)
@@ -65,6 +66,7 @@ for arg in ['l', 'b', 'r', 't']:
     if l.split()[1] != 'no-TYPE':
       new_stack += l.strip().split()[0:4]
   if orig_stack != new_stack:
+    os.system('kill %u; pkill context-provide' % rotpid)
     print 'Failed stack:'
     print_stack_array(new_stack)
     print 'Original stack:'
@@ -72,7 +74,7 @@ for arg in ['l', 'b', 'r', 't']:
     ret = 1
     break
   edge2angle = {'l' : '270', 'b' : '180', 'r' : '90', 't' : '0'}
-  # set _MEEGOTOUCH_ORIENTATION_ANGLE on curren app window
+  # set _MEEGOTOUCH_ORIENTATION_ANGLE on current app window
   f_cw = os.popen('xprop -root _MEEGOTOUCH_CURRENT_APP_WINDOW')
   o_cw = f_cw.read()
   cw = o_cw.split('#')
@@ -86,9 +88,9 @@ for arg in ['l', 'b', 'r', 't']:
                   "/Screen/CurrentWindow/OrientationAngle "
                   "org.maemo.contextkit.Property.Get")
   o_ca = f_ca.read()
+  os.system('kill %u; pkill context-provide' % rotpid)
   if o_ca.splitlines()[0] == edge2angle[arg]:
     print 'Value as expected: ' + edge2angle[arg]
-    time.sleep(9) # sleep the rotation (windowctl R) away
     continue
   ret = 1
   print '/Screen/CurrentWindow/OrientationAngle does not match expected value'
