@@ -1907,14 +1907,14 @@ void MCompositeManagerPrivate::fixZValues()
 // index of the last visible window in stacking_list, or 0
 int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
 {
-    static int xres = ScreenOfDisplay(QX11Info::display(),
-                               DefaultScreen(QX11Info::display()))->width;
-    static int yres = ScreenOfDisplay(QX11Info::display(),
-                               DefaultScreen(QX11Info::display()))->height;
-    QRegion fs_r(0, 0, xres, yres);
-    int last_i = stacking_list.size() - 1;
+    MCompositeWindow *decod;
+    MWindowPropertyCache *decopc = NULL;
+    MDecoratorFrame *deco = MDecoratorFrame::instance();
+    if ((decod = deco->managedClient()) != NULL)
+        decopc = deco->decoratorItem()->propertyCache();
 
-    for (int i = last_i; i >= 0; --i) {
+    QRegion fs(watch->sceneRect().toRect());
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
          Window w = stacking_list.at(i);
          if (w == stack[DESKTOP_LAYER])
              return i;
@@ -1930,10 +1930,12 @@ int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
              // a hidden window between the desktop and swiped window)
              || (cw->hasTransitioningWindow() && !cw->isVisible()))
              continue;
-         QRegion shape = pc->shapeRegion();
-         shape.translate(pc->realGeometry().x(), pc->realGeometry().y());
-         fs_r -= shape;
-         if (fs_r.isEmpty())
+
+         fs -= pc->shapeRegion().translated(pc->realGeometry().topLeft());
+         if (cw == decod)
+             fs -= decopc->shapeRegion().translated(
+                                      decopc->realGeometry().topLeft());
+         if (fs.isEmpty())
              return i;
     }
     return 0;
