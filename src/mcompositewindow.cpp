@@ -266,8 +266,6 @@ bool MCompositeWindow::showWindow()
         return true;
     }
 
-    // defer putting this window in the _NET_CLIENT_LIST
-    // only after animation is done to prevent the switcher from rendering it
     if (!pc 
         || !pc->is_valid
         || (!isAppWindow() && pc->invokedBy() == None)

@@ -1188,7 +1188,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     }
 
     // do not keep unmapped windows in windows_as_mapped list
-    windows_as_mapped.removeAll(e->window);
+    updateNetClientList(e->window, false);
 
     if (e->window == xoverlay) {
         overlay_mapped = false;
@@ -1229,7 +1229,6 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         return;
 #endif
     }
-    updateWinList();
 
     for (int i = 0; i < TOTAL_LAYERS; ++i)
         if (stack[i] == e->window) stack[i] = 0;
@@ -2105,25 +2104,43 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     }
     roughSort();
 
-    // properties and focus are updated only if there was a change in the
-    // order of mapped windows or mappedness
-    QList<Window> only_mapped;
+    // Focus is updated only if the set or the order of mapped windows
+    // has changed.  _NET_CLIENT_LIST_STACKING may change even @only_mapped
+    // didn't, if a window switched OR-ness or decorator-ness.
+    //
+    // only_mapped := grep(stacking_list,
+    //                     witem && isMapped && !newlyMapped && !isClosing)
+    // netClientListStacking := only_mapped - grep(stacking_list,
+    //                     pc && isMapped && (isVirtual || isOR || isDeco)))
+    static QVector<Window> prev_only_mapped, prevNetClientListStacking;
+    QVector<Window> only_mapped, netClientListStacking;
+    bool mapped_order_changed;
     for (int i = 0; i <= last_i; ++i) {
-         MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
-         if (witem && witem->isMapped() &&
-             !witem->isNewlyMapped() && !witem->isClosing())
-             only_mapped.append(stacking_list.at(i));
+        Window w = stacking_list[i];
+        MCompositeWindow *witem = COMPOSITE_WINDOW(w);
+        if (witem && witem->isMapped()
+                && !(witem->isNewlyMapped() || witem->isClosing())) {
+            only_mapped.append(stacking_list.at(i));
+            MWindowPropertyCache *pc = witem->propertyCache();
+            if (!(pc->isVirtual() || pc->isOverrideRedirect()
+                  || pc->windowType() == MCompAtoms::DOCK
+                  || pc->isDecorator()))
+                // decorator and OR windows are not included in the property
+                netClientListStacking.append(w);
+        }
     }
-    static QList<Window> prev_stacked_mapped, prev_stacked;
+    if ((mapped_order_changed = prev_only_mapped != only_mapped))
+        prev_only_mapped = only_mapped;
+
+    static QList<Window> prev_stacked;
+    bool order_changed = prev_stacked != stacking_list;
 
     fixZValues();
-    bool mapped_order_changed = prev_stacked_mapped != only_mapped;
-    bool order_changed = prev_stacked != stacking_list;
     bool restacked = false;
     if (xrestackwindows_error || order_changed) {
-        QList<Window> reverse;
-        for (int i = last_i; i >= 0; --i)
-            reverse.append(stacking_list.at(i));
+        QVector<Window> reverse(stacking_list.size());
+        for (int i = 0; i <= last_i; i++)
+            reverse[last_i-i] = stacking_list[i];
 
         // Log the actual arguments of XRestackWindows().
         STACKING("XRestackWindows([%s])",
@@ -2134,8 +2151,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         int (*xerr)(Display *dpy, XErrorEvent *);
         xrestackwindows_error = false;
         xerr = XSetErrorHandler(xrestackwindows_error_handler);
-        XRestackWindows(QX11Info::display(), reverse.toVector().data(),
-                        reverse.size());
+        XRestackWindows(QX11Info::display(),
+                        (Window *)reverse.constData(), reverse.size());
         XSync(QX11Info::display(), False);
         XSetErrorHandler(xerr);
         if (xrestackwindows_error) {
@@ -2146,23 +2163,15 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             restacked = true;
         }
     }
-    if (mapped_order_changed) {
-        // decorator and OR windows are not included to the property
-        QList<Window> no_decors = only_mapped;
-        for (int i = 0; i <= last_i; ++i) {
-             MWindowPropertyCache *pc = prop_caches.value(stacking_list.at(i),
-                                                          0);
-             if (pc && pc->isMapped() &&
-                 (pc->isOverrideRedirect() || pc->isVirtual()
-                  || pc->isDecorator()))
-                 no_decors.removeOne(stacking_list.at(i));
-        }
+
+    if (prevNetClientListStacking != netClientListStacking) {
+        prevNetClientListStacking = netClientListStacking;
         XChangeProperty(QX11Info::display(),
                         RootWindow(QX11Info::display(), 0),
                         ATOM(_NET_CLIENT_LIST_STACKING),
                         XA_WINDOW, 32, PropModeReplace,
-                        (unsigned char *)no_decors.toVector().data(),
-                        no_decors.size());
+                        (unsigned char *)netClientListStacking.constData(),
+                        netClientListStacking.size());
         if (stack[DESKTOP_LAYER]) {
             XPropertyEvent p;
             p.type   = PropertyNotify;
@@ -2172,9 +2181,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER],
                        False, PropertyChangeMask, (XEvent *)&p);
         }
-
-        prev_stacked_mapped = only_mapped;
     }
+
     if (mapped_order_changed || changed_properties) {
         if (!device_state->displayOff())
             pingTopmost();
@@ -2182,6 +2190,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     }
     if (mapped_order_changed || force_visibility_check || changed_properties)
         sendSyntheticVisibilityEventsForOurBabies();
+
     // current app has different semantics from getTopmostApp and pure isAppWindow
     MCompositeWindow *set_as_current_app = 0;
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
@@ -2328,9 +2337,9 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
 
     if (item) {
         item->setIsMapped(true);
-        if (!pc->isDecorator() && !pc->isOverrideRedirect()
-            && windows_as_mapped.indexOf(win) == -1)
-            windows_as_mapped.append(win);
+        if (!pc->isOverrideRedirect() && pc->windowType() != MCompAtoms::DOCK
+            && !pc->isDecorator())
+            updateNetClientList(win, true);
         // reset item for the case previous animation did not end cleanly
         item->setUntransformed();
         item->setPos(pc->realGeometry().x(), pc->realGeometry().y());
@@ -3248,17 +3257,16 @@ void MCompositeManagerPrivate::redirectWindows()
 void MCompositeManagerPrivate::removeWindow(Window w)
 {
     // Item is already removed from scene when it is deleted
-    int removed = 0;
 
     STACKING("remove 0x%lx from stack", w);
-    removed += windows_as_mapped.removeAll(w);
-    removed += windows.remove(w);
-    removed += stacking_list.removeAll(w);
+    if (windows.remove(w) | stacking_list.removeAll(w)
+        | updateNetClientList(w, false))
+        // Do remove @w from all these lists but only dirty the stacking
+        // if something's been removed from any of them.
+        dirtyStacking(false);
 
     for (int i = 0; i < TOTAL_LAYERS; ++i)
         if (stack[i] == w) stack[i] = 0;
-
-    if (removed > 0) updateWinList();
 }
 
 Window MCompositeManager::desktopWindow() const
@@ -3627,10 +3635,6 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         pc->setRequestedGeometry(QRect(0, 0, xres, yres));
     }
 
-    if (!pc->isDecorator() && !pc->isOverrideRedirect()
-        && windows_as_mapped.indexOf(window) == -1)
-        windows_as_mapped.append(window);
-
     if (needDecoration(pc))
         item->setDecorated(true);
 
@@ -3677,10 +3681,8 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
 void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
 {
     watch->addItem(item);
-    if (!item->propertyCache()->isVirtual()) {
-        updateWinList();
+    if (!item->propertyCache()->isVirtual())
         setWindowDebugProperties(item->window());
-    }
 
     connect(item, SIGNAL(lastAnimationFinished(MCompositeWindow *)),
                 SLOT(onAnimationsFinished(MCompositeWindow *)));
@@ -3704,29 +3706,35 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
             SLOT(gotHungWindow(MCompositeWindow *, bool)));
 }
 
-void MCompositeManagerPrivate::updateWinList()
+bool MCompositeManagerPrivate::updateNetClientList(Window w, bool addit)
 {
-    static QList<Window> prev_list;
-    if (windows_as_mapped != prev_list) {
-        XChangeProperty(QX11Info::display(),
-                        RootWindow(QX11Info::display(), 0),
-                        ATOM(_NET_CLIENT_LIST),
-                        XA_WINDOW, 32, PropModeReplace,
-                        (unsigned char *)windows_as_mapped.toVector().data(),
-                        windows_as_mapped.size());
-        if (stack[DESKTOP_LAYER]) {
-            XPropertyEvent p;
-            p.type   = PropertyNotify;
-            p.window = RootWindow(QX11Info::display(), 0);
-            p.atom   = ATOM(_NET_CLIENT_LIST);
-            p.state  = PropertyNewValue;
-            XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER],
-                       False, PropertyChangeMask, (XEvent *)&p);
-        }
+    int idx;
 
-        prev_list = windows_as_mapped;
+    idx = netClientList.indexOf(w);
+    if (addit != (idx < 0))
+        return false;
+    else if (addit)
+        netClientList.append(w);
+    else
+        netClientList.remove(idx);
+
+    XChangeProperty(QX11Info::display(),
+                    RootWindow(QX11Info::display(), 0),
+                    ATOM(_NET_CLIENT_LIST),
+                    XA_WINDOW, 32, PropModeReplace,
+                    (unsigned char *)netClientList.constData(),
+                    netClientList.size());
+    if (stack[DESKTOP_LAYER]) {
+        XPropertyEvent p;
+        p.type   = PropertyNotify;
+        p.window = RootWindow(QX11Info::display(), 0);
+        p.atom   = ATOM(_NET_CLIENT_LIST);
+        p.state  = PropertyNewValue;
+        XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER],
+                   False, PropertyChangeMask, (XEvent *)&p);
     }
-    dirtyStacking(false);
+
+    return true;
 }
 
 // mark application windows iconic (except those that shouldn't be)
@@ -3785,7 +3793,8 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
         MCompositeWindow *i = COMPOSITE_WINDOW(w);
         if (i) i->requestZValue(-1);
     }
-    updateWinList();
+
+    dirtyStacking(false);
 }
 
 void MCompositeManager::expectResize(MCompositeWindow *cw, const QRect &r)
@@ -4060,14 +4069,13 @@ void MCompositeManager::dumpState(const char *heading)
     qDebug("  desktop: 0x%lx", d->stack[DESKTOP_LAYER]);
 
     // Stacking order of mapped windows and mapping order of windows.
-    QList<Window>::const_iterator winit;
     qDebug("window stack:");
-    for (winit = d->stacking_list.constEnd();
-         winit > d->stacking_list.constBegin(); )
+    for (QList<Window>::const_iterator winit = d->stacking_list.end();
+         winit > d->stacking_list.begin(); )
         qDebug("  0x%lx", *--winit);
     qDebug("mapping order:");
-    for (winit = d->windows_as_mapped.constEnd();
-         winit > d->windows_as_mapped.constBegin(); )
+    for (QVector<Window>::const_iterator winit = d->netClientList.end();
+         winit > d->netClientList.begin(); )
         qDebug("  0x%lx", *--winit);
 
     // All MCompositeWindow:s we know about.
