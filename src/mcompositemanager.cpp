@@ -3790,6 +3790,13 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
         // checkStacking() call, which sets the new Z value
         MCompositeWindow *i = COMPOSITE_WINDOW(w);
         if (i) i->requestZValue(-1);
+
+        // lower the decorator also if it is decorated
+        MDecoratorFrame *deco = MDecoratorFrame::instance();
+        MCompositeWindow *d_item;
+        if (deco && w == deco->managedWindow() &&
+            (d_item = deco->decoratorItem()))
+            d_item->requestZValue(-1);
     }
 
     dirtyStacking(false);
