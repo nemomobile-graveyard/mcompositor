@@ -1906,14 +1906,14 @@ void MCompositeManagerPrivate::fixZValues()
 // index of the last visible window in stacking_list, or 0
 int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
 {
-    MCompositeWindow *decod;
-    MWindowPropertyCache *decopc = NULL;
-    MDecoratorFrame *deco = MDecoratorFrame::instance();
-    if ((decod = deco->managedClient()) != NULL)
-        decopc = deco->decoratorItem()->propertyCache();
+    static int xres = ScreenOfDisplay(QX11Info::display(),
+                               DefaultScreen(QX11Info::display()))->width;
+    static int yres = ScreenOfDisplay(QX11Info::display(),
+                               DefaultScreen(QX11Info::display()))->height;
+    QRegion fs_r(0, 0, xres, yres);
+    int last_i = stacking_list.size() - 1;
 
-    QRegion fs(watch->sceneRect().toRect());
-    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+    for (int i = last_i; i >= 0; --i) {
          Window w = stacking_list.at(i);
          if (w == stack[DESKTOP_LAYER])
              return i;
@@ -1929,12 +1929,10 @@ int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
              // a hidden window between the desktop and swiped window)
              || (cw->hasTransitioningWindow() && !cw->isVisible()))
              continue;
-
-         fs -= pc->shapeRegion().translated(pc->realGeometry().topLeft());
-         if (cw == decod)
-             fs -= decopc->shapeRegion().translated(
-                                      decopc->realGeometry().topLeft());
-         if (fs.isEmpty())
+         QRegion shape = pc->shapeRegion();
+         shape.translate(pc->realGeometry().x(), pc->realGeometry().y());
+         fs_r -= shape;
+         if (fs_r.isEmpty())
              return i;
     }
     return 0;
@@ -3792,6 +3790,13 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
         // checkStacking() call, which sets the new Z value
         MCompositeWindow *i = COMPOSITE_WINDOW(w);
         if (i) i->requestZValue(-1);
+
+        // lower the decorator also if it is decorated
+        MDecoratorFrame *deco = MDecoratorFrame::instance();
+        MCompositeWindow *d_item;
+        if (deco && w == deco->managedWindow() &&
+            (d_item = deco->decoratorItem()))
+            d_item->requestZValue(-1);
     }
 
     dirtyStacking(false);
