@@ -42,6 +42,14 @@ class MWindowPropertyCache: public QObject
     Q_OBJECT
 public:
 
+    // for MCompositeManager::dumpState()
+    Q_ENUMS(WindowState);
+    enum WindowState {
+        Withdrawn = WithdrawnState,
+        Iconic    = IconicState,
+        Normal    = NormalState,
+    };
+
     /*! Construct a MWindowPropertyCache
      * \param window id to the window whose properties are cached
      *        Without one constructs a placeholder object.
@@ -348,8 +356,7 @@ protected:
         { cancelRequest(QLatin1String(collector)); }
     unsigned requestProperty(MCompAtoms::Atoms prop, Atom type,
                              unsigned n = 1)
-        { return requestProperty(MCompAtoms::instance()->getAtom(prop),
-                                 type, n); }
+        { return requestProperty(MCompAtoms::atoms[prop], type, n); }
     // some unit tests want to fake window properties
     void cancelAllRequests();
 

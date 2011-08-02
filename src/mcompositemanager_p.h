@@ -148,7 +148,6 @@ public:
 
     static Window stack[TOTAL_LAYERS];
 
-    MCompAtoms *atom;
     QGLWidget *glwidget;
 
     QList<Window> stacking_list;

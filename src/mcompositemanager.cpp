@@ -85,9 +85,7 @@
                      X->statusbarGeometry().isEmpty() && \
                      X->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU))
 
-Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
 Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
-MCompAtoms *MCompAtoms::d = 0;
 static KeyCode switcher_key = 0;
 static bool lockscreen_painted = false;
 int MCompositeManager::sighupFd[2];
@@ -142,140 +140,40 @@ static QString dumpWindows(const QList<Window> &wins);
 # define GTA(...)                                   /* NOP */
 #endif
 
-MCompAtoms *MCompAtoms::instance()
+Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
+MCompAtoms::randr_t MCompAtoms::randr;
+
+void MCompAtoms::init()
 {
-    if (!d)
-        d = new MCompAtoms();
-    return d;
-}
+    Display *dpy = QX11Info::display();
+    QMetaObject const &me = staticMetaObject;
 
-MCompAtoms::MCompAtoms()
-{
-    static const char *atom_names[] = {
-        "WM_PROTOCOLS",
-        "WM_DELETE_WINDOW",
-        "WM_TAKE_FOCUS",
-        "WM_TRANSIENT_FOR",
-        "WM_HINTS",
+    // MCompAtoms::atoms <- intern(MCompAtoms::Atoms).
+    QMetaEnum e = me.enumerator(me.indexOfEnumerator("Atoms"));
+    QVector<const char *> names(ATOMS_TOTAL);
+    for (int i = 0; i < ATOMS_TOTAL; i++)
+        names[i] = e.key(i);
+    if (!XInternAtoms(dpy, (char **)names.constData(), ATOMS_TOTAL,
+                      False, atoms))
+        qFatal("XInternAtoms failed");
 
-        "_NET_SUPPORTED",
-        "_NET_SUPPORTING_WM_CHECK",
-        "_NET_WM_NAME",
-        "_NET_WM_WINDOW_TYPE",
-        "_NET_WM_WINDOW_TYPE_DESKTOP",
-        "_NET_WM_WINDOW_TYPE_NORMAL",
-        "_NET_WM_WINDOW_TYPE_DOCK",
-        "_NET_WM_WINDOW_TYPE_INPUT",
-        "_NET_WM_WINDOW_TYPE_NOTIFICATION",
-        "_NET_WM_WINDOW_TYPE_DIALOG",
-        "_NET_WM_WINDOW_TYPE_MENU",
+    // root::_NET_SUPPORTED <- MCompAtoms::atoms
+    XChangeProperty(dpy, QX11Info::appRootWindow(),
+                    atoms[_NET_SUPPORTED],
+                    XA_ATOM, 32, PropModeReplace,
+                    (unsigned char *)atoms, ATOMS_TOTAL);
 
-        // window states
-        "_NET_WM_STATE_ABOVE",
-        "_NET_WM_STATE_SKIP_TASKBAR",
-        "_NET_WM_STATE_FULLSCREEN",
-        "_NET_WM_STATE_MODAL",
-        // uses the KDE standard for frameless windows
-        "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE",
-
-        "_NET_WM_WINDOW_OPACITY",
-        "_NET_WM_STATE",
-        "_NET_WM_ICON_GEOMETRY",
-        "_NET_WM_USER_TIME_WINDOW",
-        "WM_STATE",
-        "WM_NAME",
-        "WM_CLASS",
-
-        // misc
-        "_NET_WM_PID",
-        "_NET_WM_PING",
-
-        // root messages
-        "_NET_ACTIVE_WINDOW",
-        "_NET_CLOSE_WINDOW",
-        "_NET_CLIENT_LIST",
-        "_NET_CLIENT_LIST_STACKING",
-        "WM_CHANGE_STATE",
-
-        "_MEEGOTOUCH_DECORATOR_WINDOW",
-        "_MEEGOTOUCH_GLOBAL_ALPHA",
-        "_MEEGOTOUCH_VIDEO_ALPHA",
-        "_MEEGO_STACKING_LAYER",
-        "_MEEGOTOUCH_DECORATOR_BUTTONS",
-        "_MEEGOTOUCH_CURRENT_APP_WINDOW",
-        "_MEEGOTOUCH_ALWAYS_MAPPED",
-        "_MEEGOTOUCH_DESKTOP_VIEW",
-        "_MEEGOTOUCH_CANNOT_MINIMIZE",
-        "_MEEGOTOUCH_MSTATUSBAR_GEOMETRY",
-        "_MEEGOTOUCH_CUSTOM_REGION",
-        "_MEEGOTOUCH_ORIENTATION_ANGLE",
-        "_MEEGOTOUCH_NET_WM_WINDOW_TYPE_SHEET",
-        "_MEEGOTOUCH_WM_INVOKED_BY",
-        "_MEEGO_SPLASH_SCREEN",
-        "_MEEGO_LOW_POWER_MODE",
-        "_MEEGOTOUCH_OPAQUE_WINDOW",
-        "_MEEGOTOUCH_PRESTARTED",
-        "_MEEGOTOUCH_STATUSBAR_VISIBLE",
-        "_MEEGOTOUCH_NO_ANIMATIONS",
-
-#ifdef WINDOW_DEBUG
-        // custom properties for CITA
-        "_M_WM_INFO",
-        "_M_WM_WINDOW_ZVALUE",
-        "_M_WM_WINDOW_COMPOSITED_VISIBLE",
-        "_M_WM_WINDOW_COMPOSITED_INVISIBLE",
-        "_M_WM_WINDOW_DIRECT_VISIBLE",
-        "_M_WM_WINDOW_DIRECT_INVISIBLE",
-#endif
-
-        // Add atoms you don't want to be in rootWindow::_NET_SUPPORTED below.
-        // RROutput properties
-        RR_PROPERTY_CONNECTOR_TYPE,
-        "Panel",
-        "AlphaMode",
-        "GraphicsAlpha",
-        "VideoAlpha",
+    // MCompAtoms::randr <- intern(randr_names)
+    static const char *randr_names[] = {
+        RR_PROPERTY_CONNECTOR_TYPE, "Panel",
+        "AlphaMode", "GraphicsAlpha", "VideoAlpha",
     };
-
-    Q_ASSERT((sizeof(atom_names) / sizeof(atom_names[0])) == ATOMS_TOTAL);
-
-    dpy = QX11Info::display();
-
-    if (!XInternAtoms(dpy, (char **)atom_names, ATOMS_TOTAL, False, atoms))
-        qCritical("XInternAtoms failed");
-
-    XChangeProperty(dpy, QX11Info::appRootWindow(), atoms[_NET_SUPPORTED],
-                    XA_ATOM, 32, PropModeReplace, (unsigned char *)atoms,
-                    END_OF_NET_SUPPORTED);
-}
-
-int MCompAtoms::getPid(Window w)
-{
-    return cardValueProperty(w, atoms[_NET_WM_PID]);
-}
-
-Atom MCompAtoms::getAtom(const unsigned int name)
-{
-    return atoms[name];
-}
-
-int MCompAtoms::cardValueProperty(Window w, Atom property)
-{
-    Atom actual;
-    int format;
-    unsigned long n, left;
-    unsigned char *data = 0;
-
-    int result = XGetWindowProperty(QX11Info::display(), w, property, 0L, 1L, False,
-                                    XA_CARDINAL, &actual, &format,
-                                    &n, &left, &data);
-    if (result == Success && data) {
-        int p = *((unsigned long *)data);
-        XFree((void *)data);
-        return p;
-    }
-
-    return 0;
+    Q_ASSERT(sizeof(randr_names)/sizeof(randr_names[0])
+             == sizeof(randr)/sizeof(randr.atoms[0]));
+    if (!XInternAtoms(dpy, (char **)randr_names,
+                      sizeof(randr_names)/sizeof(randr_names[0]),
+                      False, randr.atoms))
+        qFatal("XInternAtoms failed");
 }
 
 static void skiptaskbar_wm_state(int toggle, Window window,
@@ -435,19 +333,20 @@ static RROutput find_primary_output()
         unsigned char *contype;
         unsigned long nitems, rem;
 
-        if (XRRGetOutputProperty(dpy, scres->outputs[i], ATOM(RROUTPUT_CTYPE),
+        if (XRRGetOutputProperty(dpy, scres->outputs[i],
+                                 MCompAtoms::randr.ctype,
                                  0, 1, False, False, AnyPropertyType, &t,
                                  &fmt, &nitems, &rem, &contype) == Success) {
             if (t == XA_ATOM && fmt == 32 && nitems == 1
-                && *(Atom *)contype == ATOM(RROUTPUT_PANEL)) {
+                && *(Atom *)contype == MCompAtoms::randr.panel) {
                 unsigned char *alpha_mode;
 
                 /* Does the primary output support alpha blending? */
                 primary = scres->outputs[i];
                 if (XRRGetOutputProperty(dpy, primary,
-                          ATOM(RROUTPUT_ALPHA_MODE), 0, 1, False, False,
-                          AnyPropertyType, &t, &fmt, &nitems, &rem,
-                          &alpha_mode) == Success) {
+                          MCompAtoms::randr.alpha_mode,
+                          0, 1, False, False, AnyPropertyType,
+                          &t, &fmt, &nitems, &rem, &alpha_mode) == Success) {
                     has_alpha_mode = t == XA_INTEGER && fmt == 32
                       && nitems == 1;
                     XFree(alpha_mode);
@@ -492,20 +391,23 @@ static void set_global_alpha(int new_gralpha, int new_vidalpha)
     blend = new_gralpha < 255 || new_vidalpha < 255;
     if (blend != blending && !blend)
         /* Disable blending first. */
-        XRRChangeOutputProperty(dpy, output, ATOM(RROUTPUT_ALPHA_MODE),
+        XRRChangeOutputProperty(dpy, output,
+                                MCompAtoms::randr.alpha_mode,
                                 XA_INTEGER, 32, PropModeReplace,
                                 (unsigned char *)&blend, 1);
 
     if (new_gralpha >= 0 && new_gralpha != gralpha) {
         /* Change or reset graphics alpha. */
-        XRRChangeOutputProperty(dpy, output, ATOM(RROUTPUT_GRAPHICS_ALPHA),
+        XRRChangeOutputProperty(dpy, output,
+                                MCompAtoms::randr.graphics_alpha,
                                 XA_INTEGER, 32, PropModeReplace,
                                 (unsigned char *)&new_gralpha, 1);
         gralpha = new_gralpha;
     }
     if (new_vidalpha >= 0 && new_vidalpha != vidalpha) {
         /* Change or reset video alpha. */
-        XRRChangeOutputProperty(dpy, output, ATOM(RROUTPUT_VIDEO_ALPHA),
+        XRRChangeOutputProperty(dpy, output,
+                                MCompAtoms::randr.video_alpha,
                                 XA_INTEGER, 32, PropModeReplace,
                                 (unsigned char *)&new_vidalpha, 1);
         vidalpha = new_vidalpha;
@@ -513,7 +415,8 @@ static void set_global_alpha(int new_gralpha, int new_vidalpha)
 
     if (blend != blending && blend)
         /* Enable blending last. */
-        XRRChangeOutputProperty(dpy, output, ATOM(RROUTPUT_ALPHA_MODE),
+        XRRChangeOutputProperty(dpy, output,
+                                MCompAtoms::randr.alpha_mode,
                                 XA_INTEGER, 32, PropModeReplace,
                                 (unsigned char *)&blend, 1);
     blending = blend;
@@ -576,7 +479,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
 
     watch = new MCompositeScene(this);
-    atom = MCompAtoms::instance();
+    MCompAtoms::init();
 
     device_state = new MDeviceState(this);
     watch->keep_black = device_state->displayOff();
@@ -603,9 +506,7 @@ MCompositeManagerPrivate::~MCompositeManagerPrivate()
                         ATOM(_NET_SUPPORTING_WM_CHECK));
 
     delete watch;
-    delete atom;
-    watch   = 0;
-    atom = 0;
+    watch = 0;
 }
 
 #ifdef WINDOW_DEBUG
@@ -4088,26 +3989,23 @@ void MCompositeManager::dumpState(const char *heading)
     qDebug("windows:");
     for (cwit = d->windows.constBegin(); cwit != d->windows.constEnd();
          ++cwit) {
-        static const char *wintypes[] = {
-            "INVALID", "DESKTOP", "NORMAL", "DIALOG", "SHEET",
-            "NO_DECOR_DIALOG", "FRAMELESS", "DOCK", "INPUT",
-            "ABOVE", "NOTIFICATION", "DECORATOR", "UNKNOWN",
-        };
-        static const char *winstates[] = {
-            "Withdrawn", "Normal", NULL, "Iconic"
-        };
-        static const char *appstates[] = {
-            "normal", "hung", "minimizing", "closing"
-        };
-        MCompositeWindow *cw, *behind;
-        int winstate;
-        char *name;
+        const QMetaObject mca = MCompAtoms::staticMetaObject;
+        const QMetaEnum wintypes =
+            mca.enumerator(mca.indexOfEnumerator("Type"));
+        const QMetaObject mpc = MWindowPropertyCache::staticMetaObject;
+        const QMetaEnum winstates =
+            mpc.enumerator(mpc.indexOfEnumerator("WindowState"));
+        const QMetaObject mcw = MCompositeWindow::staticMetaObject;
+        const QMetaEnum appstates =
+            mcw.enumerator(mcw.indexOfEnumerator("WindowStatus"));
 
-        cw = *cwit;
+        MCompositeWindow *behind;
+        MCompositeWindow *cw = *cwit;
         Q_ASSERT(cwit.key() == cw->window());
+        MWindowPropertyCache *pc = cw->propertyCache();
 
         // Determine the window's name.
-        name = NULL;
+        char *name = NULL;
         XFetchName(QX11Info::display(), cw->window(), &name);
         if (!name) {
             XClassHint cls;
@@ -4123,7 +4021,7 @@ void MCompositeManager::dumpState(const char *heading)
         // Get the PID and the command line of the process which created
         // the window.
         QByteArray cmdline;
-        int pid = MCompAtoms::instance()->getPid(cw->window());
+        int pid = pc->pid();
         if (pid) {
             QFile f(QString().sprintf("/proc/%d/cmdline", pid));
             if (f.open(QIODevice::ReadOnly))
@@ -4131,42 +4029,39 @@ void MCompositeManager::dumpState(const char *heading)
         }
         if (cmdline.size() > 0)
             // The arguments are \0-delimited.
-            cmdline.replace('\0', ' ');
+            cmdline = cmdline.replace('\0', ' ').trimmed();
         else
             cmdline = "<unknown PID>";
 
-        winstate = cw->propertyCache()->windowState();
         qDebug("  ptr %p == xwin 0x%lx%s: %s", cw, cw->window(),
                cw->isValid() ? "" : " (not valid anymore)",
                name ? name : "[noname]");
         qDebug("    PID: %d, cmdline: %s", pid, cmdline.constData());
         qDebug("    mapped: %s, newly mapped: %s, stacked unmapped: %s",
                yn[cw->isMapped()], yn[cw->isNewlyMapped()],
-               yn[cw->propertyCache()->stackedUnmapped()]);
-        qDebug("    InputOnly: %s, obscured: %s, "
-               "direct rendered: %s",
-               yn[cw->propertyCache()->isInputOnly()],
-               yn[cw->windowObscured()],
+               yn[pc->stackedUnmapped()]);
+        qDebug("    InputOnly: %s, obscured: %s, direct rendered: %s",
+               yn[pc->isInputOnly()], yn[cw->windowObscured()],
                yn[cw->isDirectRendered()]);
         qDebug("    window type: %s, is app: %s, needs decoration: %s",
-               wintypes[cw->propertyCache()->windowType()],
+               wintypes.key(pc->windowType()),
                yn[cw->isAppWindow()], yn[cw->needDecoration()]);
-        qDebug("    status: %s, state: %s", appstates[cw->status()],
-               winstate < (int)(sizeof(winstates)/sizeof(winstates[0]))
-                  ? winstates[winstate] : NULL);
+        qDebug("    status: %s, state: %s",
+               appstates.key(cw->status()), winstates.key(pc->windowState()));
         qDebug("    has transitioning windows: %s, transitioning: %s, "
                    "closing: %s",
-                   yn[cw->hasTransitioningWindow()],
-                   yn[cw->isWindowTransitioning()],
-                   yn[cw->isClosing()]);
-        behind = cw->behind();
+               yn[cw->hasTransitioningWindow()],
+               yn[cw->isWindowTransitioning()],
+               yn[cw->isClosing()]);
         qDebug("    stack index: %d, behind window: 0x%lx, "
                    "last visible parent: 0x%lx", cw->indexInStack(),
-                   behind ? behind->window() : 0, cw->lastVisibleParent());
+               (behind = cw->behind()) ? behind->window() : 0,
+               cw->lastVisibleParent());
 
         // MWindowPropertyCache::transientFor() can change state,
         // transientWindows() doesn't.
-        qDebug("    transients: %s", dumpWindows(cw->propertyCache()->transientWindows()).toLatin1().constData());
+        qDebug("    transients: %s",
+               dumpWindows(pc->transientWindows()).toLatin1().constData());
 
         if (name)
             XFree(name);

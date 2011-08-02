@@ -20,12 +20,19 @@
 #ifndef MCOMPATOMS_P_H
 #define MCOMPATOMS_P_H
 
-class MCompAtoms
+#include <QObject>
+#include <X11/Xutil.h>
+
+// this class is not instantiated, we only use the metaobject
+class MCompAtoms: public QObject
 {
+    Q_OBJECT
 public:
+      static void init();
 
     // note that this enum is ordered and presents
     // the depth ordering of different window types
+    Q_ENUMS(Type);
     enum Type {
         INVALID = 0,
         DESKTOP,
@@ -42,6 +49,7 @@ public:
         UNKNOWN
     };
 
+    Q_ENUMS(Atoms);
     enum Atoms {
         // The following atoms are added to the _NET_SUPPORTED list.
         // window manager
@@ -120,33 +128,20 @@ public:
         _M_WM_WINDOW_DIRECT_INVISIBLE,
 #endif
 
-        // The rest of the atoms are not added to _NET_SUPPORTED.
-        END_OF_NET_SUPPORTED,
-
-        // RROutput properties
-        RROUTPUT_CTYPE = END_OF_NET_SUPPORTED,
-        RROUTPUT_PANEL,
-        RROUTPUT_ALPHA_MODE,
-        RROUTPUT_GRAPHICS_ALPHA,
-        RROUTPUT_VIDEO_ALPHA,
-
         ATOMS_TOTAL
     };
-    static MCompAtoms *instance();
-    int getPid(Window w);
-
-    Atom getAtom(const unsigned int name);
 
     static Atom atoms[ATOMS_TOTAL];
-    int cardValueProperty(Window w, Atom property);
 
-private:
-    explicit MCompAtoms();
-    static MCompAtoms *d;
-
-    Display *dpy;
+    // RROutput properties
+    static union randr_t {
+        struct __attribute__((packed)) {
+            Atom ctype, panel, alpha_mode, graphics_alpha, video_alpha;
+        };
+        Atom atoms[];
+    } randr;
 };
 
-#define ATOM(t) MCompAtoms::instance()->getAtom(MCompAtoms::t)
+#define ATOM(t) MCompAtoms::atoms[MCompAtoms::t]
 
 #endif
