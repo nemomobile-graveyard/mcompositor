@@ -157,7 +157,7 @@ void MCompAtoms::init()
     QMetaEnum e = me.enumerator(me.indexOfEnumerator("Atoms"));
     QVector<const char *> names(ATOMS_TOTAL);
     for (int i = 0; i < ATOMS_TOTAL; i++)
-        names[i] = e.key(i);
+        names[i] = e.valueToKey(i);
     if (!XInternAtoms(dpy, (char **)names.constData(), ATOMS_TOTAL,
                       False, atoms))
         qFatal("XInternAtoms failed");
@@ -4118,10 +4118,11 @@ void MCompositeManager::dumpState(const char *heading)
                yn[pc->isInputOnly()], yn[cw->windowObscured()],
                yn[cw->isDirectRendered()]);
         qDebug("    window type: %s, is app: %s, needs decoration: %s",
-               wintypes.key(pc->windowType()),
+               wintypes.valueToKey(pc->windowType()),
                yn[cw->isAppWindow()], yn[cw->needDecoration()]);
         qDebug("    status: %s, state: %s",
-               appstates.key(cw->status()), winstates.key(pc->windowState()));
+               appstates.valueToKey(cw->status()),
+               winstates.valueToKey(pc->windowState()));
         qDebug("    has transitioning windows: %s, transitioning: %s, "
                    "closing: %s",
                yn[cw->hasTransitioningWindow()],

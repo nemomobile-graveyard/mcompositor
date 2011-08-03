@@ -45,6 +45,7 @@ public:
     // for MCompositeManager::dumpState()
     Q_ENUMS(WindowState);
     enum WindowState {
+        Unknown   = -1,
         Withdrawn = WithdrawnState,
         Iconic    = IconicState,
         Normal    = NormalState,
