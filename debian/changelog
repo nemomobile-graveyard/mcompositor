@@ -1,8 +1,14 @@
-mcompositor (1.1.2-1~unreleased) unstable; urgency=low
+mcompositor (1.1.2-1) unstable; urgency=low
 
-  * foo
+  * Release candidate 1 for PR1.1
+  * Fixes: NB#275282 - Status bar is non-stationary in certain cases
+  * Fixes: NB#257586 - Developer Documentation about the Splash Screen needs...
+  * Fixes: NB#257763 - MDecorator flashes on top of desktop after swiping...
+  * Fixes: NB#273331 - Rotated system-wide sheet slides to wrong direction...
+  * Fixes: NB#266582 - Obscured window gets displayEntered signal..	
+  * Fixes: NB#256211 - Device lock state:Home view is shown for a while... 	
 
- -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 12 Jul 2011 13:26:12 +0300
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Tue, 4 Aug 2011 15:33:12 +0300
 
 mcompositor (1.1.1-1) unstable; urgency=low
 
