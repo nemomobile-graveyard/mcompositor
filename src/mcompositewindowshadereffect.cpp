@@ -46,6 +46,7 @@ static const char default_frag[] = "\
 MCompositeWindowShaderEffectPrivate::MCompositeWindowShaderEffectPrivate(MCompositeWindowShaderEffect* e)
     :effect(e),
      priv_render(0),
+     comp_window(0),
      active_fragment(0)
 {
 }
@@ -65,7 +66,6 @@ void MCompositeWindowShaderEffectPrivate::drawTexture(MTexturePixmapPrivate* ren
  */
 MCompositeWindowShaderEffect::MCompositeWindowShaderEffect(QObject* parent)
     :QObject(parent),
-     comp_window(0),
      d(new MCompositeWindowShaderEffectPrivate(this))
 {    
     // install default pixel shader
@@ -192,12 +192,12 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
     if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
         return;
 
-    if (comp_window != window) {
-        if (comp_window)
-            disconnect(comp_window, SIGNAL(destroyed()),
+    if (d->comp_window != window) {
+        if (d->comp_window)
+            disconnect(d->comp_window, SIGNAL(destroyed()),
                        this, SLOT(compWindowDestroyed()));
-        comp_window = window;
-        connect(comp_window, SIGNAL(destroyed()), SLOT(compWindowDestroyed()));
+        d->comp_window = window;
+        connect(d->comp_window, SIGNAL(destroyed()), SLOT(compWindowDestroyed()));
     }
 
 #ifdef QT_OPENGL_LIB
@@ -212,12 +212,12 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 */
 void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
 {
-    if (window != comp_window)
+    if (window != d->comp_window)
         return;
-    if (comp_window)
-        disconnect(comp_window, SIGNAL(destroyed()),
+    if (d->comp_window)
+        disconnect(d->comp_window, SIGNAL(destroyed()),
                    this, SLOT(compWindowDestroyed()));
-    comp_window = 0;
+    d->comp_window = 0;
 #ifdef QT_OPENGL_LIB
     if (window)
         window->renderer()->installEffect(0);    
@@ -227,8 +227,8 @@ void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
 void MCompositeWindowShaderEffect::compWindowDestroyed()
 {
     // sender() is half-destroyed, can't call any non-QObject methods on it,
-    // so rather than remofeEffect()ing it, just clear @comp_window.
-    comp_window = 0;
+    // so rather than remofeEffect()ing it, just clear @d->comp_window.
+    d->comp_window = 0;
 }
 
 /*!
@@ -258,3 +258,10 @@ void MCompositeWindowShaderEffect::setUniforms(QGLShaderProgram* program)
     Q_UNUSED(program);
 }
 
+/*!
+  \return The current window where this effect is active
+*/
+MCompositeWindow* MCompositeWindowShaderEffect::currentWindow()
+{
+    return d->comp_window;
+}

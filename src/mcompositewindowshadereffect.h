@@ -43,7 +43,7 @@ class MCompositeWindowShaderEffect: public QObject
     void setActiveShaderFragment(GLuint id);
     GLuint activeShaderFragment() const;
 
-    void installEffect(MCompositeWindow* window);
+    virtual void installEffect(MCompositeWindow* window);
     void removeEffect(MCompositeWindow* window);
     bool enabled() const;
 
@@ -54,7 +54,7 @@ class MCompositeWindowShaderEffect: public QObject
     void enabledChanged( bool enabled);
     
  protected: 
-    MCompositeWindow *comp_window;
+    MCompositeWindow* currentWindow();
     void drawSource(const QTransform &transform,
                     const QRectF &drawRect, qreal opacity,
                     bool texcoords_from_rect = false);
@@ -90,7 +90,7 @@ class MCompositeWindowShaderEffectPrivate
     
     MCompositeWindowShaderEffect* effect;
     MTexturePixmapPrivate* priv_render;
-    //  QMap<GLuint, QByteArray> pixelfragments;
+    MCompositeWindow *comp_window;
     QVector<GLuint> pixfrag_ids;
     GLuint active_fragment;
     
