@@ -557,12 +557,18 @@ void MCallUiAnimation::endAnimation()
         behind->setPos(behind->propertyCache()->realGeometry().topLeft());
     }
     // stack the call-ui when finishing the animation 
-    if (targetWindow()->propertyCache()->windowState() == NormalState)
+    switch (targetWindow()->propertyCache()->windowState()) {
+    case NormalState:
         m->positionWindow(targetWindow()->window(),
                           MCompositeManager::STACK_TOP);
-    else if (targetWindow()->propertyCache()->windowState() == IconicState)
+        break;
+    case IconicState:
         m->positionWindow(targetWindow()->window(),
                           MCompositeManager::STACK_BOTTOM);
+    default:
+        targetWindow()->setVisible(false);
+        break;
+    }
 }
 
 #include "mdynamicanimation.moc"
