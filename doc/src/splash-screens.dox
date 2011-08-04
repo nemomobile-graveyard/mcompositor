@@ -1,0 +1,49 @@
+/*! \page splash-screens Splash Screens
+
+MCompositor supports so-called splash screens, which are images that are shown
+on start-up of an application before the real window of the application is shown.
+
+A splash screen is an image file (JPEG preferred for fast loading; PNG is also
+supported) whose path and the application's process ID is told to MCompositor.
+
+MCompositor shows the splash screen when a special window property
+_MEEGO_SPLASH_SCREEN is set to MCompositor's _NET_SUPPORTING_WM_CHECK window. The
+window property has type XA_STRING and the value contains five NUL-terminated
+strings. The meaning of the strings is documented in the following table.
+
+<table border=1>
+  <tr>
+    <th>1st string</th>
+    <th>2nd string</th>
+    <th>3rd string</th>
+    <th>4th string</th>
+    <th>5th string</th>
+  </tr>
+  <tr>
+    <td>PID of the app</td>
+    <td>WM_CLASS (ignored)</td>
+    <td>Path to portrait image</td>
+    <td>Path to landscape image</td>
+    <td>Pixmap ID</td>
+  </tr>
+</table>
+
+The mandatory strings are the PID (process ID) and path to the portrait image, or
+the PID and a pixmap ID.  If the pixmap ID is provided, that pixmap is used as the
+splash screen instead of loading any image file.
+If the landscape image is missing, the portrait image is used also
+in the landscape orientation.
+The dimensions of both portrait and landscape images should be the same
+&lt;screen width&gt; X &lt;screen height&gt;; i.e. MCompositor does not rotate
+the splash image, it should be drawn rotated.  The splash image is stretched to
+full screen size if the image is smaller than the size of the screen.
+
+The splash screen is closed when a window with _NET_WM_PID of the same value
+as the first string appears, or when the timeout of splash-timeout-ms
+(in mcompositor.conf) is reached.
+
+There is a command line utility manual-splash in the mcompositor-utils
+package that can be used to set the _MEEGO_SPLASH_SCREEN window property and
+as example code.
+
+*/
