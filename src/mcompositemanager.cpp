@@ -3854,7 +3854,12 @@ void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
     for (int i = 0; i < stacking_list.size(); ++i) {
         Window w = stacking_list.at(i);
         MCompositeWindow *tp = COMPOSITE_WINDOW(w);
-        if (tp && tp->isValid() && tp->isDirectRendered() && tp->propertyCache()
+        if (tp && tp->isValid()
+#ifdef WINDOW_DEBUG
+            // some unit tests don't have MTexturePixmapItem
+            && dynamic_cast<const MTexturePixmapItem *>(tp)
+#endif
+            && tp->isDirectRendered() && tp->propertyCache()
             && (tp->propertyCache()->isMapped()
                 || tp->propertyCache()->beingMapped()
                 || tp->isClosing()))

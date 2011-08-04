@@ -17,6 +17,7 @@
 **
 ****************************************************************************/
 
+#include "mcompositewindow.h"
 #include "mcompositemanager.h"
 #include "mcompositemanager_p.h"
 #include "mcompositemanagerextension.h"
@@ -58,4 +59,18 @@ Qt::HANDLE MCompositeManagerExtension::currentAppWindow()
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
     return p->d->current_app;
+}
+
+void MCompositeManagerExtension::addToStack(MCompositeWindow *cw, bool to_top)
+{
+    MCompositeManager *cmgr = (MCompositeManager*)qApp;
+    cmgr->d->prop_caches[cw->window()] = cw->propertyCache();
+    cmgr->d->windows[cw->window()] = cw;
+    cmgr->d->stacking_list.append(cw->window());
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = cw->window();
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+    cmgr->d->positionWindow(cw->window(), to_top);
 }
