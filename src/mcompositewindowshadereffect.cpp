@@ -192,11 +192,12 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
     if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
         return;
 
-    if (d->comp_window != window)
+    if (d->comp_window != window) {
         if (d->comp_window) {
             disconnect(d->comp_window, SIGNAL(destroyed()),
                        this, SLOT(compWindowDestroyed()));
-            d->comp_window = window;
+        }
+        d->comp_window = window;
         connect(d->comp_window, SIGNAL(destroyed()), SLOT(compWindowDestroyed()));
     }
 
