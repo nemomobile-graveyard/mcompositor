@@ -28,8 +28,15 @@ if deco_win == 0:
   sys.exit(1)
 
 # simulate a phone call
-fd = os.popen('windowctl P')
-time.sleep(1)
+import subprocess
+ctx = subprocess.Popen(("context-provide",
+			"org.freedesktop.ContextKit.Commander",
+			"string", "Phone.Call", "active"),
+	stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=file("/dev/null"))
+while not [ ("Service started" in line) if (line != "")
+	    else context_provide_already_running()
+	    for line in [ctx.stdout.readline()]][0]: pass
+# service started and will be automatically shut down when we exit
 
 # create a fullscreen application window
 fd = os.popen('windowctl fn')
@@ -69,7 +76,6 @@ for l in s.splitlines():
 
 # cleanup
 os.popen('pkill windowctl')
-os.popen('pkill context-provide')
 
 if os.system('/usr/bin/gconftool-2 --type bool --set /desktop/meego/notifications/previews_enabled true'):
   print 'cannot re-enable notifications'
