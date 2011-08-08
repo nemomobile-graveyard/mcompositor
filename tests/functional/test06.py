@@ -15,12 +15,6 @@ import os, re, sys, time
 if os.system('mcompositor-test-init.py'):
   sys.exit(1)
 
-def rotate_screen(top_edge):
-  print 'rotate_screen:', top_edge
-  pid = os.spawnlp(os.P_NOWAIT, "/usr/bin/windowctl", "windowctl", "R", top_edge)
-  time.sleep(1)
-  return pid
-
 def print_stack_array(a):
   i = 0
   while i < len(a):
@@ -53,9 +47,28 @@ for l in s.splitlines():
     orig_stack += l.strip().split()[0:4]
 
 # rotate 90 degrees and check the stack
+import subprocess
+ctx = subprocess.Popen(("context-provide",
+			"org.freedesktop.ContextKit.Commander",
+			"string", "Screen.TopEdge", "left"),   
+	stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=file("/dev/null"))
+lst = subprocess.Popen(("context-listen", "Screen.TopEdge"),                    
+	env=dict(os.environ.items() + [('CONTEXT_COMMANDING','1')]),            
+	stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=file("/dev/null"))
+
 ret = 0
-for arg in ['l', 'b', 'r', 't']:
-  rotpid = rotate_screen(arg)
+for edge, angle in (('left', 270), ('bottom', 180), ('right', 90), ('top', 0)):
+  print 'rotate_screen:', edge
+  try:
+    print >> ctx.stdin, "Screen.TopEdge=%s" % edge
+  except IOError:
+    # couldn't start our context-provide becasue ...
+    print >> sys.stderr, "context-provide was already running"
+    ret = 1
+    break;
+  while 'Screen.TopEdge = QString:"%s"' % edge not in lst.stdout.readline():
+    # wait until context-listen sees the new value
+    pass
   new_stack = []
   fd = os.popen('windowstack m')
   s = fd.read(5000)
@@ -66,14 +79,12 @@ for arg in ['l', 'b', 'r', 't']:
     if l.split()[1] != 'no-TYPE':
       new_stack += l.strip().split()[0:4]
   if orig_stack != new_stack:
-    os.system('kill %u; pkill context-provide' % rotpid)
     print 'Failed stack:'
     print_stack_array(new_stack)
     print 'Original stack:'
     print_stack_array(orig_stack)
     ret = 1
     break
-  edge2angle = {'l' : '270', 'b' : '180', 'r' : '90', 't' : '0'}
   # set _MEEGOTOUCH_ORIENTATION_ANGLE on current app window
   f_cw = os.popen('xprop -root _MEEGOTOUCH_CURRENT_APP_WINDOW')
   o_cw = f_cw.read()
@@ -81,22 +92,19 @@ for arg in ['l', 'b', 'r', 't']:
   print cw[1].strip() 
   os.popen("xprop -id %s -f _MEEGOTOUCH_ORIENTATION_ANGLE 32c "
            "-set _MEEGOTOUCH_ORIENTATION_ANGLE %s"
-           % (cw[1].strip(), edge2angle[arg]))  
+           % (cw[1].strip(), angle))  
   # check if /Screen/CurrentWindow/OrientationAngle was set
   time.sleep(1)
-  f_ca = os.popen("qdbus org.maemo.mcompositor.context "
-                  "/Screen/CurrentWindow/OrientationAngle "
-                  "org.maemo.contextkit.Property.Get")
-  o_ca = f_ca.read()
-  os.system('kill %u; pkill context-provide' % rotpid)
-  if o_ca.splitlines()[0] == edge2angle[arg]:
-    print 'Value as expected: ' + edge2angle[arg]
-    continue
-  ret = 1
-  print '/Screen/CurrentWindow/OrientationAngle does not match expected value'
-  print 'Current value: ' + clout.splitlines()[0]
-  print 'Expected value: ' + edge2angle[arg]
-  break
+  mc = int(os.popen("qdbus org.maemo.mcompositor.context "
+                     "/Screen/CurrentWindow/OrientationAngle "
+                     "org.maemo.contextkit.Property.Get").readline())
+  if mc == angle:
+    print 'Value as expected: %u' % angle
+  else:
+    ret = 1
+    print '/Screen/CurrentWindow/OrientationAngle does not match expected value'
+    print 'Current value:  %u' % mc
+    print 'Expected value: %u' % angle
 
 # cleanup
 os.popen('pkill windowctl')
