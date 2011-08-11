@@ -64,15 +64,13 @@ class MStatusBarCrop: public MCompositeWindowShaderEffect
         drawSource(transform, draw_rect, opacity, true); 
 
         // draw status bar texture
-        if (!portrait) {
-            glBindTexture(GL_TEXTURE_2D, sbtex->landscapeTexture());
-            drawSource(QTransform(),
-                       sbtex->landscapeRect(), 1.0);
-        } else {
-            glBindTexture(GL_TEXTURE_2D, sbtex->portraitTexture());
-            drawSource(p_transform,
-                       sbtex->portraitRect(), 1.0);
-        }
+        glBindTexture(GL_TEXTURE_2D, sbtex->texture());
+        if (!portrait)
+            drawSource(QTransform(), sbtex->landscapeRect(), 1.0,
+                       sbtex->landscapeTexCoords());
+        else 
+            drawSource(p_transform, sbtex->portraitRect(), 1.0,
+                       sbtex->portraitTexCoords());
     }
 
     void setAppWindow(MCompositeWindow* a)

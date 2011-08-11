@@ -42,7 +42,6 @@
 
 #include "mtexturepixmapitem_p.h"
 
-bool MTexturePixmapPrivate::inverted_texture = true;
 QGLWidget *MTexturePixmapPrivate::glwidget = 0;
 QGLContext *MTexturePixmapPrivate::ctx = 0;
 MGLResourceManager *MTexturePixmapPrivate::glresource = 0;
@@ -313,7 +312,7 @@ void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
                         ? GL_ONE : GL_SRC_ALPHA,
                     GL_ONE_MINUS_SRC_ALPHA);
     }
-    glBindTexture(GL_TEXTURE_2D, textureId);
+    glBindTexture(GL_TEXTURE_2D, TFP.textureId);
 
     const QRegion &shape = item->propertyCache()->shapeRegion();
     // FIXME: not optimal. probably would be better to replace with 
@@ -363,7 +362,7 @@ void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
 
 void MTexturePixmapPrivate::clearTexture()
 {
-    glBindTexture(GL_TEXTURE_2D, textureId);
+    glBindTexture(GL_TEXTURE_2D, TFP.textureId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 0, GL_RGBA,
                  GL_UNSIGNED_BYTE, 0);
 
@@ -384,7 +383,7 @@ void MTexturePixmapPrivate::drawTexture(const QTransform &transform,
 void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform,
                                           const QRectF &drawRect,
                                           qreal opacity,
-                                          bool texcoords_from_rect)
+                                          const GLvoid* texCoords)
 {
     if (current_effect)
         glresource->updateVertices(transform, current_effect->activeShaderFragment());
@@ -399,6 +398,31 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform,
     glEnableVertexAttribArray(D_VERTEX_COORDS);
     glEnableVertexAttribArray(D_TEXTURE_COORDS);
     glVertexAttribPointer(D_VERTEX_COORDS, 2, GL_FLOAT, GL_FALSE, 0, vertexCoords);
+    glVertexAttribPointer(D_TEXTURE_COORDS, 2, GL_FLOAT, GL_FALSE, 0, texCoords);
+
+    if (current_effect)
+        current_effect->setUniforms(glresource->currentShader);
+    
+    glresource->currentShader->setOpacity((GLfloat) opacity);
+    glresource->currentShader->setTexture(0);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glDisableVertexAttribArray(D_VERTEX_COORDS);
+    glDisableVertexAttribArray(D_TEXTURE_COORDS);
+
+    glwidget->paintEngine()->syncState();
+    glActiveTexture(GL_TEXTURE0);
+
+}
+
+void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform,
+                                          const QRectF &drawRect,
+                                          qreal opacity,
+                                          bool texcoords_from_rect)
+{
+    GLfloat texCoords[8];
+    const GLvoid* textureCoords;
+
     if (texcoords_from_rect) {
         float w, h, x, y, cx, cy, cw, ch;
         w = item->boundingRect().width();
@@ -410,7 +434,6 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform,
         cy = (drawRect.y() - y) / h;
         cw = drawRect.width() / w;
         ch = drawRect.height() / h;
-        GLfloat texCoords[8];
         if (inverted_texture) {
             texCoords[0] = cx;      texCoords[1] = cy;
             texCoords[2] = cx;      texCoords[3] = ch + cy;
@@ -422,29 +445,14 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform,
             texCoords[4] = cx + cw; texCoords[5] = cy;
             texCoords[6] = cx + cw; texCoords[7] = ch + cy;
         }
-        glVertexAttribPointer(D_TEXTURE_COORDS, 2, GL_FLOAT, GL_FALSE, 0,
-                              texCoords);
+        textureCoords = &texCoords;
     }
     else if (inverted_texture)
-        glVertexAttribPointer(D_TEXTURE_COORDS, 2, GL_FLOAT, GL_FALSE, 0,
-                              glresource->texCoordsInv);
+        textureCoords = glresource->texCoordsInv;
     else
-        glVertexAttribPointer(D_TEXTURE_COORDS, 2, GL_FLOAT, GL_FALSE, 0,
-                              glresource->texCoords);
+        textureCoords = glresource->texCoords;
     
-    if (current_effect)
-        current_effect->setUniforms(glresource->currentShader);
-    glresource->currentShader->setOpacity((GLfloat) opacity);
-    glresource->currentShader->setTexture(0);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-    glDisableVertexAttribArray(D_VERTEX_COORDS);
-    glDisableVertexAttribArray(D_TEXTURE_COORDS);
-
-#ifdef DESKTOP_VERSION
-    glwidget->paintEngine()->syncState();
-#endif
-    glActiveTexture(GL_TEXTURE0);
+    q_drawTexture(transform, drawRect, opacity, textureCoords);
 }
 
 void MTexturePixmapPrivate::installEffect(MCompositeWindowShaderEffect* effect)
@@ -525,14 +533,8 @@ void MTexturePixmapPrivate::init()
 MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
                                              MTexturePixmapItem *p)
     : window(window),
-      windowp(0),
-#ifdef GLES2_VERSION
-      egl_image(EGL_NO_IMAGE_KHR),
-#else
-      glpixmap(0),
-#endif
-      textureId(0),
-      custom_tfp(false),
+      TFP(),
+      inverted_texture(false),
       direct_fb_render(false), // root's children start redirected
       angle(0),
       item(p),
@@ -555,8 +557,8 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
     if (item->propertyCache())
         item->propertyCache()->damageTracking(false);
 
-    if (windowp && !item->propertyCache()->isVirtual())
-        XFreePixmap(QX11Info::display(), windowp);
+    if (TFP.drawable && !item->propertyCache()->isVirtual())
+        XFreePixmap(QX11Info::display(), TFP.drawable);
 
     if (pastDamages)
         delete pastDamages;
@@ -573,8 +575,7 @@ static int xerror(Display *, XErrorEvent *)
 void MTexturePixmapPrivate::saveBackingStore()
 {
     if (item->propertyCache()->isVirtual()) {
-        windowp = item->windowPixmap();
-        item->rebindPixmap();
+        TFP.bind(item->windowPixmap());
         return;
     }
     if ((item->propertyCache()->is_valid && !item->propertyCache()->isMapped())
@@ -582,19 +583,20 @@ void MTexturePixmapPrivate::saveBackingStore()
         || !window)
         return;
 
-    if (windowp)
-        XFreePixmap(QX11Info::display(), windowp);
+    if (TFP.drawable)
+        XFreePixmap(QX11Info::display(), TFP.drawable);
 
-    XSync(QX11Info::display(), False);
-    had_xerror = false;
-    orig_xerror = XSetErrorHandler(xerror);
-    windowp = XCompositeNameWindowPixmap(QX11Info::display(), item->window());
-    XSync(QX11Info::display(), False);
-    XSetErrorHandler(orig_xerror);
-    if (had_xerror)
-        windowp = None;
+    // Pixmap is already freed. No sense to bind it to texture
+    if (item->isClosing())
+        return;
 
-    item->rebindPixmap(); // windowp == 0 is also handled here
+    Drawable pixmap = XCompositeNameWindowPixmap(QX11Info::display(), item->window());
+#ifdef GLES2_VERSION
+    // Copied from EGL MTexturePixmapItem::doTFP but no idea why it was there
+    // See commit a5481daa6cd1951f5
+    ctx->makeCurrent();
+#endif
+    TFP.bind(pixmap);
 }
 
 void MTexturePixmapPrivate::resize(int w, int h)

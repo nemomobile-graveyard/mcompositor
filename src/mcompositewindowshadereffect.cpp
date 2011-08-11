@@ -118,11 +118,11 @@ GLuint MCompositeWindowShaderEffect::texture() const
     if (d->priv_render) {
 #ifdef GLES2_VERSION
         if (!d->priv_render->current_window_group)
-            return d->priv_render->textureId;
+            return d->priv_render->TFP.textureId;
         else
             return d->priv_render->current_window_group->texture();
 #else
-        return d->priv_render->textureId;
+        return d->priv_render->TFP.textureId;
 #endif
     }
     return 0;
@@ -178,6 +178,25 @@ void MCompositeWindowShaderEffect::drawSource(const QTransform &transform,
         d->priv_render->q_drawTexture(transform, drawRect, opacity,
                                       texcoords_from_rect);
 }
+
+/*!
+  Draws currently bound source window texture. Specify a transformation matrix to
+  \a transform and texture geometry to \a drawRect. Opacity can be set
+  by specifying \a opacity (0.0 - 1.0). \a texCoords specifies custom texture
+  coordinates.
+  This function should only be called inside drawTexture()
+*/
+void MCompositeWindowShaderEffect::drawSource(const QTransform &transform,
+                                              const QRectF &drawRect,
+                                              qreal opacity,
+                                              const GLvoid* texCoords)
+{
+    if (d->priv_render) {
+        d->priv_render->q_drawTexture(transform, drawRect, opacity,
+                                      texCoords);
+    }
+}
+
 
 /*!
   Install this effect on a composite window object \a window. Note that
