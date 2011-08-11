@@ -32,10 +32,13 @@
 #include <GLES2/gl2.h>
 #include <EGL/eglext.h>
 class EglResourceManager;
+class EglTextureManager;
 #elif DESKTOP_VERSION
 #include <GL/glx.h>
 #include <GL/gl.h>
 #endif
+
+#include "mtexturefrompixmap.h"
 
 class QGLWidget;
 class QGraphicsItem;
@@ -66,6 +69,8 @@ public:
     
     void q_drawTexture(const QTransform& transform, const QRectF& drawRect,
                        qreal opacity, bool texcoords_from_rect = false);
+    void q_drawTexture(const QTransform& transform, const QRectF& drawRect,
+                       qreal opacity, const GLvoid* texCoords);
     void installEffect(MCompositeWindowShaderEffect* effect);
     void paint(QPainter *painter,
                const QStyleOptionGraphicsItem *option,
@@ -76,15 +81,8 @@ public:
     static QGLContext *ctx;
     static QGLWidget *glwidget;
     Window window;
-    Pixmap windowp;
-#ifdef GLES2_VERSION
-    EGLImageKHR egl_image;
-#else
-    GLXPixmap glpixmap;
-#endif
-    GLuint textureId;
-    static bool inverted_texture;
-    bool custom_tfp;
+    MTextureFromPixmap TFP;
+    bool inverted_texture;
     bool direct_fb_render;
 
     QRect brect;
@@ -105,6 +103,7 @@ public:
     QList<Time> *pastDamages;
 
 #ifdef GLES2_VERSION
+    static EglTextureManager *texman;
     static EglResourceManager *eglresource;
 #endif
     static MGLResourceManager* glresource;

@@ -20,7 +20,8 @@
 #include <QtDBus>
 #include <QPixmap>
 #include <QX11Info>
-#include "mstatusbartexture.h"
+#include <mstatusbartexture.h>
+#include <mtexturefrompixmap.h>
 #include <mcompositewindow.h>
 #include "mcompositemanager.h"
 
@@ -30,6 +31,20 @@ const QString PIXMAP_PROVIDER_DBUS_SERVICE = "com.meego.core.MStatusBar";
 const QString PIXMAP_PROVIDER_DBUS_PATH = "/statusbar";
 const QString PIXMAP_PROVIDER_DBUS_INTERFACE = "com.meego.core.MStatusBar";
 const QString PIXMAP_PROVIDER_DBUS_SHAREDPIXMAP_CALL = "sharedPixmapHandle";
+
+static void calculate_texture_coords(GLfloat coords[8], GLfloat w, GLfloat h,
+                                     GLfloat tx, GLfloat ty, GLfloat tw, GLfloat th)
+{
+    tx = tx / w;
+    ty = ty / h;
+    tw = tw / w;
+    th = th / h;
+    
+    coords[0] = tx;      coords[1] = ty;
+    coords[2] = tx;      coords[3] = th + ty;
+    coords[4] = tx + tw; coords[5] = th + ty;
+    coords[6] = tx + tw; coords[7] = ty;
+}
 
 MStatusBarTexture* MStatusBarTexture::instance()
 {
@@ -41,8 +56,9 @@ MStatusBarTexture* MStatusBarTexture::instance()
 MStatusBarTexture::MStatusBarTexture(QObject *parent)
     :QObject(parent),
      pendingCall(0),
-     drawable(0),
-     pixmapDamage(0)
+     pixmapDamage(0),
+     TFP(new MTextureFromPixmap()),
+     size_needs_update(true)
 {
     dbusWatcher = new QDBusServiceWatcher(PIXMAP_PROVIDER_DBUS_SERVICE,
                                           QDBusConnection::sessionBus(),
@@ -61,16 +77,8 @@ MStatusBarTexture::MStatusBarTexture(QObject *parent)
         return;
     }
 
-    glGenTextures(1, &texture_id);
-    glBindTexture(GL_TEXTURE_2D, texture_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glGenTextures(1, &portrait_texture_id);
-    glBindTexture(GL_TEXTURE_2D, portrait_texture_id);
+    glGenTextures(1, &TFP->textureId);
+    glBindTexture(GL_TEXTURE_2D, TFP->textureId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -98,7 +106,7 @@ void MStatusBarTexture::getSharedPixmap()
 void MStatusBarTexture::trackDamages()
 {
     if (pixmapDamage == None)
-        pixmapDamage = XDamageCreate(QX11Info::display(), drawable,
+        pixmapDamage = XDamageCreate(QX11Info::display(), TFP->drawable,
                                      XDamageReportNonEmpty);
 }
 
@@ -110,33 +118,21 @@ void MStatusBarTexture::untrackDamages()
     }
 }
 
-bool MStatusBarTexture::updateStatusBarGeometry(QImage &img)
+bool MStatusBarTexture::updateStatusBarGeometry()
 {
-    if (!drawable)
+    if (!size_needs_update)
         return false;
-    QPixmap pixmap = QPixmap::fromX11Pixmap(drawable, QPixmap::ExplicitlyShared);
-    //pixmap.save("shot.png");
-
-    QT_TRY {
-        // Assume we need inverted textures.
-        img = QImage(pixmap.toImage().mirrored());
-    } QT_CATCH(std::bad_alloc e) {
-        // @drawable has become invalid
-        statusBarOff();
+    
+    if (!TFP->drawable)
         return false;
-    }
-
-    // @img depicts both the landscape and the portrait statusbars,
-    // one right below the other and both pictured horizontally.
-    // The size of @img doesn't necessarily implies the size of the
-    // contained status bars, so we need to figure out their size.
-    // It would be straightforward if they were plain old X windows,
-    // but that's and old story in a universe far-far away.
+    
+    QPixmap pixmap = QPixmap::fromX11Pixmap(TFP->drawable, QPixmap::ExplicitlyShared);    
     QSize lscape, portrait;
 
     MCompositeWindow *desktop =
         MCompositeWindow::compositeWindow(((MCompositeManager *)qApp)->desktopWindow());
     if (desktop) {
+        size_needs_update = false;
         lscape = desktop->propertyCache()->statusbarGeometry().size();
         if (!lscape.isEmpty()
                    && desktop->propertyCache()->orientationAngle() % 180) {
@@ -146,15 +142,15 @@ bool MStatusBarTexture::updateStatusBarGeometry(QImage &img)
 
             // Assume full-width landscape statusbar.
             lscape.setWidth(QApplication::desktop()->width());
-            if (lscape.width() > img.width())
-                lscape.setWidth(img.width());
+            if (lscape.width() > pixmap.width())
+                lscape.setWidth(pixmap.width());
         }
     }
 
     if (lscape.isEmpty())
         // Couldn't determine the size from the desktop window,
         // assume some probable defaults.
-        lscape = QSize(img.width(),
+        lscape = QSize(pixmap.width(),
             ((MCompositeManager*)qApp)->configInt("default-statusbar-height"));
     if (portrait.isEmpty())
         // Assume full-width portrait statusbar.
@@ -162,7 +158,15 @@ bool MStatusBarTexture::updateStatusBarGeometry(QImage &img)
 
     texture_rect = QRect(QPoint(0, 0), lscape);
     texture_rect_portrait = QRect(QPoint(0, 0), portrait);
-
+    
+    calculate_texture_coords(texture_coords, pixmap.width(), pixmap.height(),
+                             texture_rect.x(), texture_rect.y(),
+                             texture_rect.width(), texture_rect.height());
+    
+    calculate_texture_coords(texture_coords_portrait, pixmap.width(), pixmap.height(),
+                             texture_rect_portrait.x(), texture_rect_portrait.y() + texture_rect.height(),
+                             texture_rect_portrait.width(), texture_rect_portrait.height());
+    
     return true;
 }
 
@@ -174,25 +178,9 @@ void MStatusBarTexture::updatePixmap()
         return;
     }
 
-    QImage img;
-    if (!updateStatusBarGeometry(img))
+    if (!updateStatusBarGeometry())
         return;
-    img = QGLWidget::convertToGLFormat(img);
-
-    glBindTexture(GL_TEXTURE_2D, texture_id);
-    QImage statimg = img.copy(QRect(texture_rect));
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                 statimg.width(), statimg.height(), 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, statimg.bits());
-
-    glBindTexture(GL_TEXTURE_2D, portrait_texture_id);
-    statimg = img.copy(QRect(0, texture_rect.height(),
-                             texture_rect_portrait.width(),
-                             texture_rect_portrait.height()));
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                 statimg.width(), statimg.height(), 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, statimg.bits());
-
+    TFP->update();
     trackDamages();
 }
 
@@ -207,15 +195,15 @@ void MStatusBarTexture::gotSharedPixmap(QDBusPendingCallWatcher* d)
         return;
     }
 
-    drawable = reply;
+    TFP->bind(reply);
+    size_needs_update = true;
     if (pixmapDamage != None) {
         // Update the tex
         untrackDamages();
         updatePixmap();
     } else {
         // Not important now.
-        QImage img;
-        updateStatusBarGeometry(img);
+        updateStatusBarGeometry();
     }
 }
 
@@ -227,6 +215,10 @@ void MStatusBarTexture::statusBarOn()
 void MStatusBarTexture::statusBarOff()
 {
     untrackDamages();
-    drawable = None;
+    TFP->unbind();
     texture_rect = texture_rect_portrait = QRect();
 }
+
+GLuint MStatusBarTexture::texture() const { return TFP->textureId; }
+
+Drawable MStatusBarTexture::pixmapDrawable() const { return TFP->drawable; }

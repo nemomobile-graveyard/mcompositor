@@ -3,7 +3,7 @@ include(../meegotouch_config.pri)
 contains(QT_CONFIG, opengles2) {
      message("building Makefile for EGL/GLES2 version")
      DEFINES += GLES2_VERSION
-     SOURCES += mtexturepixmapitem_egl.cpp mcompositewindowgroup.cpp
+     SOURCES += mtexturepixmapitem_egl.cpp mcompositewindowgroup.cpp mtexturefrompixmap_egl.cpp
      HEADERS += mcompositewindowgroup.h
      publicHeaders.files +=  mcompositewindowgroup.h
 } else {
@@ -12,13 +12,15 @@ contains(QT_CONFIG, opengles2) {
          # ensure we still use the EGL back-end.
          message("building Makefile for EGL/GLES2 version")
          DEFINES += GLES2_VERSION
-         SOURCES += mtexturepixmapitem_egl.cpp
+         SOURCES += mtexturepixmapitem_egl.cpp mtexturefrompixmap_egl.cpp
          LIBS += -lEGL
      } else {
          # Otherwise use GLX backend.
          message("building Makefile for GLX version")
          DEFINES += DESKTOP_VERSION
-         SOURCES += mtexturepixmapitem_glx.cpp
+         SOURCES += \
+	 	    mtexturepixmapitem_glx.cpp \
+	 	    mtexturefrompixmap_glx.cpp
      }
 } 
 
@@ -31,6 +33,7 @@ QT += dbus
 INCLUDEPATH += ../decorators/libdecorator
 HEADERS += \
     mtexturepixmapitem.h \
+    mtexturefrompixmap.h \
     mtexturepixmapitem_p.h \
     mcompositescene.h \
     mcompositewindow.h \
@@ -72,6 +75,7 @@ QT += core gui opengl
 
 # TODO: refactor the headers to exclude private stuff
 publicHeaders.files += mcompositewindow.h \
+                      mtexturefrompixmap.h \
                       mcompositemanager.h \
                       mcompositewindowshadereffect.h \
                       mcompositemanagerextension.h \

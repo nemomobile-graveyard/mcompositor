@@ -26,6 +26,7 @@
 class QDBusServiceWatcher;
 class QDBusPendingCallWatcher;
 class MCompositeManagerExtension;
+class MTextureFromPixmap;
 
 // Singleton representation of the status bar texture. Shareable by all objects
 class MStatusBarTexture: public QObject
@@ -33,12 +34,12 @@ class MStatusBarTexture: public QObject
     Q_OBJECT
 public:
     static MStatusBarTexture* instance();
-
-    GLuint landscapeTexture() const { return texture_id; }
-    GLuint portraitTexture() const { return portrait_texture_id; }
+    GLuint texture() const;
     const QRect &landscapeRect() const { return texture_rect; }
     const QRect &portraitRect() const { return texture_rect_portrait; }
-    Drawable pixmapDrawable() const { return drawable; }
+    Drawable pixmapDrawable() const;
+    const GLvoid* landscapeTexCoords() const { return texture_coords; }
+    const GLvoid* portraitTexCoords() const { return texture_coords_portrait; }
 
     void updatePixmap();
     void trackDamages();
@@ -52,15 +53,17 @@ public:
  private:
     explicit MStatusBarTexture(QObject* parent = 0);
     void getSharedPixmap();
-    bool updateStatusBarGeometry(QImage &ing);
+    bool updateStatusBarGeometry();
 
     QDBusServiceWatcher* dbusWatcher;
     QDBusPendingCallWatcher *pendingCall;
 
-    GLuint texture_id, portrait_texture_id;
     Drawable drawable;
     QRect texture_rect, texture_rect_portrait;
+    GLfloat texture_coords[8], texture_coords_portrait[8];
     Damage pixmapDamage;
+    MTextureFromPixmap* TFP;
+    bool size_needs_update;
     static MStatusBarTexture* d;
 };
 

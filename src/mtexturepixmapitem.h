@@ -90,7 +90,7 @@ public:
     void enableDirectFbRendering();
     void enableRedirectedRendering();
 
-    virtual Pixmap windowPixmap() const { return d->windowp; }
+    virtual Pixmap windowPixmap() const { return d->TFP.drawable; }
 
 protected:
     void paint(QPainter *painter,
@@ -103,10 +103,7 @@ protected:
 private:
     virtual MTexturePixmapPrivate* renderer() const;
     void init();
-    void initCustomTfp();
     void cleanup();
-    void rebindPixmap();
-    void doTFP();
     void renderTexture(const QTransform& transform);
 
     MTexturePixmapPrivate *const d;
