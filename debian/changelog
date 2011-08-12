@@ -1,4 +1,4 @@
-mcompositor (1.1.2-1) unstable; urgency=low
+mcompositor (1.1.2-2) unstable; urgency=low
 
   * Release for PR1.1
   * Fixes: NB#275282 - Status bar is non-stationary in certain cases
