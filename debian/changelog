@@ -1,3 +1,9 @@
+mcompositor (1.1.3-1) unstable; urgency=low
+
+  * Fixes: NB#272101 - COREWEB: QGraphicsItemPrivate::sceneEffective...
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Fri, 12 Aug 2011 16:17:06 +0300
+
 mcompositor (1.1.2-2) unstable; urgency=low
 
   * Release for PR1.1
