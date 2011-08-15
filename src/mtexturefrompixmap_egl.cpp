@@ -72,7 +72,8 @@ EGLDisplay EglResourceManager::dpy = 0;
 EglResourceManager *MTexturePixmapPrivate::eglresource = 0;
 
 MTextureFromPixmap::MTextureFromPixmap()
-    : d(NULL),
+    : d(0),
+      drawable(0),
       valid(false)
 {
 }
