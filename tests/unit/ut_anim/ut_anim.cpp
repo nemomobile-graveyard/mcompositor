@@ -196,7 +196,6 @@ void ut_Anim::testCloseChainingAnimation()
     memset(&ue, 0, sizeof(ue));
     ue.window = 2000;
     ue.event = QX11Info::appRootWindow();
-    ((MTexturePixmapItem*)cw2)->d->windowp = 0xDEADBEEF;
     cmgr->d->unmapEvent(&ue);
     
     // should use chained
@@ -263,9 +262,8 @@ void ut_Anim::testCloseAnimation()
     memset(&ue, 0, sizeof(ue));
     ue.window = 1;
     ue.event = QX11Info::appRootWindow();
-    // use a bogus pixmap id
-    ((MTexturePixmapItem*)cw)->d->windowp = 1;
     cmgr->d->unmapEvent(&ue);
+    
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(1000); // wait the animation to finish
@@ -294,8 +292,6 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     memset(&ue, 0, sizeof(ue));
     ue.window = 2;
     ue.event = QX11Info::appRootWindow();
-    // use a bogus pixmap id
-    ((MTexturePixmapItem*)cw)->d->windowp = 1;
     cmgr->d->unmapEvent(&ue);
 
     while (cw->windowAnimator()->isActive())
@@ -372,8 +368,6 @@ void ut_Anim::testNoAnimations()
     memset(&ue, 0, sizeof(ue));
     ue.window = 3;
     ue.event = QX11Info::appRootWindow();
-    // use a bogus pixmap id
-    ((MTexturePixmapItem*)cw)->d->windowp = 1;
     cmgr->d->unmapEvent(&ue);
     QCOMPARE(cw->isVisible(), false);
     QCOMPARE(cw->isMapped(), false);
@@ -503,8 +497,6 @@ void ut_Anim::testDerivedAnimHandler()
     memset(&ue, 0, sizeof(ue));
     ue.window = 1;
     ue.event = QX11Info::appRootWindow();
-    // use a bogus pixmap id
-    ((MTexturePixmapItem*)cw)->d->windowp = 1;
     cmgr->d->unmapEvent(&ue);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Closing, true); 
@@ -564,8 +556,6 @@ void ut_Anim::testExternalAnimHandler()
     memset(&ue, 0, sizeof(ue));
     ue.window = 1;
     ue.event = QX11Info::appRootWindow();
-    // use a bogus pixmap id
-    ((MTexturePixmapItem*)cw)->d->windowp = 1;
     cmgr->d->unmapEvent(&ue);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Closing, true); 

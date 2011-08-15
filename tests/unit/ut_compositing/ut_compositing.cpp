@@ -13,6 +13,10 @@
 
 #include <X11/Xlib.h>
 
+// fake windows should be less than the root window's value
+#define VKB_1 50
+#define VKB_2 60
+
 static int dheight, dwidth;
 
 // Skip bad window messages for mock windows
@@ -166,8 +170,6 @@ void ut_Compositing::testAppUnmapping()
     MCompositeWindow *w = cmgr->d->windows.value(2, 0);
     QCOMPARE(w != 0, true);
     w->closeWindowRequest();
-    // fool the code to think we have a pixmap
-    ((MTexturePixmapItem*)w)->d->windowp = 1;
     unmapWindow(w->propertyCache());
     QCOMPARE(w->windowAnimator()->isActive(), true);
     while (w->windowAnimator()->isActive()) {
@@ -228,13 +230,13 @@ void ut_Compositing::testVkbMappingWhenAppAnimating()
 
     MCompositeWindow *v;
     if (w->windowAnimator()->isActive()) {
-        fake_LMT_window *vkb = new fake_LMT_window(100);
+        fake_LMT_window *vkb = new fake_LMT_window(VKB_1);
         vkb->prependType(ATOM(_NET_WM_WINDOW_TYPE_INPUT));
         // VKB mapped during the animation
         vkb->setTransientFor(3);
-        app->addToTransients(100);
+        app->addToTransients(VKB_1);
         mapWindow(vkb);
-        v = cmgr->d->windows.value(100, 0);
+        v = cmgr->d->windows.value(VKB_1, 0);
         QCOMPARE(v != 0, true);
         QCOMPARE(v->propertyCache()->windowTypeAtom()
                  == ATOM(_NET_WM_WINDOW_TYPE_INPUT), true);
@@ -278,14 +280,14 @@ void ut_Compositing::testVkbMapping()
         QTest::qWait(500); // wait the animation to finish
 
     MCompositeWindow *v;
-    fake_LMT_window *vkb = new fake_LMT_window(200);
+    fake_LMT_window *vkb = new fake_LMT_window(VKB_2);
     vkb->prependType(ATOM(_NET_WM_WINDOW_TYPE_INPUT));
     // VKB mapped
     vkb->setTransientFor(4);
-    app->addToTransients(200);
+    app->addToTransients(VKB_2);
     mapWindow(vkb);
     QTest::qWait(10); // run the idle handlers
-    v = cmgr->d->windows.value(200, 0);
+    v = cmgr->d->windows.value(VKB_2, 0);
     QCOMPARE(v != 0, true);
     QCOMPARE(v->propertyCache()->windowTypeAtom()
                  == ATOM(_NET_WM_WINDOW_TYPE_INPUT), true);
@@ -321,7 +323,7 @@ void ut_Compositing::testBannerMapping()
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), false);
 
     // check the windows below
-    MCompositeWindow *vkb = cmgr->d->windows.value(200, 0);
+    MCompositeWindow *vkb = cmgr->d->windows.value(VKB_2, 0);
     QCOMPARE(vkb->isVisible(), true);
     QCOMPARE(vkb->windowObscured(), false);
     QCOMPARE(vkb->paintedAfterMapping(), true);
@@ -338,14 +340,14 @@ void ut_Compositing::testBannerUnmapping()
     MCompositeWindow *banner = cmgr->d->windows.value(5, 0);
     QCOMPARE(banner != 0, true);
     unmapWindow(banner->propertyCache());
-    QTest::qWait(10); // run the idle handlers
+    QTest::qWait(500); // run the idle handlers
 
     QCOMPARE(cmgr->d->compositing, false);
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
 
     // check the windows below
-    MCompositeWindow *vkb = cmgr->d->windows.value(200, 0);
+    MCompositeWindow *vkb = cmgr->d->windows.value(VKB_2, 0);
     QCOMPARE(vkb->isVisible(), true);
     QCOMPARE(vkb->windowObscured(), false);
     QCOMPARE(vkb->paintedAfterMapping(), true);

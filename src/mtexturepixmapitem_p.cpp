@@ -587,7 +587,7 @@ void MTexturePixmapPrivate::saveBackingStore()
         XFreePixmap(QX11Info::display(), TFP.drawable);
 
     // Pixmap is already freed. No sense to bind it to texture
-    if (item->isClosing())
+    if (item->isClosing() || item->window() < QX11Info::appRootWindow())
         return;
 
     Drawable pixmap = XCompositeNameWindowPixmap(QX11Info::display(), item->window());

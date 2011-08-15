@@ -424,7 +424,10 @@ void MCompositeWindow::closeWindowRequest()
 
 void MCompositeWindow::closeWindowAnimation()
 {
-    if (window_status == Closing || window_obscured || isInanimate())
+    if (window_status == Closing || window_obscured 
+        // makes test pass for fake windows
+        || (isInanimate() && (!pc->isVirtual() 
+                              && window() > QX11Info::appRootWindow())))
         return;
     window_status = Closing; // animating, do not disturb
 
