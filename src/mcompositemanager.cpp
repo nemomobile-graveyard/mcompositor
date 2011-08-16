@@ -77,7 +77,8 @@
 
 #define COMPOSITE_WINDOW(X) MCompositeWindow::compositeWindow(X)
 #define FULLSCREEN_WINDOW(X) \
-        ((X)->netWmState().contains(ATOM(_NET_WM_STATE_FULLSCREEN)))
+        (!(X)->isDecorator() && \
+         (X)->netWmState().contains(ATOM(_NET_WM_STATE_FULLSCREEN)))
 #define MODAL_WINDOW(X) \
         ((X)->netWmState().contains(ATOM(_NET_WM_STATE_MODAL)))
 #define DECORATED_FS_WINDOW(X) (device_state->ongoingCall() && \

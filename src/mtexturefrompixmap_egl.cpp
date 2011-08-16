@@ -72,8 +72,8 @@ EGLDisplay EglResourceManager::dpy = 0;
 EglResourceManager *MTexturePixmapPrivate::eglresource = 0;
 
 MTextureFromPixmap::MTextureFromPixmap()
-    : d(0),
-      drawable(0),
+    : drawable(0),
+      d(0),
       valid(false)
 {
 }
@@ -130,8 +130,8 @@ void MTextureFromPixmap::bind(Drawable draw)
 
     if (egl_image == EGL_NO_IMAGE_KHR) {
         // window is probably unmapped
-        qWarning("MTexturePixmapItem::%s(): Cannot create EGL image: 0x%x",
-                 __func__, eglGetError());
+        /*qWarning("MTexturePixmapItem::%s(): Cannot create EGL image: 0x%x",
+                 __func__, eglGetError());*/
         return;
     }
 

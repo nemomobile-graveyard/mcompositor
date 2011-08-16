@@ -119,7 +119,11 @@ MCompositeWindow::~MCompositeWindow()
         pc->deleteLater();
     }
     if (animator)
-        delete animator;
+        // deleteLater() is used here as destroying the animator might trigger accessing
+        // the window which is destroyed right now. When the destruction is delayed we can
+        // be sure that the window is completely gone and related QPointers state this fact
+        // as expected.
+        animator->deleteLater();
 }
 
 /* This is a delayed animation. Actual animation is triggered
