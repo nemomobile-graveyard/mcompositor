@@ -165,9 +165,6 @@ void MTexturePixmapItem::cleanup()
    Drawable pixmap = d->TFP.drawable;
    d->TFP.unbind();
    d->texman->closeTexture(d->TFP.textureId);
-
-   if (pixmap)
-       XFreePixmap(QX11Info::display(), pixmap);
 }
 
 void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
