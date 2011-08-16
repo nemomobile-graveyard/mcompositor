@@ -226,31 +226,32 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     locale.setDefault(locale);
 
     foreach (QGraphicsItem* item, items()) {
-        if (!homeButtonPanel) {
-            homeButtonPanel = dynamic_cast<MHomeButtonPanel*>(item);
-            if (homeButtonPanel)
-                continue;
+        MHomeButtonPanel *h;
+        if (!homeButtonPanel && (h = dynamic_cast<MHomeButtonPanel*>(item))) {
+            homeButtonPanel = h;
+            continue;
         }
-        if (!escapeButtonPanel) {
-            escapeButtonPanel = dynamic_cast<MEscapeButtonPanel*>(item);
-            if (escapeButtonPanel)
-                continue;
+        MEscapeButtonPanel *e;
+        if (!escapeButtonPanel &&
+            (e = dynamic_cast<MEscapeButtonPanel*>(item))) {
+            escapeButtonPanel = e;
+            continue;
         }
-        if (!navigationBar) {
-            navigationBar = dynamic_cast<MNavigationBar*>(item);
-            if (navigationBar)
-                continue;
-        }
-        if (!statusBar) {
-            statusBar = dynamic_cast<MStatusBar*>(item);
-            if (statusBar)
-                continue;
+        MNavigationBar *n;
+        if (!navigationBar && (n = dynamic_cast<MNavigationBar*>(item))) {
+            navigationBar = n;
+            continue;
         }
     }
+    // sometimes Libmeegotouch doesn't create statusbar at this point,
+    // so create it ourselves and mark the window fullscreen to avoid duplicate
+    statusBar = new MStatusBar;
+    statusBar->setVisible(true);
+    sceneManager()->appearSceneWindowNow(statusBar);
+    setWindowState(windowState() | Qt::WindowFullScreen);
 
-    // Check for presence of homeButtonPanel and navigationBar,
-    // statusBar can be NULL
-    if (!homeButtonPanel || !navigationBar)
+    // Check for presence of homeButtonPanel, navigationBar and statusBar
+    if (!homeButtonPanel || !navigationBar || !statusBar)
         qFatal("Meego elements not found");
 
     homeButtonPanel = new MHomeButtonPanel();
@@ -316,7 +317,7 @@ void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w,
         if (isOnDisplay())
             // We can start showing it, otherwise wait.
             enterDisplayEvent();
-    } else if (statusBar)
+    } else
         sceneManager()->appearSceneWindowNow(statusBar);
 }
 
@@ -445,15 +446,13 @@ void MDecoratorWindow::setOnlyStatusbar(bool mode, bool temporary)
 void MDecoratorWindow::hideEverything()
 {
     setOnlyStatusbar(true, true);
-    if (statusBar)
-        sceneManager()->disappearSceneWindowNow(statusBar);
+    sceneManager()->disappearSceneWindowNow(statusBar);
 }
 
 void MDecoratorWindow::restoreEverything()
 {
     setOnlyStatusbar(requested_only_statusbar);
-    if (statusBar)
-        sceneManager()->appearSceneWindowNow(statusBar);
+    sceneManager()->appearSceneWindowNow(statusBar);
 }
 
 void MDecoratorWindow::screenRotated(const M::Orientation &orientation)
@@ -476,11 +475,8 @@ void MDecoratorWindow::setInputRegion()
     } else {
         // Decoration includes the status bar, and possibly other elements.
         QRect sbrect;
-        if (statusBar) {
-            sbrect = statusBar->sceneBoundingRect().toRect();
-            sbrect.setHeight(settings->value(
-                             "default-statusbar-height").toInt());
-        }
+        sbrect = statusBar->sceneBoundingRect().toRect();
+        sbrect.setHeight(settings->value("default-statusbar-height").toInt());
         region = sbrect;
 
         if (!only_statusbar) {
