@@ -66,6 +66,7 @@ public:
          valid(false),
          renderer(new MTexturePixmapPrivate(0, mainWindow))            
     {       
+        renderer->inverted_texture = true;
     }
     MTexturePixmapItem* main_window;
     GLuint texture;
