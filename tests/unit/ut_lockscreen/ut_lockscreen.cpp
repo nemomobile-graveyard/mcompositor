@@ -87,6 +87,7 @@ void ut_Lockscreen::initTestCase()
 
     // create an altered MDeviceState
     device_state = new fake_device_state();
+    delete cmgr->d->device_state;
     cmgr->d->device_state = device_state;
     device_state->fake_touchScreenLockMode = "locked";
 
@@ -268,7 +269,7 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
     // wait for the painting timeout
     int t = qobject_cast<MCompositeManager*>(qApp)->
                          configInt("damage-timeout-ms");
-    QTest::qWait(t + 1);
+    QTest::qWait(t + 100);
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
 
@@ -298,7 +299,7 @@ void ut_Lockscreen::testScreenOnButLockscreenTimesOut()
     // wait for the timeout
     int t = qobject_cast<MCompositeManager*>(qApp)->
                          configInt("lockscreen-map-timeout-ms");
-    QTest::qWait(t + 1);
+    QTest::qWait(t + 100);
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
 }
