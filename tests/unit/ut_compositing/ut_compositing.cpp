@@ -25,6 +25,13 @@ static int error_handler(Display * , XErrorEvent *)
     return 0;
 }
 
+static Drawable request_testpixmap()
+{
+    QPixmap* p = new QPixmap(1,1);
+    p->fill();
+    return p->handle();
+}
+
 class fake_LMT_window : public MWindowPropertyCache
 {
 public:
@@ -175,6 +182,7 @@ void ut_Compositing::testAppUnmapping()
 {
     MCompositeWindow *w = cmgr->d->windows.value(2, 0);
     QCOMPARE(w != 0, true);
+    ((MTexturePixmapItem*)w)->d->TFP.drawable = request_testpixmap();
     w->closeWindowRequest();
     unmapWindow(w->propertyCache());
     QCOMPARE(w->windowAnimator()->isActive(), true);
