@@ -22,6 +22,13 @@ static int error_handler(Display * , XErrorEvent *)
     return 0;
 }
 
+static Drawable request_testpixmap()
+{
+    QPixmap* p = new QPixmap(1,1);
+    p->fill();
+    return p->handle();
+}
+
 class fake_LMT_window : public MWindowPropertyCache
 {
 public:
@@ -196,6 +203,7 @@ void ut_Anim::testCloseChainingAnimation()
     memset(&ue, 0, sizeof(ue));
     ue.window = 2000;
     ue.event = QX11Info::appRootWindow();
+    ((MTexturePixmapItem*)cw2)->d->TFP.drawable = request_testpixmap();
     cmgr->d->unmapEvent(&ue);
     
     // should use chained
@@ -262,6 +270,7 @@ void ut_Anim::testCloseAnimation()
     memset(&ue, 0, sizeof(ue));
     ue.window = 1;
     ue.event = QX11Info::appRootWindow();
+    ((MTexturePixmapItem*)cw)->d->TFP.drawable = request_testpixmap();
     cmgr->d->unmapEvent(&ue);
     
     QCOMPARE(cw->windowAnimator()->isActive(), true);
@@ -462,6 +471,7 @@ void ut_Anim::testDerivedAnimHandler()
     memset(&e, 0, sizeof(e));
     e.window = 1;
     e.event = QX11Info::appRootWindow();
+    ((MTexturePixmapItem*)cw)->d->TFP.drawable = request_testpixmap();
     cmgr->d->mapEvent(&e);
     cw->damageReceived();
     cw->damageReceived();
@@ -521,6 +531,7 @@ void ut_Anim::testExternalAnimHandler()
     memset(&e, 0, sizeof(e));
     e.window = 1;
     e.event = QX11Info::appRootWindow();
+    ((MTexturePixmapItem*)cw)->d->TFP.drawable = request_testpixmap();
     cmgr->d->mapEvent(&e);
     cw->damageReceived();
     cw->damageReceived();
