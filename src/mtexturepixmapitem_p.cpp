@@ -564,14 +564,6 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
         delete pastDamages;
 }
 
-static bool had_xerror;
-static int (*orig_xerror)(Display *, XErrorEvent *);
-static int xerror(Display *, XErrorEvent *)
-{
-  had_xerror = true;
-  return 0;
-}
-
 void MTexturePixmapPrivate::saveBackingStore()
 {
     if (item->propertyCache()->isVirtual()) {
