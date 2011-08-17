@@ -53,4 +53,5 @@ Description: Engineering English translations for mcompositor
 Package: mcompositor-doc
 Section: doc
 Architecture: all
+Depends: doxygen
 Description: API documentation for mcompositor
