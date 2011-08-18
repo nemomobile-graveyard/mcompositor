@@ -129,7 +129,7 @@ public:
         if (!sharedVertexShader->compileSourceCode(QLatin1String(TexpVertShaderSource)))
             qWarning("vertex shader failed to compile");
 
-        MShaderProgram *normalShader = new MShaderProgram(glwidget->context(), 
+        MShaderProgram *normalShader = new MShaderProgram(glwidget->context(),
                                                           this);
         normalShader->addShader(sharedVertexShader);
         if (!normalShader->addShaderFromSourceCode(QGLShader::Fragment,
@@ -137,7 +137,7 @@ public:
             qWarning("normal fragment shader failed to compile");
         shader[NormalShader] = normalShader;
 
-        MShaderProgram *blurShader = new MShaderProgram(glwidget->context(), 
+        MShaderProgram *blurShader = new MShaderProgram(glwidget->context(),
                                                         this);
         shader[BlurShader] = blurShader;
         blurShader->addShader(sharedVertexShader);
@@ -219,7 +219,7 @@ public:
     {                
         if (!customShaderId)
             return;
-        MShaderProgram* frag = customShaders.value(customShaderId, 0);
+        MShaderProgram* frag = customShadersById.value(customShaderId, 0);
         if (!frag)
             return;
         currentShader = frag;        
@@ -231,6 +231,11 @@ public:
 
     GLuint installPixelShader(const QByteArray& code)
     {
+        QHash<QByteArray, MShaderProgram *>::iterator it = customShadersByCode.find(code);
+        if (it != customShadersByCode.end())  {
+            return it.value()->programId();
+        }
+
         QByteArray source = code;
         source.append(TexpCustomShaderSource);
         MShaderProgram *p = new MShaderProgram(glcontext, this);
@@ -243,7 +248,8 @@ public:
         bindAttribLocation(p, "textureCoord", D_TEXTURE_COORDS);
 
         if (p->link()) {
-            customShaders[p->programId()] = p;
+            customShadersByCode[code] = p;
+            customShadersById[p->programId()] = p;
             return p->programId();
         } 
        
@@ -256,7 +262,8 @@ public:
 
 private:
     static MShaderProgram *shader[ShaderTotal];
-    QHash<GLuint, MShaderProgram *> customShaders;
+    QHash<GLuint, MShaderProgram *> customShadersById;
+    QHash<QByteArray, MShaderProgram *> customShadersByCode;
     QGLShader *sharedVertexShader;
     const QGLContext* glcontext;    
     
@@ -481,13 +488,6 @@ void MTexturePixmapPrivate::removeEffect()
     MCompositeWindowShaderEffect* e= (MCompositeWindowShaderEffect* ) sender();
     if (e == prev_effect)
         prev_effect = 0;
-    for (int i=0; i < e->fragmentIds().size(); ++i) {
-        GLuint id = e->fragmentIds()[i];
-        QGLShaderProgram* frag = glresource->customShaders.value(id, 0);
-        if (frag)
-            delete frag;
-        glresource->customShaders.remove(id);
-    }    
 }
 
 GLuint MTexturePixmapPrivate::installPixelShader(const QByteArray& code)
