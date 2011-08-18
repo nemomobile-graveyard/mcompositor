@@ -48,7 +48,8 @@ class MCompositeWindow: public QObject, public QGraphicsItem
     Q_PROPERTY(qreal opacity READ opacity WRITE setOpacity)
 #endif
 public:
-    
+
+    Q_ENUMS(WindowStatus);
     enum WindowStatus {
         Normal = 0,
         Hung,
