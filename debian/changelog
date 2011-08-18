@@ -1,3 +1,11 @@
+mcompositor (1.1.4-1) unstable; urgency=low
+
+  * Fixes: NB#251544 - During a call, QML applications only show a blank win..  
+  * Partial(?) fix for NB#265870 - Randomly when a notification comes,..
+  * Fixes: NB#274836 - Maps application is not respond if you are..
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Thu, 18 Aug 2011 14:30:22 +0300
+
 mcompositor (1.1.3-2) unstable; urgency=low
 
   * ut_lockscreen: increase waiting times to make it more robust
