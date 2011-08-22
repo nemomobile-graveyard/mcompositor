@@ -1270,7 +1270,8 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
             }
         } else {
             Window parent = pc->transientFor();
-            if (parent) {
+            if (parent && pc->isMapped()) {
+                // lower the parent only if the window is mapped
                 MWindowPropertyCache *ppc = prop_caches.value(parent, 0);
                 if (ppc && ppc->isMapped())
                     setWindowState(parent, IconicState);
