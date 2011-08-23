@@ -73,7 +73,7 @@ time.sleep(1)
 pid = os.popen('pidof windowctl').readline().strip()
 splash = '/usr/share/mcompositor-functional-tests/splash.jpg'
 os.popen('manual-splash %s ignored %s %s ""' % (pid, splash, splash))
-time.sleep(1)
+time.sleep(2)
 
 ret = 0
 check_order(['\'MSplashScreen\'', home_win], 'splash appeared correctly')
@@ -87,7 +87,7 @@ check_order([app1, home_win], 'splash disappeared', '\'MSplashScreen\'')
 
 # show a new splash screen with a bogus PID
 os.popen('manual-splash %s ignored %s %s ""' % (0, splash, splash))
-time.sleep(1)
+time.sleep(2)
 
 check_order(['\'MSplashScreen\'', app1, home_win], 'second splash appeared')
 
