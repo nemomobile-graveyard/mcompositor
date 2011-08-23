@@ -2013,7 +2013,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     //                     witem && isMapped && !newlyMapped && !isClosing)
     // netClientListStacking := only_mapped - grep(stacking_list,
     //                     pc && isMapped && (isVirtual || isOR || isDeco)))
-    static QVector<Window> prev_only_mapped, prevNetClientListStacking;
+    static QVector<Window> prev_only_mapped;
     QVector<Window> only_mapped, netClientListStacking;
     bool mapped_order_changed;
     for (int i = 0; i <= last_i; ++i) {
@@ -2239,7 +2239,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
     if (item) {
         item->setIsMapped(true);
         if (!pc->isOverrideRedirect() && pc->windowType() != MCompAtoms::DOCK
-            && !pc->isDecorator())
+            && !pc->isDecorator() && !pc->isVirtual())
             updateNetClientList(win, true);
         // reset item for the case previous animation did not end cleanly
         item->setUntransformed();
