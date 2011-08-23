@@ -248,6 +248,7 @@ private:
     friend class ut_Lockscreen;
     friend class ut_CloseApp;
     friend class ut_Compositing;
+    friend class ut_netClientList;
 };
 
 #endif

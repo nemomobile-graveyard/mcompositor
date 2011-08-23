@@ -152,6 +152,7 @@ public:
 
     QList<Window> stacking_list;
     QVector<Window> netClientList;
+    QVector<Window> prevNetClientListStacking; // unit-testable
 
     QHash<Window, MCompositeWindow *> windows;
     struct FrameData {
