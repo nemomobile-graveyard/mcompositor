@@ -69,6 +69,8 @@ def check_redir(app_win, str, story):
       break
   if found == 0:
     print 'FAIL "%s": test app is not' % story, str
+    fd = os.popen('windowstack m')
+    print 'stack:\n', fd.read(5000)
     ret = 1
 
 # check that test app is not redirected
