@@ -1,3 +1,11 @@
+mcompositor (1.1.5-1) unstable; urgency=low
+
+  * Fixes: NB#274761 - Close application swipe set ON by default
+    - make the configuration change effective even if the user has
+      an old mcompositor.conf (as in e.g. SSU case)
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 24 Aug 2011 16:09:14 +0300
+
 mcompositor (1.1.4-1) unstable; urgency=low
 
   * Fixes: NB#251544 - During a call, QML applications only show a blank win..  
