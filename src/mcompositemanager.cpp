@@ -4486,22 +4486,28 @@ void MCompositeManager::exposeSwitcher()
     d->exposeSwitcher();
 }
 
+static QHash<const char*, QVariant> default_settings;
+
 void MCompositeManager::config(char const *key, QVariant const &val) const
 {
-    if (!settings->contains(key))
-        settings->setValue(key, val);
+    if (!default_settings.contains(key))
+        default_settings[key] = val;
 }
 
 QVariant MCompositeManager::config(char const *key) const
 {
-    Q_ASSERT(settings->contains(key));
-    return settings->value(key);
+    if (settings->contains(key))
+        return settings->value(key);
+    Q_ASSERT(default_settings.contains(key));
+    return default_settings.value(key);
 }
 
 int MCompositeManager::configInt(char const *key) const
 {
-    Q_ASSERT(settings->contains(key));
-    return settings->value(key).toInt();
+    if (settings->contains(key))
+        return settings->value(key).toInt();
+    Q_ASSERT(default_settings.contains(key));
+    return default_settings.value(key).toInt();
 }
 
 int MCompositeManager::configInt(char const *key, int defaultValue) const
@@ -4521,8 +4527,8 @@ void MCompositeManager::reloadConfig()
 
 void MCompositeManager::ensureSettingsFile()
 {
-    // $HOME/.config/mcompositor/mcompositor.conf
-    settings = new QSettings("mcompositor", "mcompositor", this);
+    // $HOME/.config/mcompositor/new-mcompositor.conf
+    settings = new QSettings("mcompositor", "new-mcompositor", this);
 
     config("startup-anim-duration",             200);
     config("crossfade-duration",                250);
