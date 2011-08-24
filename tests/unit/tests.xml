@@ -9,8 +9,14 @@
       <case name="ut_closeapp" description="ut_closeapp" requirement="" timeout="300">
         <step expected_result="0">/usr/lib/mcompositor-unit-tests/ut_closeapp</step>
       </case>
+      <case name="ut_compositing" description="ut_compositing" requirement="" timeout="300">
+        <step expected_result="0">/usr/lib/mcompositor-unit-tests/ut_compositing</step>
+      </case>
       <case name="ut_lockscreen" description="ut_lockscreen" requirement="" timeout="300">
         <step expected_result="0">/usr/lib/mcompositor-unit-tests/ut_lockscreen</step>
+      </case>
+      <case name="ut_netClientList" description="ut_netClientList" requirement="" timeout="300">
+        <step expected_result="0">/usr/lib/mcompositor-unit-tests/ut_netClientList</step>
       </case>
       <case name="ut_stacking" description="ut_stacking" requirement="" timeout="300">
         <step expected_result="0">/usr/lib/mcompositor-unit-tests/ut_stacking</step>
