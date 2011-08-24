@@ -4486,7 +4486,7 @@ void MCompositeManager::exposeSwitcher()
     d->exposeSwitcher();
 }
 
-static QHash<const char*, QVariant> default_settings;
+static QHash<QString, QVariant> default_settings;
 
 void MCompositeManager::config(char const *key, QVariant const &val) const
 {
