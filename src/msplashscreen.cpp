@@ -33,6 +33,7 @@ public:
     MSplashPropertyCache();
     static MSplashPropertyCache *get();
     void setOrientationAngle(int angle);
+    void setPid(unsigned pid);
 
 private:
     bool event(QEvent *e);
@@ -64,6 +65,11 @@ void MSplashPropertyCache::setOrientationAngle(int angle)
     orientation_angle = angle;
 }
 
+void MSplashPropertyCache::setPid(unsigned pid)
+{
+    wm_pid = pid;
+}
+
 bool MSplashPropertyCache::event(QEvent *e)
 {
     // Ignore deleteLater().
@@ -75,13 +81,14 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid,
                              const QString &splash_p, const QString &splash_l,
                              unsigned int splash_pixmap)
     : MTexturePixmapItem(0, MSplashPropertyCache::get()),
-      pid(splash_pid),
       portrait_file(splash_p),
       landscape_file(splash_l),
       pixmap(splash_pixmap),
       q_pixmap(0),
       fade_animation(false)
 {
+    MSplashPropertyCache::get()->setPid(splash_pid);
+
     Display *dpy = QX11Info::display();
     win_id = XCreateWindow(dpy, RootWindow(dpy, 0), 0, 0,
                            ScreenOfDisplay(dpy, DefaultScreen(dpy))->width,
@@ -143,13 +150,13 @@ QRectF MSplashScreen::boundingRect() const
 
 bool MSplashScreen::matches(MWindowPropertyCache *pc) const
 {
-    return pc->pid() == pid;
+    return pc->pid() == MSplashPropertyCache::get()->pid();
 }
 
 bool MSplashScreen::same(unsigned pid, const QString &splash_p,
                          const QString &splash_l, unsigned pixmap) const
 {
-    return pid == this->pid
+    return pid == MSplashPropertyCache::get()->pid()
             && (!pixmap || pixmap == this->pixmap)
             && (splash_p == portrait_file)
             && (splash_l.isEmpty() || splash_l == landscape_file);

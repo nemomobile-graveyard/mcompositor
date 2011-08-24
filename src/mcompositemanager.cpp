@@ -476,7 +476,8 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
       prepared(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime),
-      splash(0)
+      splash(0),
+      lastDestroyedSplash(0, 0)
 {
     xcb_conn = XGetXCBConnection(QX11Info::display());
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
@@ -727,6 +728,9 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 void MCompositeManagerPrivate::splashTimeout()
 {
     if (!splash) return;
+
+    lastDestroyedSplash = DestroyedSplash(splash->window(), splash->propertyCache()->pid());
+
     splash->hide();
     prop_caches.remove(splash->window());
     removeWindow(splash->window());
@@ -762,6 +766,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
                 splashTimeout();
             }
             splash = new MSplashScreen(pid, portrait, lscape, pixmap);
+            lastDestroyedSplash = DestroyedSplash(0, 0);
             if (!splash->windowPixmap()) {
                 // no pixmap and/or failed to load the image file
                 splash->deleteLater();
@@ -782,6 +787,18 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
             splash->showWindow();
             dirtyStacking(false);
             orientationProvider.updateCurrentWindowOrienationAngle(splash->propertyCache());
+
+            // remove entries older than one minute
+            QHash<unsigned, DismissedSplash>::iterator it = dismissedSplashScreens.begin();
+            while (it != dismissedSplashScreens.end()) {
+                DismissedSplash &ds = it.value();
+                if (ds.lifetimeTimer.elapsed() > 60 * 1000
+                        || (ds.blockTimer.isValid()
+                        && ds.blockTimer.elapsed() > 1000))
+                    it = dismissedSplashScreens.erase(it);
+                else
+                    ++it;
+            }
         }
         return;
     }
@@ -979,7 +996,8 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
     MCompositeWindow *cw = 0;
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);
-        if (!(cw = COMPOSITE_WINDOW(w)) || cw->propertyCache()->isInputOnly())
+        if (!(cw = COMPOSITE_WINDOW(w)) || cw->propertyCache()->isInputOnly()
+                || (!splash && cw->type() == MSplashScreen::Type))
             continue;
         if (w == desktop_window) {
             top = w;
@@ -1258,7 +1276,17 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
                 bool restoring = (cw && 
                                   cw->propertyCache()->invokedBy() == None &&
                                   cw->status() == MCompositeWindow::Restoring);
-                if (!restoring) {
+                bool iconifiedOnPurpose = false;
+                if (cw) {
+                    QHash<unsigned int, DismissedSplash>::iterator it =
+                        dismissedSplashScreens.find(cw->propertyCache()->pid());
+                    if (it != dismissedSplashScreens.end()) {
+                        iconifiedOnPurpose = true;
+                        if (!it.value().blockTimer.isValid())
+                            it.value().blockTimer.start();
+                    }
+                }
+                if (!restoring && !iconifiedOnPurpose) {
                     STACKING("positionWindow 0x%lx -> top",e-> window);
                     positionWindow(e->window, true);
                 } else
@@ -1359,7 +1387,7 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
 
     configureWindow(pc, e);
     MCompositeWindow *i = COMPOSITE_WINDOW(e->window);
-    if (!i || !pc->isMapped())
+    if (!i || !pc->isMapped() || dismissedSplashScreens.contains(pc->pid()))
         return;
 
     MCompAtoms::Type wtype = i->propertyCache()->windowType();
@@ -1564,6 +1592,16 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             qWarning("%s: mdecorator hasn't started yet", __func__);
 #endif
         }
+    }
+
+    QHash<unsigned int, DismissedSplash>::iterator it = dismissedSplashScreens.find(pc->pid());
+    if (it != dismissedSplashScreens.end()) {
+        pc->setStackedUnmapped(true);
+        setWindowState(e->window, IconicState);
+        STACKING("positionWindow 0x%lx -> bottom", e->window);
+        positionWindow(e->window, false);
+        DismissedSplash &ds = it.value();
+        ds.blockTimer.start();
     }
 }
 
@@ -2051,7 +2089,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     static bool xrestackwindows_error = false;
     if (xrestackwindows_error || order_changed) {
         xrestackwindows_error = !xserver_stacking.restack(stacking_list);
-
         if (xrestackwindows_error) {
             STACKING("XRestackWindows() failed, retry later");
             dirtyStacking(false);
@@ -2318,8 +2355,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
             if (Window transient = pc->transientFor()) {
                 MWindowPropertyCache *tpc = getPropertyCache(transient);
                 if (tpc && tpc->isMapped()) {
-                    // do not raise the transient parent with the input method window
-                    // it is not necessarily supposed to be visible
+                    // do not raise the transient parent with the input method
+                    // window it is not necessarily supposed to be visible
                     activate = false;
                 }
             }
@@ -2345,8 +2382,14 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
             roughSort();
         }
     }
-    if (splash && splash->matches(pc))
+
+    if (dismissedSplashScreens.contains(pc->pid())) {
+        DismissedSplash &ds = dismissedSplashScreens[pc->pid()];
+        if (!ds.blockTimer.isValid())
+            ds.blockTimer.start();
+    } else if (splash && splash->matches(pc)) {
         waiting_damage = item;
+    }
 
     dirtyStacking(false);
 }
@@ -2369,65 +2412,79 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
     MWindowPropertyCache *pc = prop_caches.value(event->window, 0);
 
-    if (pc && !pc->isMapped() && pc->beingMapped()
-        && event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
-        // _NET_ACTIVE_WINDOW came between MapRequest and MapNotify,
-        // mark it as "stacked unmapped" to ignore initial_state==Iconic
-        positionWindow(event->window, true);
-        pc->setStackedUnmapped(true);
-    } else if (pc && pc->isMapped()
-               && event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
-        Window topmost = getTopmostApp();
-        if (!m_extensions.values(MapNotify).isEmpty() || !topmost) {
-            // Not necessary to animate if not in desktop view or we have a plugin.
-            Window raise = event->window;
-            bool needComp = false;
-            if (!compositing && raise != desktop_window)
-                needComp = true;
-            // Visibility notification to desktop window. Ensure this is sent
-            // before transitions are started but after redirection
-            if (event->window != desktop_window)
-                setExposeDesktop(false);
-            if (i && (i->propertyCache()->windowState() == IconicState
-                      // if it's not iconic, let the plugin decide
-                      || (raise != topmost &&
-                          !m_extensions.values(MapNotify).isEmpty()))) {
-                if (skipStartupAnim(i->propertyCache(), true)) {
-                    STACKING("positionWindow 0x%lx -> top", i->window());
-                    positionWindow(i->window(), true);
-                } else {
-                    if (needComp)
-                        enableCompositing();
-                    i->restore();
-                }
+    if (event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
+        QHash<unsigned int, DismissedSplash>::iterator it = dismissedSplashScreens.find(pc->pid());
+        if (it != dismissedSplashScreens.end()) {
+            DismissedSplash &ds = it.value();
+            if (!ds.blockTimer.isValid()) {
+                ds.blockTimer.start();
+                // no XMapRequestEvent received yet - ignore event
+                return;
             }
-        } else if (event->window != desktop_window) {
-            // unless we redirect the desktop we run the risk of using trash
-            // in the animation because nothing is drawn there and the buffer
-            // contents is undefined
-            MCompositeWindow *d = COMPOSITE_WINDOW(desktop_window);
-            if (d && ((MTexturePixmapItem *)d)->isDirectRendered()) {
-                ((MTexturePixmapItem *)d)->enableRedirectedRendering();
-                setWindowDebugProperties(d->window());
-            }
-            setExposeDesktop(false);
+            else if (ds.blockTimer.elapsed() < 1000)
+                return;
+            else
+                dismissedSplashScreens.erase(it);
         }
+        if (pc && !pc->isMapped() && pc->beingMapped()) {
+            // _NET_ACTIVE_WINDOW came between MapRequest and MapNotify,
+            // mark it as "stacked unmapped" to ignore initial_state==Iconic
+            STACKING("positionWindow 0x%lx -> botton", event->window);
+            positionWindow(event->window, true);
+            pc->setStackedUnmapped(true);
+        } else if (pc && pc->isMapped()) {
+            Window topmost = getTopmostApp();
+            if (!m_extensions.values(MapNotify).isEmpty() || !topmost) {
+                // Not necessary to animate if not in desktop view or we have a plugin.
+                Window raise = event->window;
+                bool needComp = false;
+                if (!compositing && raise != desktop_window)
+                    needComp = true;
+                // Visibility notification to desktop window. Ensure this is sent
+                // before transitions are started but after redirection
+                if (event->window != desktop_window)
+                    setExposeDesktop(false);
+                if (i && (i->propertyCache()->windowState() == IconicState
+                          // if it's not iconic, let the plugin decide
+                          || (raise != topmost &&
+                              !m_extensions.values(MapNotify).isEmpty()))) {
+                    if (skipStartupAnim(i->propertyCache(), true)) {
+                        STACKING("positionWindow 0x%lx -> top", i->window());
+                        positionWindow(i->window(), true);
+                    } else {
+                        if (needComp)
+                            enableCompositing();
+                        i->restore();
+                    }
+                }
+            } else if (event->window != desktop_window) {
+                // unless we redirect the desktop we run the risk of using trash
+                // in the animation because nothing is drawn there and the buffer
+                // contents is undefined
+                MCompositeWindow *d = COMPOSITE_WINDOW(desktop_window);
+                if (d && ((MTexturePixmapItem *)d)->isDirectRendered()) {
+                    ((MTexturePixmapItem *)d)->enableRedirectedRendering();
+                    setWindowDebugProperties(d->window());
+                }
+                setExposeDesktop(false);
+            }
 
 #ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
-        FrameData fd = framed_windows.value(event->window);
-        if (fd.frame)
-            setWindowState(fd.frame->managedWindow(), NormalState);
-        else
+            FrameData fd = framed_windows.value(event->window);
+            if (fd.frame)
+                setWindowState(fd.frame->managedWindow(), NormalState);
+            else
 #endif // ENABLE_BROKEN_SIMPLEWINDOWFRAME
-            setWindowState(event->window, NormalState);
-        if (event->window == desktop_window) {
-            // Mark normal applications on top of home Iconic to make our
-            // qsort() function to work
-            iconifyApps();
-            activateWindow(event->window, CurrentTime, true);
-        } else
-            // use composition due to the transition effect
-            activateWindow(event->window, CurrentTime, false);
+                setWindowState(event->window, NormalState);
+            if (event->window == desktop_window) {
+                // Mark normal applications on top of home Iconic to make our
+                // qsort() function to work
+                iconifyApps();
+                activateWindow(event->window, CurrentTime, true);
+            } else
+                // use composition due to the transition effect
+                activateWindow(event->window, CurrentTime, false);
+        }
     } else if (i && pc && pc->isMapped()
                && event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
         if (pc->noAnimations())
@@ -2585,7 +2642,12 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
         window->startCloseTimer();
     }
 
-    if (!delete_sent || window->status() == MCompositeWindow::Hung)
+    if (window->type() == MSplashScreen::Type) {
+        MSplashScreen *splash = dynamic_cast<MSplashScreen*>(window);
+        ::kill(splash->propertyCache()->pid(), SIGKILL);
+        ::kill(-splash->propertyCache()->pid(), SIGKILL);
+        dismissedSplashScreens.remove(splash->propertyCache()->pid());
+    } else if (!delete_sent || window->status() == MCompositeWindow::Hung)
         kill_window(window);
     /* DO NOT deleteLater() this window yet because
        a) it can remove a mapped window from stacking_list
@@ -2889,6 +2951,7 @@ void MCompositeManagerPrivate::setWindowState(Window w, int state, int level)
     CARD32 d[2];
     d[0] = state;
     d[1] = None;
+
     XChangeProperty(QX11Info::display(), w, ATOM(WM_STATE), ATOM(WM_STATE),
                     32, PropModeReplace, (unsigned char *)d, 2);
 }
@@ -3653,8 +3716,21 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
         return;
 
     int wp = stacking_list.indexOf(w);
-    if (wp == -1 || wp >= stacking_list.size())
+    if (wp == -1) {
+        if (lastDestroyedSplash.window && lastDestroyedSplash.window == w) {
+            // We handle a corner case here. The cross fade animation is shown
+            // and splashTimeout() is called therefor. At the same time the
+            // swipe animation is finished and therefor all windows are
+            // iconified.
+            // Now we must make sure to start the block timer - we know the window
+            // is mapped in this case.
+            DismissedSplash &ds = dismissedSplashScreens[lastDestroyedSplash.pid];
+            if (!ds.blockTimer.isValid()) {
+                ds.blockTimer.start();
+            }
+        }
         return;
+    }
 
     if (on_top) {
         MWindowPropertyCache *pc = prop_caches.value(w, 0);
@@ -3688,8 +3764,22 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
             (d_item = deco->decoratorItem()))
             d_item->requestZValue(-1);
 
-        if (splash && w == splash->window())
+        if (splash && w == splash->window()) {
+            DismissedSplash &ds = dismissedSplashScreens[splash->propertyCache()->pid()];
+            // check if the window has already been mapped -
+            // block timer needs to be started in this case
+            Window matchesPid = 0;
+            foreach(MWindowPropertyCache *pc, prop_caches) {
+                if (pc != splash->propertyCache()
+                        && pc->pid() == splash->propertyCache()->pid()
+                        && pc->isMapped()) {
+                    matchesPid = pc->winId();
+                    ds.blockTimer.start();
+                    break;
+                }
+            }
             splashTimeout();
+        }
     }
 
     dirtyStacking(false);
