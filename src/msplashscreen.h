@@ -55,7 +55,6 @@ private slots:
     void iconified();
 
 private:
-    unsigned int pid;
     QString wm_class;
     QString portrait_file;
     QString landscape_file;

@@ -338,10 +338,20 @@ void MCompositeWindow::damageReceived()
     // We're ready to take over the splash screen.
     MCompositeWindow *splash;
     splash = m->splashed(this);
-    if (splash) {
+    if (splash && !m->d->dismissedSplashScreens.contains(pc->pid())) {
         setVisible(true);
         splash->windowAnimator()->crossFadeTo(this);
         newly_mapped = false;
+
+        // setting up the cross fade animation could have finished
+        // minimizing the splash screen - recheck if it is now dismissed
+        if (m->d->dismissedSplashScreens.contains(pc->pid())) {
+            m->d->dismissedSplashScreens[pc->pid()].blockTimer.start();
+            endAnimation();
+            m->possiblyUnredirectTopmostWindow();
+            m->setWindowState(pc->winId(), IconicState);
+            m->positionWindow(pc->winId(), MCompositeManager::STACK_BOTTOM);
+        }
     } else if (isInanimate(false)) {
         newly_mapped = false;
         setVisible(true);
@@ -375,7 +385,7 @@ void MCompositeWindow::q_fadeIn()
     iconified = false;
 
     // fade-in handler
-    if (animator) {
+    if (animator && isMapped()) {
         if (!static_cast<MCompositeManager*>(qApp)->isCompositing())
             static_cast<MCompositeManager*>(qApp)->d->enableCompositing();
         // always ensure the animation is visible. zvalues get corrected later 
@@ -383,8 +393,11 @@ void MCompositeWindow::q_fadeIn()
         setZValue(((MCompositeManager *) qApp)->d->stacking_list.size()+1);
         animator->windowShown();
         updateServerGrab();
-    } else
+    } else {
+        MCompositeManager *m = static_cast<MCompositeManager*>(qApp);
         endAnimation();
+        m->possiblyUnredirectTopmostWindow();
+    }
 }
 
 bool MCompositeWindow::isInanimate(bool check_pixmap)
@@ -654,7 +667,7 @@ void MCompositeWindow::beginAnimation()
             emit firstAnimationStarted();
             we_want_grab = true;
         }
-        ++window_transitioning;        
+        ++window_transitioning;
         is_transitioning = true;
     }
 }

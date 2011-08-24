@@ -29,6 +29,7 @@
 #include <QDir>
 #include <QPointer>
 #include <QSocketNotifier>
+#include <QElapsedTimer>
 
 #include <X11/Xutil.h>
 #include <X11/Xlib.h>
@@ -213,6 +214,31 @@ public:
     QPointer<MCompositeWindow> waiting_damage;
     QTimer lockscreen_map_timer;
     QSocketNotifier *sighupNotifier;
+
+    struct DismissedSplash {
+        DismissedSplash() {
+            blockTimer.invalidate();
+            lifetimeTimer.start();
+        }
+
+        QElapsedTimer blockTimer;
+        QElapsedTimer lifetimeTimer;
+    };
+    QHash<unsigned int, DismissedSplash> dismissedSplashScreens;
+
+    // When splashTimeout() is called the information about a splash screen is
+    // removed from the property cache, the window and stacking list.
+    // As positionWindow() might be called with a splash screen window as
+    // parameter after the timeout, the information about the last splash screen
+    // has to be saved.
+    struct DestroyedSplash {
+        DestroyedSplash(Window window, unsigned int pid)
+            : window(window), pid(pid) {
+        }
+
+        Window window;
+        unsigned int pid;
+    } lastDestroyedSplash;
 
 signals:
     void compositingEnabled();
