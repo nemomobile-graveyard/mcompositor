@@ -276,13 +276,16 @@ bool MCompositeWindow::showWindow()
         || !pc->is_valid
         || (!isAppWindow() && pc->invokedBy() == None)
         // isAppWindow() returns true for system dialogs
-        || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
+        || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)) {
+        painted_after_mapping = true;
         return false;
+    }
 
     findBehindWindow();
     beginAnimation();
     if (newly_mapped && (!animator || !animator->isActive())) {
         waitForPainting();
+        setWindowObscured(false);
     } else {
         painted_after_mapping = true;
         q_fadeIn();
@@ -324,21 +327,27 @@ void MCompositeWindow::damageReceived()
     waiting_for_damage = 0;
     resize_expected = false;
 
+    MCompositeManager *m = static_cast<MCompositeManager*>(qApp);
     if (pc->isLockScreen()) {
         newly_mapped = false;
         setVisible(true);
         endAnimation();
-        static_cast<MCompositeManager*>(qApp)->lockScreenPainted();
-        static_cast<MCompositeManager*>(qApp)->possiblyUnredirectTopmostWindow();
+        m->lockScreenPainted();
+        m->possiblyUnredirectTopmostWindow();
         return;
     }
 
     // We're ready to take over the splash screen.
     MCompositeWindow *splash;
-    splash = static_cast<MCompositeManager *>(qApp)->splashed(this);
+    splash = m->splashed(this);
     if (splash) {
         splash->startTransition();
         newly_mapped = false;
+    } else if (isInanimate(false)) {
+        newly_mapped = false;
+        setVisible(true);
+        endAnimation();
+        m->possiblyUnredirectTopmostWindow();
     } else
         q_fadeIn();
 }
@@ -368,6 +377,8 @@ void MCompositeWindow::q_fadeIn()
 
     // fade-in handler
     if (animator) {
+        if (!static_cast<MCompositeManager*>(qApp)->isCompositing())
+            static_cast<MCompositeManager*>(qApp)->d->enableCompositing();
         // always ensure the animation is visible. zvalues get corrected later 
         // at checkStacking 
         setZValue(((MCompositeManager *) qApp)->d->stacking_list.size()+1);

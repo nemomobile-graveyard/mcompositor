@@ -69,7 +69,6 @@ public:
     MCompositeManagerPrivate(MCompositeManager *p);
     ~MCompositeManagerPrivate();
 
-    static Window parentWindow(Window child);
     MCompositeWindow *bindWindow(Window w, bool startup = false);
     QGraphicsScene *scene();
 
@@ -121,6 +120,7 @@ public:
                          bool skip_always_mapped = false);
     Window getLastVisibleParent(MWindowPropertyCache *pc);
     int indexOfLastVisibleWindow() const;
+    bool hasTransientVKB(MWindowPropertyCache *pc) const;
 
     bool possiblyUnredirectTopmostWindow();
     bool haveMappedWindow() const;

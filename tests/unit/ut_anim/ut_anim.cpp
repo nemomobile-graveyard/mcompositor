@@ -93,6 +93,25 @@ void ut_Anim::initTestCase()
     QCOMPARE(cw->isValid(), true);
 }
 
+// check that window that does not paint itself will be made visible
+// after the timeout
+void ut_Anim::testDamageTimeout()
+{
+    fake_LMT_window *pc = new fake_LMT_window(123, false);
+    cmgr->d->prop_caches[123] = pc;
+    // create a fake MapNotify event
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = 123;
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+    MCompositeWindow *cw = cmgr->d->windows.value(123, 0);
+    QCOMPARE(cw != 0, true);
+    QCOMPARE(cw->isVisible(), false);
+    QTest::qWait(1000); // wait for the timeout
+    QCOMPARE(cw->isVisible(), true);
+}
+
 void ut_Anim::testStartupAnimForFirstTimeMapped()
 {
     fake_LMT_window *pc = new fake_LMT_window(1, false);

@@ -265,6 +265,10 @@ public:
     MCompositeWindowGroup* group() const;
 
     bool paintedAfterMapping() const { return painted_after_mapping; }
+    /*!
+     * Needed for the startup time.
+     */
+    void setPaintedAfterMapping(bool b) { painted_after_mapping = b; }
     void waitForPainting();
 
     MCompositeWindowAnimation* windowAnimator() const;

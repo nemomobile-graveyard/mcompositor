@@ -357,6 +357,8 @@ protected:
     unsigned requestProperty(MCompAtoms::Atoms prop, Atom type,
                              unsigned n = 1)
         { return requestProperty(MCompAtoms::atoms[prop], type, n); }
+    // some unit tests want to fake window properties
+    void cancelAllRequests();
 
     static xcb_connection_t *xcb_conn;
     static xcb_render_query_pict_formats_reply_t *pict_formats_reply;

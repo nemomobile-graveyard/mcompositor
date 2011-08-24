@@ -11,6 +11,7 @@ class ut_Anim : public QObject
 private slots:
     void initTestCase();
 
+    void testDamageTimeout();
     void testStartupAnimForFirstTimeMapped();
     void testIconifyingAnimation();
     void testRestoreAnimation();

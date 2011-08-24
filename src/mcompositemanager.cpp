@@ -537,17 +537,6 @@ void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
 #define setWindowDebugProperties(X)
 #endif
 
-Window MCompositeManagerPrivate::parentWindow(Window child)
-{
-    uint children = 0;
-    Window r, p, *kids = 0;
-
-    XQueryTree(QX11Info::display(), child, &r, &p, &kids, &children);
-    if (kids)
-        XFree(kids);
-    return p;
-}
-
 static void setup_key_grabs()
 {
     Display* dpy = QX11Info::display();
@@ -991,8 +980,11 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         if (cw->propertyCache()->windowTypeAtom() ==
                                        ATOM(_NET_WM_WINDOW_TYPE_INPUT)
             && (parent = cw->propertyCache()->transientFor())
-            && (p_cw = COMPOSITE_WINDOW(parent)) && p_cw->isClosing())
+            && (p_cw = COMPOSITE_WINDOW(parent))
+            && (p_cw->isClosing() || p_cw->isWindowTransitioning()))
             // input method window's transient parent is animating
+            return false;
+        if (!cw->paintedAfterMapping())
             return false;
         if (cw->isMapped() && (cw->needsCompositing()
             // FIXME: implement direct rendering for shaped windows
@@ -1850,6 +1842,18 @@ int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
     return 0;
 }
 
+bool MCompositeManagerPrivate::hasTransientVKB(MWindowPropertyCache *pc) const
+{
+    for (QList<Window>::const_iterator it = pc->transientWindows().begin();
+         it != pc->transientWindows().end(); ++it) {
+         MWindowPropertyCache *p = prop_caches.value(*it, 0);
+         if (p && p->isMapped()
+             && p->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT))
+             return true;
+    }
+    return false;
+}
+
 void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
 {
     int covering_i = indexOfLastVisibleWindow();
@@ -1875,12 +1879,15 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
                 setWindowState(cw->window(), NormalState);
             continue;
         }
-        if (i >= covering_i &&
+        if (cw->isWindowTransitioning()) {
+            // keep transitioning windows unobscured
+            cw->setWindowObscured(false);
+        } else if (i >= covering_i &&
             // don't expose a window that is hidden during transition
             // (visibility was set before by the animation)
             (!cw->hasTransitioningWindow() || cw->isVisible())) {
             cw->setWindowObscured(false);
-            if (!cw->hasTransitioningWindow())
+            if (!cw->hasTransitioningWindow() && cw->paintedAfterMapping())
                 cw->setVisible(true);
             if (!ga_pc && (cw->propertyCache()->globalAlpha() < 255 ||
                 cw->propertyCache()->videoGlobalAlpha() < 255))
@@ -1896,7 +1903,12 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
                 ((MTexturePixmapItem *)cw)->enableRedirectedRendering();
                 setWindowDebugProperties(cw->window());
             }
-            cw->setWindowObscured(true);
+            if (!cw->propertyCache()->transientWindows().isEmpty()
+                && hasTransientVKB(cw->propertyCache()))
+                // keep it unobscured for self-compositing VKB
+                cw->setWindowObscured(false);
+            else
+                cw->setWindowObscured(true);
             if (cw->window() != duihome)
                 cw->setVisible(false);
         }
@@ -2156,6 +2168,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
     }
     // NOTE: we send synthetic MapNotifys from redirectWindows()
     if (win == localwin || win == localwin_parent || win == close_button_win
+        || e->send_event == True
         || (splash && win == splash->window())
         || win == home_button_win || e->event != QX11Info::appRootWindow())
         return;
@@ -2207,16 +2220,18 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
     }
 
     MCompositeWindow *item = COMPOSITE_WINDOW(win);
+    if (!compositing && item && item->needsCompositing())
+        enableCompositing();
+
+    // only composite top-level windows
+    if (!item && pc->parentWindow() == RootWindow(QX11Info::display(), 0))
+        item = bindWindow(win, startup);
+
     if (item) {
         item->setIsMapped(true);
         if (!pc->isDecorator() && !pc->isOverrideRedirect()
             && windows_as_mapped.indexOf(win) == -1)
             windows_as_mapped.append(win);
-    }
-    if (!compositing && item && item->needsCompositing())
-        enableCompositing();
-
-    if (item && pc) {
         // reset item for the case previous animation did not end cleanly
         item->setUntransformed();
         item->setPos(pc->realGeometry().x(), pc->realGeometry().y());
@@ -2230,8 +2245,13 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
             setWindowDebugProperties(item->window());
         } else
             item->saveBackingStore();
-        if (!pc->alwaysMapped() && e->send_event == False
-            && !pc->isInputOnly() && !skipStartupAnim(pc)) {
+        if (startup) {
+            item->setNewlyMapped(false);
+            item->setVisible(true);
+            item->setPaintedAfterMapping(true);
+        } else if (!pc->alwaysMapped() && !pc->isInputOnly()
+                   && (item->isAppWindow() || pc->invokedBy() != None)
+                   && !skipStartupAnim(pc)) {
             item->setVisible(false); // keep it invisible until the animation
             item->setNewlyMapped(true);
             if (!item->showWindow()) {
@@ -2242,49 +2262,26 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
             item->waitForPainting();
         } else {
             item->setNewlyMapped(false);
-            if (!splash || !splash->matches(pc))
+            if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)
+                && item->hasTransitioningWindow()) {
+                // there is an animation, don't show it unpainted on top
+                item->setVisible(false);
+                item->waitForPainting();
+            } else if (!splash || !splash->matches(pc)) {
                 item->setVisible(true);
+                item->setPaintedAfterMapping(true);
+            } else
+                item->setPaintedAfterMapping(true);
         }
-        goto stack_and_return;
-    }
-
-    // only composite top-level windows
-    if (pc->parentWindow() == RootWindow(QX11Info::display(), 0)) {
-        item = bindWindow(win, startup);
-        if (!item)
-            return;
-        pc = item->propertyCache();
-#ifdef WINDOW_DEBUG
-        if (debug_mode && item->needsCompositing())
-            qDebug() << "Composition overhead (new pixmap):"
-                     << overhead_measure.elapsed();
-#endif
-        if (!pc->alwaysMapped() && e->send_event == False
-            && !pc->isInputOnly() 
-            && (item->isAppWindow() || pc->invokedBy() != None)
-            && !skipStartupAnim(pc)) {
-            item->setVisible(false); // keep it invisible until the animation
-            if (!item->showWindow()) {
-                item->setNewlyMapped(false);
-                item->setVisible(true);
-            }
-        } else if (pc->isLockScreen()) {
-            item->waitForPainting();
-        } else {
-            item->setNewlyMapped(false);
-            if (!splash || !splash->matches(pc))
-                item->setVisible(true);
-        }
-
         // the current decorated window got mapped
         if (e->window == MDecoratorFrame::instance()->managedWindow() &&
             MDecoratorFrame::instance()->decoratorItem())
-            MDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue() + 1);
+            MDecoratorFrame::instance()->decoratorItem()->setZValue(
+                                                          item->zValue() + 1);
         setWindowDebugProperties(win);
     }
 
-stack_and_return:
-    if (!pc || (e->event != QX11Info::appRootWindow()) || !item) {
+    if (!item || (e->event != QX11Info::appRootWindow())) {
         // only handle the MapNotify sent for the root window
         prop_caches.remove(win);
         delete pc;
@@ -3118,24 +3115,21 @@ void MCompositeManagerPrivate::redirectWindows()
 
         if (attr->map_state == XCB_MAP_STATE_VIEWABLE &&
             // realGeomtry() doesn't block here because we initialized
-            // the object with @geom (which we can't use anyome because
+            // the object with @geom (which we can't use anymore because
             // it's been free()d by the property cache.
             p->realGeometry().width() > 1 &&
             p->realGeometry().height() > 1) {
-            // TODO: remove this bindWindow call -- shouldn't be needed
-            MCompositeWindow* window = bindWindow(kids[i], true);
-            if (window) {
-                window->setNewlyMapped(false);
-                window->setVisible(true);
-                // synthetise MapNotify, to use the usual code path for plugins
-                XMapEvent e;
-                e.type = MapNotify;
-                e.serial = 0;
-                e.send_event = True;
-                e.event = RootWindow(QX11Info::display(), 0);
-                e.window = kids[i];
-                e.override_redirect = False;
-                x11EventFilter((XEvent*)&e, true);
+            // synthetise MapNotify, to use the usual code path for plugins
+            XMapEvent e;
+            memset(&e, 0, sizeof(e));
+            e.type = MapNotify;
+            e.event = RootWindow(QX11Info::display(), 0);
+            e.window = kids[i];
+            x11EventFilter((XEvent*)&e, true);
+            MCompositeWindow *w = COMPOSITE_WINDOW(kids[1]);
+            if (w) {
+                w->setNewlyMapped(false);
+                w->setVisible(true);
             }
         }
     }

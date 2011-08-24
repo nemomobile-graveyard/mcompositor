@@ -101,6 +101,14 @@ void MWindowPropertyCache::cancelRequest(const QLatin1String collector)
         requests[collector] = 0;
 }
 
+// some unit tests want to fake window properties
+void MWindowPropertyCache::cancelAllRequests()
+{
+    for (QHash<const QLatin1String, unsigned>::const_iterator i = requests.begin();
+         i != requests.end(); ++i)
+        cancelRequest(i.key());
+}
+
 // Shorthand to request the value of a property.  Returns what you can
 // pass to addRequest().
 unsigned MWindowPropertyCache::requestProperty(Atom prop, Atom type,
@@ -155,6 +163,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     : window(w)
 {
     init();
+    is_virtual = window == None;
     if (!wa) {
         attrs = xcb_get_window_attributes_reply(xcb_conn,
                         xcb_get_window_attributes(xcb_conn, window), 0);
@@ -170,7 +179,6 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
         attrs = wa;
 
     is_valid = true;
-    is_virtual = window == None;
     damage_object = damage_obj;
 
     if (geom) {
