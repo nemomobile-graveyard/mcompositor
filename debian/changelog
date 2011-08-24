@@ -1,8 +1,16 @@
+mcompositor (1.1.6-1) unstable; urgency=low
+
+  * Fix a bug in the configuration file change.
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 24 Aug 2011 18:29:03 +0300
+
 mcompositor (1.1.5-1) unstable; urgency=low
 
   * Fixes: NB#274761 - Close application swipe set ON by default
     - make the configuration change effective even if the user has
       an old mcompositor.conf (as in e.g. SSU case)
+  * Partially(?) fixes: NB#278245 - Connectivity sheets do not work anymore
+    with System Modal Dialog
 
  -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 24 Aug 2011 16:09:14 +0300
 
