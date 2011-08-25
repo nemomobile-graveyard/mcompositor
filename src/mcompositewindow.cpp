@@ -266,6 +266,8 @@ void MCompositeWindow::waitForPainting()
 bool MCompositeWindow::showWindow()
 {
     if (type() == MSplashScreen::Type) {
+        findBehindWindow();
+        beginAnimation();
         q_fadeIn();
         return true;
     }

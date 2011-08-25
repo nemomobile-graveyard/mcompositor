@@ -1168,7 +1168,8 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
                 check_visibility = true;
         }
         if (item && pc->windowState() != IconicState) {
-            if (check_visibility || !item->isWindowTransitioning())
+            if (item->type() != MSplashScreen::Type &&
+                (check_visibility || !item->isWindowTransitioning()))
                 item->setPos(e->x, e->y);
             item->resize(e->width, e->height);
         }
