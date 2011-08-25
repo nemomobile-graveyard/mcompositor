@@ -1,3 +1,9 @@
+mcompositor (1.1.7-1) unstable; urgency=low
+
+  * MDecoratorWindow: don't use mcompositor.conf
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Thu, 25 Aug 2011 14:57:23 +0300
+
 mcompositor (1.1.6-1) unstable; urgency=low
 
   * Fix a bug in the configuration file change.
