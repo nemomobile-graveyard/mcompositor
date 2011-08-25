@@ -265,7 +265,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     connect(navigationBar, SIGNAL(closeButtonClicked()), SIGNAL(escapeClicked()));
 
     requested_only_statusbar = false;
-    settings = new QSettings("mcompositor", "mcompositor", this);
 
     d = new MDecorator(this);
     app = new MDecoratorAppInterface(this);
@@ -474,10 +473,7 @@ void MDecoratorWindow::setInputRegion()
         setMeegotouchOpaqueProperty(false);
     } else {
         // Decoration includes the status bar, and possibly other elements.
-        QRect sbrect;
-        sbrect = statusBar->sceneBoundingRect().toRect();
-        sbrect.setHeight(settings->value("default-statusbar-height").toInt());
-        region = sbrect;
+        region = statusBar->sceneBoundingRect().toRect();
 
         if (!only_statusbar) {
             region += navigationBar->sceneBoundingRect().toRect();
