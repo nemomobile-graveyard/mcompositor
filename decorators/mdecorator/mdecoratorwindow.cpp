@@ -473,7 +473,21 @@ void MDecoratorWindow::setInputRegion()
         setMeegotouchOpaqueProperty(false);
     } else {
         // Decoration includes the status bar, and possibly other elements.
-        region = statusBar->sceneBoundingRect().toRect();
+        QRect sbrect = statusBar->sceneBoundingRect().toRect();
+
+        // work around Libmeegotouch lying about the size
+        if (sbrect.height() == 51)
+            sbrect.setHeight(36);
+        if (sbrect.width() == 51)
+            sbrect.setWidth(36);
+
+        region = sbrect;
+        bool translate = true;
+        int angle = sceneManager()->orientationAngle();
+        if (angle == 270 && sbrect.x() == 0 && sbrect.y() == 0
+            && sbrect.width() < sbrect.height())
+            // SB rect is already in screen coordinates (fixes NB#275508)
+            translate = false;
 
         if (!only_statusbar) {
             region += navigationBar->sceneBoundingRect().toRect();
@@ -484,8 +498,7 @@ void MDecoratorWindow::setInputRegion()
 
         // The coordinates we receive from libmeegotouch are rotated
         // by @angle.  Map @retion back to screen coordinates.
-        int angle = sceneManager()->orientationAngle();
-        if (angle != 0) {
+        if (translate && angle != 0) {
             QTransform trans;
             const QRect fs(QApplication::desktop()->screenGeometry());
 
