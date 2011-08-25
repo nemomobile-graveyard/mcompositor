@@ -35,7 +35,6 @@
 #endif
 
 #include <QObject>
-#include <QSettings>
 
 class MSceneManager;
 class MDecorator;
@@ -102,7 +101,6 @@ private:
     MDecoratorAppInterface *app;
     MLocale locale;
     bool menuVisible;
-    QSettings *settings;
 
     Q_DISABLE_COPY(MDecoratorWindow);
 };
