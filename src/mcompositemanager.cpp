@@ -97,7 +97,9 @@ static bool compareWindows(Window w_a, Window w_b);
 #ifdef WINDOW_DEBUG
 static QTime overhead_measure;
 static bool debug_mode = false; // this can be toggled with SIGUSR1
-static QString dumpWindows(const QList<Window> &wins);
+template<class T>
+static QString dumpWindows(const T &wins, bool leftToRight=true,
+                           const char *sep=", ", bool prefix=false);
 #endif
 
 // Enable to see the decisions of the stacker.
@@ -3888,17 +3890,16 @@ static void sigusr1_handler(int signo)
     debug_mode = !debug_mode;
 }
 
-static QString dumpWindows(const QList<Window> &wins)
+template<class T>
+static QString dumpWindows(const T &wins, bool leftToRight,
+                           const char *sep, bool prefix)
 {
     QString line;
-
-    for (QList<Window>::const_iterator winit = wins.begin();
-         winit != wins.end(); ++winit) {
-        if (winit != wins.begin())
-            line += ", ";
-        line += QString().sprintf("0x%lx", *winit);
-    }
-
+    int nwins = wins.count();
+    for (int i = 0; i < nwins; i++)
+        line += QString().sprintf("%s0x%lx",
+                                  i > 0 || prefix ? sep : "",
+                                  wins[leftToRight ? i : nwins-1-i]);
     return line;
 }
 
@@ -3965,14 +3966,14 @@ void MCompositeManager::dumpState(const char *heading)
     qDebug("  desktop: 0x%lx", d->stack[DESKTOP_LAYER]);
 
     // Stacking order of mapped windows and mapping order of windows.
-    qDebug("window stack:");
-    for (QList<Window>::const_iterator winit = d->stacking_list.end();
-         winit > d->stacking_list.begin(); )
-        qDebug("  0x%lx", *--winit);
-    qDebug("mapping order:");
-    for (QVector<Window>::const_iterator winit = d->netClientList.end();
-         winit > d->netClientList.begin(); )
-        qDebug("  0x%lx", *--winit);
+    qDebug("stacking_list (top->bottom): %s",
+           dumpWindows(d->stacking_list, false,
+                       "\n  ", true).toLatin1().constData());
+    qDebug("mapping order (newest->oldest): %s",
+           dumpWindows(d->netClientList, false).toLatin1().constData());
+    qDebug("xserver_stacking (top->bottom): %s",
+           dumpWindows(d->xserver_stacking.getState(), false,
+                       "\n  ", true).toLatin1().constData());
 
     // All MCompositeWindow:s we know about.
     QHash<Window, MCompositeWindow *>::const_iterator cwit;
@@ -4092,6 +4093,13 @@ void MCompositeManager::dumpState(const char *heading)
                   (int)r.width(), (int)r.height(), (int)r.x(), (int)r.y(),
                   gi->isVisible() ? "visible" : "hidden");
     }
+
+    // Tell how @xserver_stacking has been doing.
+    qDebug("planner statistics:");
+    qDebug("  conservative: %s",
+            d->xserver_stacking.conStats.toString().toLatin1().constData());
+    qDebug("  aggressive:   %s",
+            d->xserver_stacking.altStats.toString().toLatin1().constData());
 
     // Show the current state of extensions.
     // @m_extenions is a QMultiHash of X events an extension reacts to
@@ -4214,6 +4222,10 @@ void MCompositeManager::remoteControl(int cmdfd)
             man->startPing(true);
         else
             qWarning("nothing to unhang");
+    } else if (!strncmp(cmd, "say", strlen("say"))) {
+        const char *what = &cmd[strlen("say")];
+        if (*what++ == ' ')
+            qDebug("%s", what);
     } else if (!strcmp(cmd, "debug")) {
         debug_mode = true;
         qDebug("debug mode on");
@@ -4259,6 +4271,7 @@ void MCompositeManager::remoteControl(int cmdfd)
         qDebug("  save [<fname>]  dump it into <fname>");
         qDebug("  hang            take it as if the topmost application hung");
         qDebug("  unhang          take it as if the hung application ponged");
+        qDebug("  say <something> log <something>");
         qDebug("  debug, nodebug  turn the SIGUSR1 debug mode on/off");
         qDebug("  exit, quit      geez");
         qDebug("  restart         re-execute mcompositor");
