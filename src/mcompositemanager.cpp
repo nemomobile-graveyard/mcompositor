@@ -575,7 +575,7 @@ static void setup_key_grabs()
 void MCompositeManagerPrivate::prepare()
 {
     MDecoratorFrame::instance();
-    QString wm_name = "MCompositor";
+    const char *wm_name = "MCompositor";
 
     wm_window = XCreateSimpleWindow(QX11Info::display(),
                             RootWindow(QX11Info::display(), 0),
@@ -591,8 +591,8 @@ void MCompositeManagerPrivate::prepare()
                     (unsigned char *)&wm_window, 1);
     XChangeProperty(QX11Info::display(), wm_window, ATOM(_NET_WM_NAME),
                     XInternAtom(QX11Info::display(), "UTF8_STRING", 0), 8,
-                    PropModeReplace, (unsigned char *) wm_name.toUtf8().data(),
-                    wm_name.size());
+                    PropModeReplace, (unsigned char *) wm_name,
+                    strlen(wm_name));
     setup_key_grabs();
 
     Xutf8SetWMProperties(QX11Info::display(), wm_window, "MCompositor",
