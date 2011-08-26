@@ -1,3 +1,10 @@
+mcompositor (1.1.8-1) unstable; urgency=low
+
+  * fix regression NB#279547 - landscape status bar appears when deleting
+    the Nokia account
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 26 Aug 2011 16:07:16 +0300
+
 mcompositor (1.1.7-1) unstable; urgency=low
 
   * MDecoratorWindow: don't use mcompositor.conf
