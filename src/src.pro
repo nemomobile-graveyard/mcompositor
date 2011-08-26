@@ -51,6 +51,7 @@ HEADERS += \
     mcontextproviderwrapper_p.h \
     mcompositewindowanimation.h \
     mdynamicanimation.h \
+    mrestacker.h \
     mstatusbartexture.h
 
 SOURCES += \
@@ -67,6 +68,7 @@ SOURCES += \
     mcontextproviderwrapper.cpp \
     mcompositewindowanimation.cpp \
     mdynamicanimation.cpp \
+    mrestacker.cpp \
     mstatusbartexture.cpp
 
 CONFIG += release link_pkgconfig

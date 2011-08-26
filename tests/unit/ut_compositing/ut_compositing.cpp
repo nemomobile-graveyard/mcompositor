@@ -90,6 +90,7 @@ void ut_Compositing::initTestCase()
     cmgr = (MCompositeManager*)qApp;
     cmgr->setSurfaceWindow(0);
     cmgr->d->prepare();
+    cmgr->d->xserver_stacking.init();
     QVector<MWindowPropertyCache *> empty;
     prepareStack(empty);
 }
@@ -104,10 +105,13 @@ void ut_Compositing::prepareStack(QVector<MWindowPropertyCache *> &t)
         if (t[i]->windowType() == MCompAtoms::DESKTOP)
             cmgr->d->stack[DESKTOP_LAYER] = t[i]->winId();
     }
+    cmgr->d->xserver_stacking.setState(cmgr->d->stacking_list.toVector());
 }
 
 void ut_Compositing::mapWindow(MWindowPropertyCache *pc)
 {
+    if (!cmgr->d->prop_caches.contains(pc->winId()))
+        cmgr->d->xserver_stacking.windowCreated(pc->winId());
     cmgr->d->prop_caches[pc->winId()] = pc;
     XMapEvent e;
     memset(&e, 0, sizeof(e));

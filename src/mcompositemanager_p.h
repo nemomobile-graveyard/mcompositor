@@ -35,6 +35,8 @@
 #include <X11/extensions/Xdamage.h>
 #include <X11/Xlib-xcb.h>
 
+#include "mrestacker.h"
+
 class QGraphicsScene;
 class QGLWidget;
 
@@ -146,25 +148,54 @@ public:
     Window current_app;
     QRect home_button_geom, close_button_geom;
 
-    static Window stack[TOTAL_LAYERS];
-
     QGLWidget *glwidget;
 
+    // @stack:          Tells which window occupy a given static layer.
+    //                  These layers are assigned by window type, and
+    //                  are largely superseded by the Meego layers,
+    //                  which are not in this mapping.  A window's layer
+    //                  affects its stacking, but does not completely
+    //                  determine it.
+    // @stacking_list:  The stacking to be effected by checkStacking(),
+    //                  ie. how we'll restack the next time around.
+    // @netClientList:  Mirrors the root window's _NET_CLIENT_LIST,
+    //                  and contains most of our managed, mapped windows
+    //                  in the order they have been mapped.  It is always
+    //                  kept up-to-date and is alteres exclusively by
+    //                  updateNetClientList().
+    // @prevNetClientListStacking:
+    //                  The most recently set _NET_CLIENT_LIST_STACKING.
+    //                  The property value is generated from @stacking_list,
+    //                  and this list is only used to see whether it needs
+    //                  to be updated.
+    // @xserver_stacking: Our most current understanding of the toplevel
+    //                  toplevel windows (every children of the root).
+    //                  It is loaded once when we start up, then kept up
+    //                  to date as we receive X window events.
+    static Window stack[TOTAL_LAYERS];
     QList<Window> stacking_list;
     QVector<Window> netClientList;
-    QVector<Window> prevNetClientListStacking; // unit-testable
+    QVector<Window> prevNetClientListStacking;
+    MRestacker xserver_stacking;
 
+    // These maps contain all known objects, indexed by the window XID
+    // they belong to.  When an X window is destroyed its objects are
+    // deleteLater()ed and removed from these maps.
     QHash<Window, MCompositeWindow *> windows;
+    QHash<Window, MWindowPropertyCache*> prop_caches;
+
+#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
     struct FrameData {
         FrameData(): frame(0), parentWindow(0), mapped(false) {}
         MSimpleWindowFrame *frame;
         Window                parentWindow;
         bool mapped;
     };
-#ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
     QHash<Window, FrameData> framed_windows;
 #endif
-    QHash<Window, MWindowPropertyCache*> prop_caches;
+
+    // X window event => extension mapping; describes which extensions
+    // handle a particular event.
     QMultiHash<int, MCompositeManagerExtension* > m_extensions;
 
     int damage_event;

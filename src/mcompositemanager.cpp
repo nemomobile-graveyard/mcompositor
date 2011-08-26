@@ -478,6 +478,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
 {
     xcb_conn = XGetXCBConnection(QX11Info::display());
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
+    xserver_stacking.init(QX11Info::display());
 
     watch = new MCompositeScene(this);
     MCompAtoms::init();
@@ -1930,23 +1931,8 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
     }
 }
 
-// XSetErrorHandler() function, used exclusively to catch errors
-// with XRestackWindows().
-static bool xrestackwindows_error;
-static int xrestackwindows_error_handler(Display *dpy, XErrorEvent *err)
-{
-    Q_UNUSED(dpy);
-
-    // XRestackWindows() is actually a series of XConfigureWindow()s.
-    if (err->request_code == X_ConfigureWindow)
-        xrestackwindows_error = true;
-    return 0;
-}
-
 /* Go through stacking_list and verify that it is in order.
- * If it isn't, reorder it and call XRestackWindows.
- * NOTE: stacking_list needs to be reversed before giving it to
- * XRestackWindows.*/
+ * If it isn't, reorder it commit the changes to the server. */
 void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                                              Time timestamp)
 {
@@ -2039,24 +2025,10 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 
     fixZValues();
     bool restacked = false;
+    static bool xrestackwindows_error = false;
     if (xrestackwindows_error || order_changed) {
-        QVector<Window> reverse(stacking_list.size());
-        for (int i = 0; i <= last_i; i++)
-            reverse[last_i-i] = stacking_list[i];
+        xrestackwindows_error = !xserver_stacking.restack(stacking_list);
 
-        // Log the actual arguments of XRestackWindows().
-        STACKING("XRestackWindows([%s])",
-                 dumpWindows(reverse).toLatin1().constData());
-
-        // Watch out for errors, there may be BadWin:s in @reverse.
-        XSync(QX11Info::display(), False);
-        int (*xerr)(Display *dpy, XErrorEvent *);
-        xrestackwindows_error = false;
-        xerr = XSetErrorHandler(xrestackwindows_error_handler);
-        XRestackWindows(QX11Info::display(),
-                        (Window *)reverse.constData(), reverse.size());
-        XSync(QX11Info::display(), False);
-        XSetErrorHandler(xerr);
         if (xrestackwindows_error) {
             STACKING("XRestackWindows() failed, retry later");
             dirtyStacking(false);
@@ -2934,6 +2906,10 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event, bool startup)
         return true;
     }
 
+    if (!startup)
+        // Update our idea about @xserver_stacking.
+        xserver_stacking.event(event);
+
     if (event->type != MapRequest && event->type != ConfigureRequest
         && processX11EventFilters(event, false))
         return true;
@@ -3079,28 +3055,16 @@ QGraphicsScene *MCompositeManagerPrivate::scene()
 
 void MCompositeManagerPrivate::redirectWindows()
 {
-    uint children = 0, i = 0;
-    Window r, p, *kids = 0;
-
     XMapWindow(QX11Info::display(), xoverlay);
-    QDesktopWidget *desk = QApplication::desktop();
 
-    if (!XQueryTree(QX11Info::display(), desk->winId(),
-                    &r, &p, &kids, &children)) {
-        qCritical("XQueryTree failed");
-        return;
-    }
-    int xres = ScreenOfDisplay(QX11Info::display(),
-                               DefaultScreen(QX11Info::display()))->width;
-    int yres = ScreenOfDisplay(QX11Info::display(),
-                               DefaultScreen(QX11Info::display()))->height;
-    for (i = 0; i < children; ++i)  {
-        if (kids[i] == localwin || prop_caches.contains(kids[i]))
+    QRect res = QApplication::desktop()->screenGeometry();
+    foreach (Window win, xserver_stacking.getState()) {
+        if (win == localwin || prop_caches.contains(win))
             continue;
 
         xcb_get_window_attributes_reply_t *attr;
         attr = xcb_get_window_attributes_reply(xcb_conn,
-                     xcb_get_window_attributes(xcb_conn, kids[i]), 0);
+                     xcb_get_window_attributes(xcb_conn, win), 0);
         if (!attr || attr->_class == XCB_WINDOW_CLASS_INPUT_ONLY) {
             free(attr);
             continue;
@@ -3108,7 +3072,7 @@ void MCompositeManagerPrivate::redirectWindows()
 
         xcb_get_geometry_reply_t *geom;
         geom = xcb_get_geometry_reply(xcb_conn,
-                                xcb_get_geometry(xcb_conn, kids[i]), 0);
+                                xcb_get_geometry(xcb_conn, win), 0);
         if (!geom) {
             free(attr);
             continue;
@@ -3117,8 +3081,8 @@ void MCompositeManagerPrivate::redirectWindows()
         // Pre-create MWindowPropertyCache for likely application windows
         MWindowPropertyCache *p = NULL;
         if (attr->map_state == XCB_MAP_STATE_VIEWABLE
-            || (geom->width == xres && geom->height == yres))
-            p = getPropertyCache(kids[i], attr, geom);
+            || (geom->width == res.width() && geom->height == res.height()))
+            p = getPropertyCache(win, attr, geom);
         if (!p) {
             free(geom);
             free(attr);
@@ -3137,17 +3101,15 @@ void MCompositeManagerPrivate::redirectWindows()
             memset(&e, 0, sizeof(e));
             e.type = MapNotify;
             e.event = RootWindow(QX11Info::display(), 0);
-            e.window = kids[i];
+            e.window = win;
             x11EventFilter((XEvent*)&e, true);
-            MCompositeWindow *w = COMPOSITE_WINDOW(kids[1]);
+            MCompositeWindow *w = COMPOSITE_WINDOW(win);
             if (w) {
                 w->setNewlyMapped(false);
                 w->setVisible(true);
             }
         }
     }
-    if (kids)
-        XFree(kids);
 
     // Wait for the MapNotify for the overlay (show() of the graphicsview
     // in main() causes it even if we don't map it explicitly)
@@ -4410,6 +4372,7 @@ void MCompositeManager::prepareEvents()
         ::exit(0);
     }
 
+    d->xserver_stacking.syncState();
     d->watch->prepareRoot();
     d->prepare();
 }
