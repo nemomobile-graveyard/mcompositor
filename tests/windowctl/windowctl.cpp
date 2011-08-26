@@ -6,6 +6,7 @@
  * */
 
 #include <QtCore>
+#include <QImage>
 #include <iostream>
 
 #include <X11/Xlib.h>
@@ -444,13 +445,17 @@ static void print_usage_and_exit(QString& stdOut)
 	 "E - set _MEEGO_STACKING_LAYER of new window / window <XID> to 0-10\n"
 	 "Usage 7: " PROG " J <XID> N\n"
 	 "J - set _MEEGOTOUCH_ALWAYS_MAPPED of window <XID> to N (>= 0)\n"
-	 "Usage 8: " PROG " X <XID> x y w h\n"
+	 "Usage 8: " PROG " X|g <XID> x y w h\n"
          "X - set _MEEGOTOUCH_MSTATUSBAR_GEOMETRY of window <XID> to (x y w h)\n"
+         "g - move and resize <XID> to WxH+X+Y\n"
 	 "Usage 9: " PROG " CM <XID> <ClientMessage type name> <window>\n"
 	 "CM - send a ClientMessage (where window=<window>) to window <XID> "
 	 "(0 assumed that = the root window)\n"
 	 "Usage 10: " PROG " D\n"
 	 "D - print the display resolution\n"
+	 "Other usage:\n"
+	 "-shot <fname> [<XID>] - save a screenshot of XID to <fneme>\n"
+	 "-fill <color> [<XID>] - fill <XID> with <color>\n"
          ;
 }
 
@@ -670,7 +675,7 @@ static pid_t rotate_screen(char *o, QString& stdOut)
 	return -1;
 }
 
-static bool old_main(QStringList& args, QString& stdOut)
+static bool old_main(Display **dpyp, QStringList& args, QString& stdOut)
 {
         Display *dpy;
         Window w = None, track_w = None;
@@ -692,7 +697,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 	  return false;
 	}
 
-        if (!(dpy = XOpenDisplay(NULL))) {
+        if (!(dpy = *dpyp = XOpenDisplay(NULL))) {
 	  stdOut = "Can't open X display\n";
 	  return false;
 	}
@@ -922,6 +927,17 @@ static bool old_main(QStringList& args, QString& stdOut)
                                 return true;
                         }
                 }
+		if (*p == 'g') {
+			if (args.count() == 6) {
+                                XMoveResizeWindow(dpy,
+                                                  args[1].toInt(NULL, 16),
+                                                  args[2].toInt(),  // x
+                                                  args[3].toInt(),  // y
+                                                  args[4].toInt(),  // w
+                                                  args[5].toInt()); // h
+                                return true;
+                        }
+                }
 		if (*p == 'C' && *(p + 1) == 'M') {
                     if (args.count() != 4) {
                         print_usage_and_exit(stdOut); return false;
@@ -946,6 +962,68 @@ static bool old_main(QStringList& args, QString& stdOut)
                 }
                 if (*p == 'D') {
                     printf("%u %u\n", WIN_W, WIN_H);
+                    return true;
+                }
+                if (!strcmp(p, "-shot")) {
+                    if (args.count() < 2) {
+                        print_usage_and_exit(stdOut);
+                        return false;
+                    }
+                    Window win = args.count() > 2
+                      ? args[2].toInt(NULL, 16) : DefaultRootWindow(dpy);
+
+                    Window r;
+                    int x, y;
+                    unsigned w, h, b, d;
+                    XGetGeometry(dpy, win, &r, &x, &y, &w, &h, &b, &d);
+
+                    XImage *ximg = XGetImage(dpy, win, x, y, w, h,
+                                             AllPlanes, ZPixmap);
+                    QImage qimg((const uchar *)ximg->data,
+                                ximg->width, ximg->height,
+                                ximg->bytes_per_line, ximg->bits_per_pixel < 32
+                                ? QImage::Format_RGB16 : QImage::Format_ARGB32);
+                    if (!qimg.save(args[1])) {
+                        qCritical("couldn't save image");
+                        return false;
+                    }
+                    XDestroyImage(ximg);
+                    return true;
+                }
+                if (!strcmp(p, "-fill")) {
+                    if (args.count() < 2) {
+                        print_usage_and_exit(stdOut);
+                        return false;
+                    }
+                    Window win = args.count() > 2
+                        ? args[2].toInt(NULL, 16) : DefaultRootWindow(dpy);
+
+                    XWindowAttributes attrs;
+                    if (!XGetWindowAttributes(dpy, win, &attrs)) {
+                        Window r;
+
+                        XGetGeometry(dpy, win, &r,
+                                     &attrs.x, &attrs.y,
+                                     (unsigned *)&attrs.width,
+                                     (unsigned *)&attrs.height,
+                                     (unsigned *)&attrs.border_width,
+                                     (unsigned *)&attrs.depth);
+                        attrs.colormap = DefaultColormap(dpy, 0);
+                    }
+
+                    XColor xcolor;
+                    XParseColor(dpy, attrs.colormap,
+                                args[1].toLatin1().constData(),
+                                &xcolor);
+                    XAllocColor(dpy, attrs.colormap, &xcolor);
+
+                    XGCValues gcvals;
+                    gcvals.foreground = xcolor.pixel;
+
+                    GC gc = XCreateGC(dpy, win, GCForeground, &gcvals);
+                    XFillRectangle(dpy, win, gc, 0, 0,
+                                   attrs.width, attrs.height);
+                    XFreeGC(dpy, gc);
                     return true;
                 }
                 if (*p == 'Z' && args.count() == 2) {
@@ -1259,12 +1337,15 @@ mainloop:
 
 int main(int argc, char *argv[])
 {
+   Display *dpy=0;
    QStringList args;
    QString stdOut;
    int ret;
    for (int i = 1; i < argc; ++i)
         args.append(QString(argv[i]));
-   ret = old_main(args, stdOut);
+   ret = !old_main(&dpy, args, stdOut);
    std::cout << stdOut.toStdString();
+   if (dpy && waitpid(-1, NULL, WNOHANG) != 0)
+       XCloseDisplay(dpy);
    return ret;
 }
