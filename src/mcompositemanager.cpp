@@ -2232,6 +2232,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
     if (!compositing && item && item->needsCompositing())
         enableCompositing();
 
+    bool new_item = !item;
     // only composite top-level windows
     if (!item && pc->parentWindow() == RootWindow(QX11Info::display(), 0))
         item = bindWindow(win, startup);
@@ -2241,9 +2242,11 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
         if (!pc->isOverrideRedirect() && pc->windowType() != MCompAtoms::DOCK
             && !pc->isDecorator() && !pc->isVirtual())
             updateNetClientList(win, true);
-        // reset item for the case previous animation did not end cleanly
-        item->setUntransformed();
-        item->setPos(pc->realGeometry().x(), pc->realGeometry().y());
+        if (!new_item) {
+            // reset item for the case previous animation did not end cleanly
+            item->setUntransformed();
+            item->setPos(pc->realGeometry().x(), pc->realGeometry().y());
+        }
 #ifdef WINDOW_DEBUG
         if (debug_mode)
             qDebug() << "Composition overhead (existing pixmap):"
@@ -2262,7 +2265,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
                    && (item->isAppWindow() || pc->invokedBy() != None)
                    && !skipStartupAnim(pc)) {
             item->setVisible(false); // keep it invisible until the animation
-            item->setNewlyMapped(true);
             if (!item->showWindow()) {
                 item->setNewlyMapped(false);
                 item->setVisible(true);
