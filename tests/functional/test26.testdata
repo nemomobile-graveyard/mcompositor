@@ -1,0 +1,10 @@
+CaseName="painting_of_small_windows"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Verify that windows smaller than the screen are painted.
+
+- Test steps
+	- create a window 1/15 times the size of the screen
+        - move it around systematically by 1/10 of the screen
+        - take a screenshot and verify that it is different in each step
+        - do it until the window has traversed the entire screen\n"

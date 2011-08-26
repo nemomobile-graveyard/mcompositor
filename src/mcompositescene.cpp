@@ -127,8 +127,8 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         // area that exposed the lower window and causes an ugly flicker.
         // r reflects the applied transformation and position of the window
         QRegion shape = cw->propertyCache()->shapeRegion();
-        shape.translate(cw->propertyCache()->realGeometry().x(),
-                        cw->propertyCache()->realGeometry().y());
+        shape.translate(-cw->propertyCache()->realGeometry().x(),
+                        -cw->propertyCache()->realGeometry().y());
         QRegion r = cw->sceneTransform().map(shape);
 
         // transitioning window can be smaller than shapeRegion(), so paint

@@ -28,9 +28,9 @@ fi
 
 # Iterate the testcases and build up xml block for each of them.
 testcases="";
-for testdatafile;
+for casefile;
 do
-	casefile="${testdatafile%.testdata}.py";
+	testdatafile="${casefile%.*}.testdata";
 	CaseInsignificant="";
 	CaseName="";
 	CaseDescription="";
