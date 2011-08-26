@@ -26,6 +26,7 @@ private slots:
     void testExternalAnimHandler();
 
 private:
+    void addWindow(MWindowPropertyCache *pc);
     MCompositeManager *cmgr;
 };
 

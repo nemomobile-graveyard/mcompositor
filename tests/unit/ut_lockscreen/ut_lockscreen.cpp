@@ -84,6 +84,7 @@ void ut_Lockscreen::initTestCase()
     cmgr->d->prepare();
     cmgr->d->stacking_list.clear();
     cmgr->d->prop_caches.clear();
+    cmgr->d->xserver_stacking.init();
 
     // create an altered MDeviceState
     device_state = new fake_device_state();
@@ -94,6 +95,7 @@ void ut_Lockscreen::initTestCase()
     // create a fake desktop window
     fake_desktop_window *pc = new fake_desktop_window(1000);
     cmgr->d->prop_caches[1000] = pc;
+    cmgr->d->xserver_stacking.windowCreated(pc->winId());
     XMapEvent e;
     memset(&e, 0, sizeof(e));
     e.window = 1000;
@@ -108,6 +110,7 @@ void ut_Lockscreen::initTestCase()
     lockscreen->wm_name = "Screen Lock";
     lockscreen->meego_layer = 5;
     cmgr->d->prop_caches[lockscreen_win] = lockscreen;
+    cmgr->d->xserver_stacking.windowCreated(lockscreen_win);
 
     QCOMPARE(lockscreen->isLockScreen(), true);
 

@@ -96,6 +96,7 @@ void ut_netClientList::initTestCase()
     cmgr = (MCompositeManager*)qApp;
     cmgr->setSurfaceWindow(0);
     cmgr->d->prepare();
+    cmgr->d->xserver_stacking.init();
     QVector<MWindowPropertyCache *> empty;
     prepareStack(empty);
     cmgr->d->prevNetClientListStacking.empty();
@@ -112,11 +113,13 @@ void ut_netClientList::prepareStack(QVector<MWindowPropertyCache *> &t)
         if (t[i]->windowType() == MCompAtoms::DESKTOP)
             cmgr->d->stack[DESKTOP_LAYER] = t[i]->winId();
     }
+    cmgr->d->xserver_stacking.setState(cmgr->d->stacking_list.toVector());
 }
 
 void ut_netClientList::mapWindow(MWindowPropertyCache *pc)
 {
     cmgr->d->prop_caches[pc->winId()] = pc;
+    cmgr->d->xserver_stacking.windowCreated(pc->winId());
     XMapEvent e;
     memset(&e, 0, sizeof(e));
     e.window = pc->winId();

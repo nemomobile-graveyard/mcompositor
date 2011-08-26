@@ -73,16 +73,23 @@ public:
     xcb_get_window_attributes_reply_t attrs;
 };
 
+void ut_Anim::addWindow(MWindowPropertyCache *pc)
+{
+    cmgr->d->prop_caches[pc->winId()] = pc;
+    cmgr->d->xserver_stacking.windowCreated(pc->winId());
+}
+
 void ut_Anim::initTestCase()
 {
     cmgr = (MCompositeManager*)qApp;
     // initialize MCompositeManager
     cmgr->setSurfaceWindow(0);
     cmgr->d->prepare();
+    cmgr->d->xserver_stacking.init();
 
     // create a fake desktop window
     fake_desktop_window *pc = new fake_desktop_window(1000);
-    cmgr->d->prop_caches[1000] = pc;
+    addWindow(pc);
     XMapEvent e;
     memset(&e, 0, sizeof(e));
     e.window = 1000;
@@ -98,7 +105,7 @@ void ut_Anim::initTestCase()
 void ut_Anim::testDamageTimeout()
 {
     fake_LMT_window *pc = new fake_LMT_window(123, false);
-    cmgr->d->prop_caches[123] = pc;
+    addWindow(pc);
     // create a fake MapNotify event
     XMapEvent e;
     memset(&e, 0, sizeof(e));
@@ -116,7 +123,7 @@ void ut_Anim::testDamageTimeout()
 void ut_Anim::testStartupAnimForFirstTimeMapped()
 {
     fake_LMT_window *pc = new fake_LMT_window(1, false);
-    cmgr->d->prop_caches[1] = pc;
+    addWindow(pc);
     // create a fake MapNotify event
     XMapEvent e;
     memset(&e, 0, sizeof(e));
@@ -158,7 +165,7 @@ void ut_Anim::testOpenChainingAnimation()
     // portrait
     pc2->setOrientationAngle(270);
 
-    cmgr->d->prop_caches[2000] = pc2;
+    addWindow(pc2);
     // invoked window
     XMapEvent e;
     memset(&e, 0, sizeof(e));
@@ -289,7 +296,7 @@ void ut_Anim::testCloseAnimation()
 void ut_Anim::testStartupAnimForSecondTimeMapped()
 {
     fake_LMT_window *pc = new fake_LMT_window(2, false);
-    cmgr->d->prop_caches[2] = pc;
+    addWindow(pc);
     // create a fake MapNotify event
     XMapEvent me;
     memset(&me, 0, sizeof(me));
@@ -340,7 +347,7 @@ void ut_Anim::testNoAnimations()
 {
     fake_LMT_window *pc = new fake_LMT_window(3, false);
     pc->no_animations = true;
-    cmgr->d->prop_caches[3] = pc;
+    addWindow(pc);
     // create a fake MapNotify event
     XMapEvent e;
     memset(&e, 0, sizeof(e));

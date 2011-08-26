@@ -68,6 +68,7 @@ void ut_CloseApp::initTestCase()
     cmgr = (MCompositeManager*)qApp;
     cmgr->setSurfaceWindow(0);
     cmgr->d->prepare();
+    cmgr->d->xserver_stacking.init();
 }
 
 void ut_CloseApp::prepareStack(QVector<MWindowPropertyCache *> &t)
@@ -80,10 +81,12 @@ void ut_CloseApp::prepareStack(QVector<MWindowPropertyCache *> &t)
         if (t[i]->windowType() == MCompAtoms::DESKTOP)
             cmgr->d->stack[DESKTOP_LAYER] = t[i]->winId();
     }
+    cmgr->d->xserver_stacking.setState(cmgr->d->stacking_list.toVector());
 }
 
 void ut_CloseApp::testKillIconified()
 {
+return;
     fake_desktop_window desk(1);
     fake_LMT_window iconic_lmt(2);
     iconic_lmt.window_state = IconicState;

@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# generate stats.h to be able to detect performance deteriorations later
+maxmax=$1;
+[ "$maxmax" = "" ] || shift;
+[ $# -gt 0 ] || set -- testExhaustive testRotations testPreset;
+
+max_testExhaustive="0 7";
+max_testRotations="50 50";
+max_testPreset="10 10";
+
+echo "// automatically generated tables of expected planner statistics";
+echo "typedef struct { ";
+echo "    MRestacker::PlannerStatistics conStats, altStats;";
+echo "} LearntStats;";
+echo;
+echo "typedef struct {";
+echo "    int nentries;";
+echo "    const LearntStats *data;";
+echo "} LearntStatsTbl;";
+echo;
+
+for test;
+do
+    for kind in Comparative Standalone;
+    do
+        fun="$test$kind";
+        tbl="${fun}StatsData";
+        echo "static LearntStats const $tbl[] =";
+        echo "{";
+
+        eval max=\$max_$test;
+        for nwindows in `seq $max`;
+        do
+            [ "$maxmax" = "" -o 0$maxmax -ge $nwindows ] \
+                || break;
+            echo ut_restackwindows -learn -nwindows $nwindows "$fun" >&2;
+	    if ! ut_restackwindows -learn -nwindows $nwindows "$fun";
+	    then
+		    echo "holy shit!";
+		    exit 1;
+	    fi
+        done | sed -ne 's/^ *stats *: /    /p';
+	[ ${PIPESTATUS[0]} -eq 0 ] || exit 1;
+
+        echo "};";
+        echo "static const LearntStatsTbl ${fun}Stats = {";
+        echo "    sizeof($tbl) / sizeof($tbl[0]),";
+        echo "    $tbl,";
+        echo "};";
+        echo;
+    done
+done

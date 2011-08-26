@@ -66,6 +66,7 @@ void ut_Stacking::initTestCase()
     cmgr = (MCompositeManager*)qApp;
     cmgr->setSurfaceWindow(0);
     cmgr->d->prepare();
+    cmgr->d->xserver_stacking.init();
 }
 
 // Ensure that windows are in the order specified by t.
@@ -91,6 +92,7 @@ void ut_Stacking::prepareStack(QVector<MWindowPropertyCache *> &t)
         if (t[i]->windowType() == MCompAtoms::DESKTOP)
             cmgr->d->stack[DESKTOP_LAYER] = t[i]->winId();
     }
+    cmgr->d->xserver_stacking.setState(cmgr->d->stacking_list.toVector());
 }
 
 void ut_Stacking::testRaisingAndMapping()
@@ -253,6 +255,7 @@ void ut_Stacking::testLotOfUnmapped()
 void ut_Stacking::testBehind()
 {    
     cmgr->d->stacking_list.clear();
+    cmgr->d->xserver_stacking.setState(cmgr->d->stacking_list.toVector());
     
     fake_desktop_window desk(1);
     fake_LMT_window win1(1000);
@@ -263,6 +266,9 @@ void ut_Stacking::testBehind()
     cmgr->d->prop_caches[1000] = &win1;
     cmgr->d->prop_caches[2000] = &win2;
     cmgr->d->prop_caches[3000] = &win3;
+
+    foreach (Window win, cmgr->d->prop_caches.keys())
+        cmgr->d->xserver_stacking.windowCreated(win);
    
     //desktop
     XMapEvent e;
