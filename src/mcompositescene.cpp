@@ -68,13 +68,9 @@ void MCompositeScene::prepareRoot()
     Display *dpy = QX11Info::display();
     Window root =  QX11Info::appRootWindow();
 
-    XSetWindowAttributes sattr;
-    sattr.event_mask =  SubstructureRedirectMask | SubstructureNotifyMask | StructureNotifyMask | PropertyChangeMask;
-
     // All newly mapped windows should be redirected to avoid double Expose
     XCompositeRedirectSubwindows(dpy, root, CompositeRedirectManual);
 
-    XChangeWindowAttributes(dpy, root, CWEventMask, &sattr);
     XSelectInput(dpy, root, SubstructureNotifyMask | SubstructureRedirectMask
                             | StructureNotifyMask | PropertyChangeMask
                             | FocusChangeMask);

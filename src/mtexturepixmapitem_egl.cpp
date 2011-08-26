@@ -162,7 +162,6 @@ MTexturePixmapItem::~MTexturePixmapItem()
 
 void MTexturePixmapItem::cleanup()
 {
-   Drawable pixmap = d->TFP.drawable;
    d->TFP.unbind();
    d->texman->closeTexture(d->TFP.textureId);
 }
