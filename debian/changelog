@@ -1,3 +1,9 @@
+mcompositor (1.1.9-1) unstable; urgency=low
+
+  * Make ut_compositing pass.
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 26 Aug 2011 18:02:31 +0300
+
 mcompositor (1.1.8-1) unstable; urgency=low
 
   * fix regression NB#279547 - landscape status bar appears when deleting
