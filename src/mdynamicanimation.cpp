@@ -277,7 +277,8 @@ void MChainedAnimation::windowShown()
     invokerWindow()->setVisible(true);
     invoker_pos->setTargetObject(invokerWindow());
     
-    bool portrait = targetWindow()->propertyCache()->orientationAngle() % 180;
+    // use invokerWindow() orientation to work around NB#279547's cause
+    bool portrait = invokerWindow()->propertyCache()->orientationAngle() % 180;
     cropper->setPortrait(portrait);
     if (portrait) {
         positionAnimation()->setStartValue(screen.translated(0,-screen.height())
