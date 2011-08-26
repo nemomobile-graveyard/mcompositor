@@ -2238,6 +2238,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
         item = bindWindow(win, startup);
 
     if (item) {
+        item->setPaintedAfterMapping(false); // not painted yet
         item->setIsMapped(true);
         if (!pc->isOverrideRedirect() && pc->windowType() != MCompAtoms::DOCK
             && !pc->isDecorator() && !pc->isVirtual())

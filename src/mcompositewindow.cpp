@@ -281,7 +281,7 @@ bool MCompositeWindow::showWindow()
 
     findBehindWindow();
     beginAnimation();
-    if (newly_mapped && (!animator || !animator->isActive())) {
+    if (!painted_after_mapping && (!animator || !animator->isActive())) {
         waitForPainting();
         setWindowObscured(false);
     } else {
