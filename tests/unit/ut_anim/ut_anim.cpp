@@ -159,6 +159,11 @@ void ut_Anim::testStartupAnimForFirstTimeMapped()
 
 void ut_Anim::testOpenChainingAnimation()
 {
+    fake_LMT_window *pc1 = (fake_LMT_window*)cmgr->d->prop_caches.value(1, 0);
+    QCOMPARE(pc1 != 0, true);
+    // need to set portrait too for NB#279547 workaround
+    pc1->setOrientationAngle(270);
+
     fake_LMT_window *pc2 = new fake_LMT_window(2000, false);
     pc2->setInvokedBy(1);
     // portrait
