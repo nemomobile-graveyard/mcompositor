@@ -305,12 +305,11 @@ void MRestacker::windowConfigured(Window between, Window below)
         return;
     }
 
-    int nwins = state.count();
-    WindowOrder &betweenOrder = state[between];
-    if (nwins < state.count())
-        // @win wasn't in @state.
+    if (!state.contains(between))
+        // @between wasn't in @state.
         qWarning("MRestacker: configuring a non-existing window 0x%lx",
                   between);
+    WindowOrder &betweenOrder = state[between];
 
     OrderedWindowStack::iterator belowOrder;
     if (below && (belowOrder = state.find(below)) == state.end()) {
