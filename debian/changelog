@@ -1,3 +1,9 @@
+mcompositor (1.1.10-1) unstable; urgency=low
+
+  * NB#279547 reopened again -- make a workaround for it
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Mon, 29 Aug 2011 12:12:42 +0300
+
 mcompositor (1.1.9-1) unstable; urgency=low
 
   * Make ut_compositing pass.
