@@ -32,6 +32,7 @@ class MSplashPropertyCache: public MWindowPropertyCache
 public:
     MSplashPropertyCache();
     static MSplashPropertyCache *get();
+    void setOrientationAngle(int angle);
 
 private:
     bool event(QEvent *e);
@@ -56,6 +57,11 @@ MSplashPropertyCache *MSplashPropertyCache::get()
     if (!singleton)
         singleton = new MSplashPropertyCache();
     return singleton;
+}
+
+void MSplashPropertyCache::setOrientationAngle(int angle)
+{
+    orientation_angle = angle;
 }
 
 bool MSplashPropertyCache::event(QEvent *e)
@@ -107,8 +113,7 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid,
         if (!q_pixmap->isNull())
             pixmap = q_pixmap->handle();
 
-        XChangeProperty(dpy, win_id, ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE), XA_CARDINAL, 32,
-                        PropModeReplace, (unsigned char*)&orientation, 1);
+        MSplashPropertyCache::get()->setOrientationAngle(orientation);
     }
 
     if (pixmap) {
