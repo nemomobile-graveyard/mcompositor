@@ -43,6 +43,7 @@ public:
     bool ongoingCall() const { return ongoing_call; }
     bool incomingCall() const { return incoming_call; }
     const QString &screenTopEdge() const { return screen_topedge; }
+    bool isFlat() const { return is_flat; }
     virtual const QString &touchScreenLock() const
     { return touchScreenLockMode; }
 
@@ -51,6 +52,7 @@ signals:
     void callStateChange(bool call_ongoing);
     void displayStateChange(bool display_off);
     void screenTopEdgeChange(const QString &top_edge);
+    void isFlatChange(bool is_flat);
 
 private slots:
 
@@ -61,6 +63,7 @@ private slots:
 #endif
     void callPropChanged();
     void topPropChanged();
+    void flatPropChanged();
 
 private:
 
@@ -68,12 +71,15 @@ private:
     QDBusConnection *systembus_conn;
     QDBusPendingCallWatcher *tsmode_call;
 #endif
-    ContextProperty *call_prop, *top_prop;
+    ContextProperty *call_prop;
+    ContextProperty *top_prop;
+    ContextProperty  *flat_prop;
     bool display_off;
     bool ongoing_call;
     bool incoming_call;
     QString screen_topedge;
     QString touchScreenLockMode;
+    bool is_flat;
 };
 
 #endif

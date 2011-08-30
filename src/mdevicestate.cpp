@@ -86,6 +86,12 @@ void MDeviceState::topPropChanged()
     emit screenTopEdgeChange(screen_topedge);
 }
 
+void MDeviceState::flatPropChanged()
+{
+    is_flat = flat_prop->value().toBool();
+    emit isFlatChange(is_flat);
+}
+
 MDeviceState::MDeviceState(QObject* parent)
     : QObject(parent),
       ongoing_call(false),
@@ -98,6 +104,10 @@ MDeviceState::MDeviceState(QObject* parent)
     connect(call_prop, SIGNAL(valueChanged()), this, SLOT(callPropChanged()));
     top_prop = new ContextProperty("Screen.TopEdge");
     connect(top_prop, SIGNAL(valueChanged()), this, SLOT(topPropChanged()));
+    topPropChanged();
+    flat_prop = new ContextProperty("Position.IsFlat");
+    connect(flat_prop, SIGNAL(valueChanged()), this, SLOT(flatPropChanged()));
+    flatPropChanged();
 
 #ifdef GLES2_VERSION
     touchScreenLockMode = MCE_TK_UNLOCKED;
