@@ -1927,13 +1927,18 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
         set_global_alpha(ga_pc->globalAlpha(), ga_pc->videoGlobalAlpha());
     else
         reset_global_alpha();
-    static bool prev_statusbar_visible = false;
-    if (prev_statusbar_visible != statusbar_visible) {
-        long v = statusbar_visible ? 1 : 0;
+    setStatusbarVisibleProperty(statusbar_visible);
+}
+
+void MCompositeManagerPrivate::setStatusbarVisibleProperty(bool visiblity)
+{
+    static bool statusbar_currently_visible = false;
+    if (statusbar_currently_visible != visiblity) {
+        long v = visiblity ? 1 : 0;
         XChangeProperty(QX11Info::display(), wm_window,
                         ATOM(_MEEGOTOUCH_STATUSBAR_VISIBLE), XA_CARDINAL,
                         32, PropModeReplace, (unsigned char *)&v, 1);
-        prev_statusbar_visible = statusbar_visible;
+        statusbar_currently_visible = visiblity;
     }
 }
 
@@ -3767,6 +3772,9 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
 
 void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
 {
+    // make sure effects use up to date statusbar content
+    setStatusbarVisibleProperty(true);
+
     // redirect from bottom to top
     for (int i = 0; i < stacking_list.size(); ++i) {
         Window w = stacking_list.at(i);
