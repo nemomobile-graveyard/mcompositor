@@ -1,6 +1,13 @@
+mcompositor (1.1.10-2) unstable; urgency=low
+
+  * fix ut_anim to make it pass
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 30 Aug 2011 10:10:45 +0300
+
 mcompositor (1.1.10-1) unstable; urgency=low
 
   * NB#279547 reopened again -- make a workaround for it
+  * Fixes: NB#278315 - Drive UI not responding during voice call
 
  -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Mon, 29 Aug 2011 12:12:42 +0300
 
