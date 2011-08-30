@@ -110,6 +110,7 @@ public:
     void setExposeDesktop(bool exposed);
     void fixZValues();
     void sendSyntheticVisibilityEventsForOurBabies();
+    void setStatusbarVisibleProperty(bool visiblity);
     void checkStacking(bool force_visibility_check,
                        Time timestamp = CurrentTime);
     void checkInputFocus(Time timestamp = CurrentTime);
