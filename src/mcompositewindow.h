@@ -341,6 +341,8 @@ signals:
     void itemRestored(MCompositeWindow *window);
     /*! Emitted just after this window gets iconified  */
     void itemIconified(MCompositeWindow *window);
+    /*! Emitted when the first animation is started */
+    void firstAnimationStarted();
     /*! Emitted when last animation finished (yeah) */
     void lastAnimationFinished(MCompositeWindow *window);
     /*! Emitted when the user wants to close this window */

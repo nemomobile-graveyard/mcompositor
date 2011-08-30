@@ -650,6 +650,8 @@ void MCompositeWindow::beginAnimation()
         return;
 
     if (!is_transitioning) {
+        if (!window_transitioning)
+            emit firstAnimationStarted();
         ++window_transitioning;        
         is_transitioning = true;
     }
