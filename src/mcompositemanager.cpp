@@ -2676,6 +2676,12 @@ void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
     dirtyStacking(window->propertyCache()->opaqueWindow());
 }
 
+void MCompositeManagerPrivate::onFirstAnimationStarted()
+{
+    // make sure animations use up to date statusbar content
+    setStatusbarVisibleProperty(true);
+}
+
 void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
 {
     fixZValues();
@@ -3562,6 +3568,8 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
     if (!item->propertyCache()->isVirtual())
         setWindowDebugProperties(item->window());
 
+    connect(item, SIGNAL(firstAnimationStarted()),
+                SLOT(onFirstAnimationStarted()));
     connect(item, SIGNAL(lastAnimationFinished(MCompositeWindow *)),
                 SLOT(onAnimationsFinished(MCompositeWindow *)));
     if (item->propertyCache() && item->propertyCache()->windowType()
@@ -3772,9 +3780,6 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
 
 void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
 {
-    // make sure effects use up to date statusbar content
-    setStatusbarVisibleProperty(true);
-
     // redirect from bottom to top
     for (int i = 0; i < stacking_list.size(); ++i) {
         Window w = stacking_list.at(i);

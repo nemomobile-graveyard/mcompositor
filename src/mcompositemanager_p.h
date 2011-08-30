@@ -243,6 +243,7 @@ public slots:
     void restoreHandler(MCompositeWindow *window);
     void closeHandler(MCompositeWindow *window);
     
+    void onFirstAnimationStarted();
     void onAnimationsFinished(MCompositeWindow*);
     void exposeSwitcher();
     
