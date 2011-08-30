@@ -735,6 +735,9 @@ void MCompositeManagerPrivate::splashTimeout()
     waiting_damage = 0;
     glwidget->update();
     dirtyStacking(false);
+
+    if (MWindowPropertyCache *pc = prop_caches.value(current_app, 0))
+        orientationProvider.updateCurrentWindowOrienationAngle(pc);
 }
 
 void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
@@ -771,6 +774,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
             emit windowBound(splash);
             splash->showWindow();
             dirtyStacking(false);
+            orientationProvider.updateCurrentWindowOrienationAngle(splash->propertyCache());
         }
         return;
     }
@@ -3668,6 +3672,9 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
         if (deco && w == deco->managedWindow() &&
             (d_item = deco->decoratorItem()))
             d_item->requestZValue(-1);
+
+        if (splash && w == splash->window())
+            splashTimeout();
     }
 
     dirtyStacking(false);
