@@ -22,6 +22,9 @@
 #include "mcompositemanager_p.h"
 #include "mdevicestate.h"
 #include "mcompositewindowanimation.h"
+#include "mcompatoms_p.h"
+
+#include <X11/Xatom.h>
 
 // Non-deletable, static MWindowPropertyCache.
 class MSplashPropertyCache: public MWindowPropertyCache
@@ -84,6 +87,7 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid,
 
     MCompositeManager *m = (MCompositeManager*)qApp;
     if (!pixmap) {
+        int orientation = 270;
         if (!splash_l.size())
             landscape_file = splash_p;
         // TODO: default path for relative file names
@@ -93,6 +97,8 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid,
             q_pixmap = new QPixmap(landscape_file);
             if (q_pixmap->isNull())
                 qWarning() << __func__ << "couldn't load" << landscape_file;
+            if (portrait_file != landscape_file)
+                orientation = 0;
         } else {
             q_pixmap = new QPixmap(portrait_file);
             if (q_pixmap->isNull())
@@ -100,6 +106,9 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid,
         }
         if (!q_pixmap->isNull())
             pixmap = q_pixmap->handle();
+
+        XChangeProperty(dpy, win_id, ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE), XA_CARDINAL, 32,
+                        PropModeReplace, (unsigned char*)&orientation, 1);
     }
 
     if (pixmap) {
