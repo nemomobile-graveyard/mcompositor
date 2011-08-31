@@ -1,3 +1,9 @@
+mcompositor (1.1.11-1) unstable; urgency=low
+
+  * Add MDeviceState::isFlat() API for fixing NB#279879
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 31 Aug 2011 14:09:03 +0300
+
 mcompositor (1.1.10-2) unstable; urgency=low
 
   * fix ut_anim to make it pass
