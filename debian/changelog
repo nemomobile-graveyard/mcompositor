@@ -1,8 +1,14 @@
-mcompositor (1.1.11-1~unreleased) unstable; urgency=low
+mcompositor (1.9.9-1~unreleased) unstable; urgency=low
 
-  * meh
+  * staging branch
 
  -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 26 Aug 2011 04:46:07 +0300
+
+mcompositor (1.1.11-1) unstable; urgency=low
+
+  * Add MDeviceState::isFlat() API for fixing NB#279879
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 31 Aug 2011 14:09:03 +0300
 
 mcompositor (1.1.10-2) unstable; urgency=low
 
