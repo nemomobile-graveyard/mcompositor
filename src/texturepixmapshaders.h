@@ -21,10 +21,10 @@
 
 static const char* TexpVertShaderSource = "\
     attribute highp vec4 inputVertex; \
-    attribute lowp  vec2 textureCoord; \
+    attribute mediump vec2 textureCoord; \
     uniform   highp mat4 matProj; \
     uniform   highp mat4 matWorld; \
-    varying   lowp  vec2 fragTexCoord; \
+    varying   mediump vec2 fragTexCoord; \
     void main(void) \
     {\
             gl_Position = (matProj * matWorld) * inputVertex;\
@@ -32,7 +32,7 @@ static const char* TexpVertShaderSource = "\
     }";
 
 static const char* TexpFragShaderSource = "\
-    varying lowp vec2 fragTexCoord;\
+    varying mediump vec2 fragTexCoord;\
     uniform sampler2D texture;\
     uniform lowp float opacity;\n\
     void main(void) \
