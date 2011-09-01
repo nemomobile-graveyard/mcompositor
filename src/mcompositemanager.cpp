@@ -2280,8 +2280,11 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
             item->waitForPainting();
         } else {
             item->setNewlyMapped(false);
-            if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)
-                && item->hasTransitioningWindow()) {
+            if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)) {
+                item->setVisible(false);
+                item->waitForPainting();
+            } else if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)
+                       && item->hasTransitioningWindow()) {
                 // there is an animation, don't show it unpainted on top
                 item->setVisible(false);
                 item->waitForPainting();
