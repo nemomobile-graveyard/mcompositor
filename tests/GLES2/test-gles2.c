@@ -131,13 +131,17 @@ static GLuint create_shader (GLenum type, const char *source)
 #ifdef N900
 #define XA_ERR 36
 #define YA_ERR 54
+#define X_SIGN 1
 #define Y_SIGN 1
+#define SWAP_XY 0
 #define ACC_FILE "/sys/class/i2c-adapter/i2c-3/3-001d/coord"
 #define ACC_DATA_FMT "%d %d"
-#else
-#define XA_ERR 18
-#define YA_ERR 18
+#else  // N9
+#define XA_ERR 54
+#define YA_ERR 36
+#define X_SIGN -1
 #define Y_SIGN -1
+#define SWAP_XY 1
 #define ACC_FILE "/sys/devices/platform/lis3lv02d/position"
 #define ACC_DATA_FMT "(%d,%d,"
 #endif
@@ -152,6 +156,12 @@ static void read_accel (GLfloat *xa, GLfloat *ya)
   }
   if (fscanf(fd, ACC_DATA_FMT, &xi, &yi) != 2) xi = yi = 0;
   yi *= Y_SIGN;
+  xi *= X_SIGN;
+  if (SWAP_XY) {
+      int tmp = yi;
+      yi = xi;
+      xi = tmp;
+  }
   fclose(fd);
   /* correct for error */
   if (xi <= XA_ERR && xi >= -XA_ERR) xi = 0;
