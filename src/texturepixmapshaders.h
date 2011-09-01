@@ -41,7 +41,7 @@ static const char* TexpFragShaderSource = "\
     }";
 
 static const char* TexpCustomShaderSource = "\
-    varying highp vec2 fragTexCoord;\n\
+    varying mediump vec2 fragTexCoord;\n\
     uniform lowp sampler2D texture;\n\
     uniform lowp float opacity;\n\
     void main(void) \n\
