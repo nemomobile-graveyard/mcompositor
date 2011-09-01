@@ -240,6 +240,8 @@ static GLfloat trans_matrix[] = {1, 0, 0, 0,
                                  0, 0, 1, 0,
                                  0, 0, 0, 1};
 
+#include <sys/time.h>
+
 static void draw_frame (EGLDisplay edpy, EGLSurface egl_surface, int frame)
 {
         /*
@@ -251,6 +253,7 @@ static void draw_frame (EGLDisplay edpy, EGLSurface egl_surface, int frame)
   static GLfloat tx = 0, ty = 0; /* cumulative translation */
   static GLfloat vx = 0, vy = 0; /* cumulative velocity */
   static GLfloat prev_tx = 0, prev_ty = 0; /* previous translation */
+  struct timeval tv_old, tv_new, tv_result;
 
   /*GLfloat rad = deg * M_PI / 180.0;*/
   /*
@@ -324,8 +327,13 @@ static void draw_frame (EGLDisplay edpy, EGLSurface egl_surface, int frame)
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 5);
 
+  gettimeofday(&tv_old, NULL);
   eglSwapBuffers(edpy, egl_surface);
+  gettimeofday(&tv_new, NULL);
+  timersub(&tv_new, &tv_old, &tv_result);
+  printf("swapbuffers time: %lu s %lu us\n", tv_result.tv_sec, tv_result.tv_usec);
   first_call = 0;
+
 }
 
 static void reply_ping(Display *dpy, XEvent *xev)
