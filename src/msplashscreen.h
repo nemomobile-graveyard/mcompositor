@@ -45,6 +45,8 @@ public:
     Pixmap windowPixmap() const { return pixmap; }
     QRectF boundingRect() const;
     bool matches(MWindowPropertyCache *pc) const;
+    bool same(unsigned pid, const QString &splash_p,
+              const QString &splash_l, unsigned pixmap) const;
 
     void endAnimation();
     void beginAnimation();
