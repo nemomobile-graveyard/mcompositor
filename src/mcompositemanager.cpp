@@ -1927,7 +1927,12 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
         set_global_alpha(ga_pc->globalAlpha(), ga_pc->videoGlobalAlpha());
     else
         reset_global_alpha();
-    setStatusbarVisibleProperty(statusbar_visible);
+
+    // when there are transitioning windows statusbar visibility
+    //is already true and we do not want to change this
+    if (!MCompositeWindow::hasTransitioningWindow())
+        setStatusbarVisibleProperty(statusbar_visible);
+
 }
 
 void MCompositeManagerPrivate::setStatusbarVisibleProperty(bool visiblity)
