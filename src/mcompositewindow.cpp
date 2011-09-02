@@ -35,6 +35,7 @@
 #include <X11/Xatom.h>
 
 int MCompositeWindow::window_transitioning = 0;
+bool MCompositeWindow::we_want_grab = false;
 
 MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
                                    MWindowPropertyCache *mpc, 
@@ -151,6 +152,7 @@ bool MCompositeWindow::iconify()
     if (animator) {
         animator->windowIconified();
         window_status = Normal;
+        updateServerGrab();
         return true;
     }
     return false;
@@ -240,6 +242,7 @@ void MCompositeWindow::restore()
     if (animator && !static_cast<MCompositeManager *>(qApp)->splashed(this)) {
         window_status = Restoring;
         animator->windowRestored();
+        updateServerGrab();
     }
 }
 
@@ -377,6 +380,7 @@ void MCompositeWindow::q_fadeIn()
         // at checkStacking 
         setZValue(((MCompositeManager *) qApp)->d->stacking_list.size()+1);
         animator->windowShown();
+        updateServerGrab();
     } else
         endAnimation();
 }
@@ -639,8 +643,10 @@ void MCompositeWindow::beginAnimation()
         return;
 
     if (!is_transitioning) {
-        if (!window_transitioning)
+        if (!window_transitioning) {
             emit firstAnimationStarted();
+            we_want_grab = true;
+        }
         ++window_transitioning;        
         is_transitioning = true;
     }
@@ -651,8 +657,23 @@ void MCompositeWindow::endAnimation()
     if (is_transitioning) {
         is_transitioning = false;
         --window_transitioning;
-        if (!window_transitioning)
+        if (!window_transitioning) {
             emit lastAnimationFinished(this);
+            we_want_grab = false;
+            updateServerGrab();
+        }
+    }
+}
+
+void MCompositeWindow::updateServerGrab()
+{
+    static bool we_have_grab = false;
+    if (!we_want_grab && we_have_grab) {
+        XUngrabServer(QX11Info::display());
+        we_have_grab = false;
+    } else if (we_want_grab && !we_have_grab) {
+        XGrabServer(QX11Info::display());
+        we_have_grab = true;
     }
 }
 

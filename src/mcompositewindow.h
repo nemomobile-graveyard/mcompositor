@@ -274,6 +274,11 @@ public:
     void startCloseTimer();
     void stopCloseTimer();
 
+    /*!
+      * Grab/Ungrab the server as wanted.
+      */
+    static void updateServerGrab();
+
 public slots:
 
     void updateIconGeometry();
@@ -376,6 +381,7 @@ private:
     bool painted_after_mapping;
 
     static int window_transitioning;
+    static bool we_want_grab;
 
     // Main ping timer
     QTimer *t_ping, *t_reappear;
