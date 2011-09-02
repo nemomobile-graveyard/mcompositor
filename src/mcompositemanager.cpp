@@ -749,11 +749,18 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         unsigned pid, pixmap;
         QString lscape, portrait;
 
+        if (device_state->touchScreenLock() == "locked")
+            return; // :-P
         if (MWindowPropertyCache::readSplashProperty(wm_window,
                                                     pid, pixmap,
                                                     lscape, portrait)) {
-            if (splash)
+            if (splash) {
+                // Are we seeing a duplicate PropertyNewValue as a result
+                // of somebody building the property value gradually?
+                if (splash->same(pid, portrait, lscape, pixmap))
+                    return;
                 splashTimeout();
+            }
             splash = new MSplashScreen(pid, portrait, lscape, pixmap);
             if (!splash->windowPixmap()) {
                 // no pixmap and/or failed to load the image file
@@ -2801,6 +2808,8 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
                 watch->keep_black = true;
                 if (!compositing)
                     enableCompositing();
+                else
+                    glwidget->update();
             }
         }
         /* stop pinging to save some battery */

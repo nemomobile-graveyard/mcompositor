@@ -146,6 +146,16 @@ bool MSplashScreen::matches(MWindowPropertyCache *pc) const
     return pc->pid() == pid;
 }
 
+bool MSplashScreen::same(unsigned pid, const QString &splash_p,
+                         const QString &splash_l, unsigned pixmap) const
+{
+    return pid == this->pid
+            && (!pixmap || pixmap == this->pixmap)
+            && (splash_p == portrait_file)
+            && (splash_l.isEmpty() || splash_l == landscape_file);
+}
+
+
 void MSplashScreen::endAnimation()
 {
     if (fade_animation)
