@@ -1,3 +1,10 @@
+mcompositor (1.1.12-1) unstable; urgency=low
+
+  * Fixes: NB#279100 - WidgetsGallery: selecting system dialogs is...
+  * Fixes: NB#280484 - LPM does not work reliably 
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Mon, 05 Sep 2011 15:11:22 +0300
+
 mcompositor (1.1.11-1) unstable; urgency=low
 
   * Add MDeviceState::isFlat() API for fixing NB#279879
