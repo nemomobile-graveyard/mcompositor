@@ -350,6 +350,8 @@ signals:
     void lastAnimationFinished(MCompositeWindow *window);
     /*! Emitted when the user wants to close this window */
     void closeWindowRequest(MCompositeWindow *window);
+    /*! Emitted when a damage event was received */
+    void damageReceived(MCompositeWindow *window);
 
 protected:
 
