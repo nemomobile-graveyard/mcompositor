@@ -303,6 +303,7 @@ void MCompositeWindow::expectResize()
 
 void MCompositeWindow::damageReceived()
 {
+    emit damageReceived(this);
     if (!waiting_for_damage && !resize_expected) {
         // We aren't planning to show the window.
         Q_ASSERT(!damage_timer->isActive());
