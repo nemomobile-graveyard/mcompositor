@@ -1,0 +1,13 @@
+CaseName="restarting_mc"
+CaseRequirement="NONE"
+CaseTimeout="30"
+CaseDescription="Verify that restarting mcompositor does not change window states.
+
+- Test steps
+	- create two windows
+        - iconify the latter one
+	- verify that the desktop is on top and all windows are iconified
+        - restart mc and re-verify
+        - top the firstly created window
+	- verify that the other window is still Iconic
+	- restart mc and verify that nothing has changed\n"

@@ -3522,7 +3522,8 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         setWindowState(window, IconicState);
         item->setZValue(-1);
     } else {
-        setWindowState(window, NormalState);
+        if (!startup || pc->windowState() <= WithdrawnState)
+            setWindowState(window, NormalState);
         item->setZValue(pc->windowType());
     }
 
