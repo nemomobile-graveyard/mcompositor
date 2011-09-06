@@ -100,6 +100,7 @@ class MCallUiAnimation: public MDynamicAnimation
     void windowIconified();
     void setupBehindAnimation();
     void setupCallMode(bool showWindow = true);
+    void resetAnimatedItems();
         
  private slots:
     void endAnimation();
