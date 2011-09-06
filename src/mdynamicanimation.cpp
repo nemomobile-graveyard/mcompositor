@@ -528,6 +528,31 @@ void MCallUiAnimation::tempHideDesktop(MCompositeWindow* behind)
     }
 }
 
+void MCallUiAnimation::resetAnimatedItems()
+{
+    MCompositeManager* m = (MCompositeManager *) qApp;
+    MCompositeWindow* d = MCompositeWindow::compositeWindow(m->desktopWindow());
+    if (d && !d->isVisible())
+        d->setVisible(true);
+
+    MStatusBarTexture::instance()->untrackDamages();
+    if (targetWindow()) {
+        cropper->removeEffect(targetWindow());    
+        // reset default values
+        targetWindow()->setUntransformed();
+        targetWindow()->setPos(
+              targetWindow()->propertyCache()->realGeometry().topLeft());
+    }
+    MCompositeWindow* behind = behindTarget;
+    behindTarget = NULL;
+    if (behind) {
+        cropper->removeEffect(behind);
+        behind->setUntransformed();
+        behind->setPos(behind->propertyCache()->realGeometry().topLeft());
+        behind->setOpacity(1.0);
+    }
+}
+
 void MCallUiAnimation::endAnimation()
 {
     // is MCallUiAnimation disabled and this animation was triggered 
@@ -535,26 +560,9 @@ void MCallUiAnimation::endAnimation()
     if (animationGroup()->animationCount() < activeAnimations().count())
         return;
     
-    MCompositeManager* m = (MCompositeManager *) qApp;
-    MCompositeWindow* d = MCompositeWindow::compositeWindow(m->desktopWindow());
-    if (d && !d->isVisible())
-        d->setVisible(true);
+    resetAnimatedItems();
 
-    if (!targetWindow())
-        return;
-    
-    MStatusBarTexture::instance()->untrackDamages();
-    cropper->removeEffect(targetWindow());    
-    // reset default values
-    targetWindow()->setUntransformed();
-    targetWindow()->setPos(targetWindow()->propertyCache()->realGeometry().topLeft());
-    MCompositeWindow* behind = behindTarget;
-    behindTarget = NULL;
-    if (behind) {
-        cropper->removeEffect(behind);
-        behind->setUntransformed();
-        behind->setPos(behind->propertyCache()->realGeometry().topLeft());
-    }
+    MCompositeManager* m = (MCompositeManager *) qApp;
     // stack the call-ui when finishing the animation 
     switch (targetWindow()->propertyCache()->windowState()) {
     case NormalState:
