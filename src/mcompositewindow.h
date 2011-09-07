@@ -399,6 +399,7 @@ private:
     friend class McParallelAnimation;
     friend class ut_Anim;
     friend class ut_Compositing;
+    friend class ut_splashscreen;
 };
 
 #endif

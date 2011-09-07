@@ -63,6 +63,8 @@ private:
     QTimer timer;
     bool fade_animation;
     Window win_id;
+
+    friend class ut_splashscreen;
 };
 
 #endif

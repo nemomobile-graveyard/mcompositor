@@ -114,6 +114,7 @@ private:
     friend class MCompositeWindowGroup;
     friend class ut_Anim;
     friend class ut_Compositing;
+    friend class ut_splashscreen;
 
 private slots:
     void updateWindowPixmapProxy();

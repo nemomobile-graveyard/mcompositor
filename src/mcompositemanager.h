@@ -249,6 +249,7 @@ private:
     friend class ut_CloseApp;
     friend class ut_Compositing;
     friend class ut_netClientList;
+    friend class ut_splashscreen;
 };
 
 #endif
