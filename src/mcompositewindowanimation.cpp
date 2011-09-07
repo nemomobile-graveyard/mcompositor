@@ -40,7 +40,6 @@
 #include <mcompositemanager.h>
 #include <mcompositemanager_p.h>
 #include <QVector>
-#include <mdynamicanimation.h>
 
 static QAtomicInt animrefcount;
 
@@ -59,14 +58,14 @@ public:
     }
         
 protected:
-    virtual void updateCurrentTime(int currentTime)
+    void updateCurrentTime(int currentTime)
     {        
         MCompositeWindow::update();
         QParallelAnimationGroup::updateCurrentTime(currentTime);
     }
 
-    virtual void updateState(QAbstractAnimation::State newState, 
-                             QAbstractAnimation::State oldState)
+    void updateState(QAbstractAnimation::State newState, 
+                     QAbstractAnimation::State oldState)
     {   
         if (newState == QAbstractAnimation::Running && 
             oldState == QAbstractAnimation::Stopped) {
@@ -90,10 +89,8 @@ protected:
             }
             if (parent->targetWindow2())
                 parent->targetWindow2()->endAnimation();
-            MCallUiAnimation *a;
-            if ((a = dynamic_cast<MCallUiAnimation*>(parent)))
-                // avoid NB#275420
-                a->resetAnimatedItems();
+            // make avoiding NB#275420 possible
+            emit parent->animationStopped(parent);
         } 
         QParallelAnimationGroup::updateState(newState, oldState);
     }
