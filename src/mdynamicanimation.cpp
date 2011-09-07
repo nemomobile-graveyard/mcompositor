@@ -484,6 +484,8 @@ void MCallUiAnimation::windowClosed()
         tempHideDesktop(targetWindow()->behind());
         targetWindow()->behind()->setVisible(true);
     }
+    connect(this, SIGNAL(animationStopped(MCompositeWindowAnimation*)),
+            this, SLOT(resetAnimatedItems()));
     start();
 }
 
@@ -551,6 +553,8 @@ void MCallUiAnimation::resetAnimatedItems()
         behind->setPos(behind->propertyCache()->realGeometry().topLeft());
         behind->setOpacity(1.0);
     }
+    disconnect(this, SIGNAL(animationStopped(MCompositeWindowAnimation*)),
+               this, SLOT(resetAnimatedItems()));
 }
 
 void MCallUiAnimation::endAnimation()

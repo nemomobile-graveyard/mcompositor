@@ -87,6 +87,7 @@ class MCompositeWindowAnimation: public QObject
  signals:
     /* internal signal */
     void q_finalizeState();
+    void animationStopped(MCompositeWindowAnimation*);
 
  public slots:    
     virtual void finalizeState();
