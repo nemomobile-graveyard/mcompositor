@@ -120,6 +120,7 @@ private:
     MCompositeWindow *decorator_item;
     MRmiClient *remote_decorator;
     int top_offset;
+    int sent_orientation;
     bool no_resize, only_statusbar;
     QRect available_rect;
 };

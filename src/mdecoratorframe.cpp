@@ -38,6 +38,7 @@ MDecoratorFrame::MDecoratorFrame(QObject *p)
       client(0),
       decorator_window(0),
       decorator_item(0),
+      sent_orientation(-1),
       no_resize(false)
 {    
     // One instance at a time
@@ -82,9 +83,12 @@ void MDecoratorFrame::sendManagedWindowId(bool show_dialog)
              << pc->orientationAngle()
              << only_statusbar
              << show_dialog;
-    } else
+        sent_orientation = pc->orientationAngle();
+    } else {
         args << unsigned(0) << QRect() << QString() << unsigned(0)
              << false << false;
+        sent_orientation = -1;
+    }
 
     remote_decorator->invoke("MAbstractDecorator", "RemoteSetManagedWinId",
                              args);
@@ -99,8 +103,9 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
     this->only_statusbar = only_statusbar;
 
     if (client == cw) {
-        if (cw && show_dialog)
-            // Time to @show_dialog again.
+        if (cw && (show_dialog ||
+            sent_orientation != (int)cw->propertyCache()->orientationAngle()))
+            // Time to @show_dialog again or orientation changed.
             sendManagedWindowId(show_dialog);
         return;
     }

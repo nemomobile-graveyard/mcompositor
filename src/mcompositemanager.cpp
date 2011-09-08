@@ -797,8 +797,20 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     if (pc->isMapped() && e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE)) {
         if (e->window == desktop_window)
             orientationProvider.updateDesktopOrientationAngle(pc);
-        if (e->window == current_app)
+        if (e->window == current_app) {
             orientationProvider.updateCurrentWindowOrienationAngle(pc);
+            // reset managed window to apply the new orientation
+            MDecoratorFrame *deco = MDecoratorFrame::instance();
+            MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
+            if (deco->managedWindow() == e->window && cw) {
+                if (cw->status() == MCompositeWindow::Hung)
+                    deco->setManagedWindow(cw, true);
+                else if (DECORATED_FS_WINDOW(cw->propertyCache()))
+                    deco->setManagedWindow(cw, true, true);
+                else
+                    deco->setManagedWindow(cw);
+            }
+        }
     }
 }
 
