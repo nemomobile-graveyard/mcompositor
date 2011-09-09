@@ -86,7 +86,6 @@ void ut_CloseApp::prepareStack(QVector<MWindowPropertyCache *> &t)
 
 void ut_CloseApp::testKillIconified()
 {
-return;
     fake_desktop_window desk(1);
     fake_LMT_window iconic_lmt(2);
     iconic_lmt.window_state = IconicState;
