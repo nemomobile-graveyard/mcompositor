@@ -2400,10 +2400,12 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
 static bool should_be_pinged(MCompositeWindow *cw)
 {
     MWindowPropertyCache *pc = cw->propertyCache();
-    if (pc->supportedProtocols().indexOf(ATOM(_NET_WM_PING)) != -1
+    if (pc->supportedProtocols().contains(ATOM(_NET_WM_PING))
         && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION)
         && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)
         && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
+        && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT)
+        && !pc->isLockScreen()
         && !pc->isDecorator() && !pc->isOverrideRedirect()
         && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         return true;
@@ -3375,6 +3377,14 @@ static bool compareWindows(Window w_a, Window w_b)
     if (!pc_a || !pc_b)
         SORTING(false, "NO PC");
 
+    // if decorator and another transient are transient for the same
+    // window, decorator (hung dialog) wins
+    if (pc_a->isDecorator() && pc_a->transientFor()
+        && pc_a->transientFor() == pc_b->transientFor())
+        SORTING(false, "TR+DECO");
+    else if (pc_b->isDecorator() && pc_b->transientFor()
+             && pc_b->transientFor() == pc_a->transientFor())
+        SORTING(true, "TR+DECO");
     // Mind decorators.  Lone decorators should go below everything else,
     // otherwise it's sorted above its managed window.
     if (pc_a->isDecorator())
