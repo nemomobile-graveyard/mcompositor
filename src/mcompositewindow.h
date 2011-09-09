@@ -384,6 +384,7 @@ private:
 
     static int window_transitioning;
     static bool we_want_grab;
+    static bool we_have_grab;
 
     // Main ping timer
     QTimer *t_ping, *t_reappear;
@@ -395,6 +396,8 @@ private:
     friend class MCompositeWindowShaderEffect;
     friend class MCompositeWindowAnimation;
     friend class McParallelAnimation;
+    friend class ut_Anim;
+    friend class ut_Compositing;
 };
 
 #endif

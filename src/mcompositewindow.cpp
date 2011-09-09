@@ -36,6 +36,7 @@
 
 int MCompositeWindow::window_transitioning = 0;
 bool MCompositeWindow::we_want_grab = false;
+bool MCompositeWindow::we_have_grab = false;
 
 MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
                                    MWindowPropertyCache *mpc, 
@@ -444,6 +445,7 @@ void MCompositeWindow::closeWindowAnimation()
         }
         animator->windowClosed();
         window_status = Normal;
+        updateServerGrab();
     }
 }
 
@@ -668,7 +670,6 @@ void MCompositeWindow::endAnimation()
 
 void MCompositeWindow::updateServerGrab()
 {
-    static bool we_have_grab = false;
     if (!we_want_grab && we_have_grab) {
         XUngrabServer(QX11Info::display());
         we_have_grab = false;
