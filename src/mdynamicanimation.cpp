@@ -440,6 +440,28 @@ void MCallUiAnimation::windowShown()
     if (!targetWindow())
         return;
 
+    // Finish any ongoing animation to prevent sideffects with the Call-UI animation.
+    // The target window gets temporary marked as unmapped to prevent a closing or minimizing
+    // because of finishing other animations.
+    MWindowPropertyCache *pc = targetWindow()->propertyCache();
+    const bool isMapped = pc->isMapped();
+    pc->setIsMapped(false);
+
+    const QHash<Window, MWindowPropertyCache*>& propCaches = static_cast<MCompositeManager*>(qApp)->propCaches();
+    QHashIterator<Window, MWindowPropertyCache*> it(propCaches);
+    while (it.hasNext()) {
+        it.next();
+        Window winId = it.key();
+        MCompositeWindow *win = MCompositeWindow::compositeWindow(winId);
+        if (win && win->windowAnimator() && win->windowAnimator()->animationGroup()) {
+            QParallelAnimationGroup* animGroup = win->windowAnimator()->animationGroup();
+            if (animGroup && animGroup->state() != QAbstractAnimation::Stopped)
+                animGroup->setCurrentTime(animGroup->duration());
+        }
+    }
+
+    pc->setIsMapped(isMapped);
+
     setEnabled(true);
     setupBehindAnimation();
     setupCallMode();
