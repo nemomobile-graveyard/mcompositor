@@ -655,6 +655,10 @@ MCompositeWindow *MCompositeWindow::compositeWindow(Qt::HANDLE window)
 
 void MCompositeWindow::beginAnimation()
 {
+    if (!in_destructor && type() == MSplashScreen::Type) {
+        ((MSplashScreen*)this)->beginAnimation();
+        return;
+    }
     if (!isMapped() && window_status != Closing)
         return;
 
@@ -670,6 +674,10 @@ void MCompositeWindow::beginAnimation()
 
 void MCompositeWindow::endAnimation()
 {    
+    if (!in_destructor && type() == MSplashScreen::Type) {
+        ((MSplashScreen*)this)->endAnimation();
+        return;
+    }
     if (is_transitioning) {
         is_transitioning = false;
         --window_transitioning;

@@ -279,6 +279,16 @@ public:
       */
     void updateServerGrab();
 
+     /*!
+      * This is called whenever a start of window animation occurs.
+      */
+    void beginAnimation(); 
+    
+    /*!
+      * This is called whenever the window has finished animating.
+      */
+    void endAnimation();
+
 public slots:
 
     void updateIconGeometry();
@@ -306,18 +316,6 @@ public slots:
      * Called to start a reappearance timer for the application hung dialog.
      */
     void startDialogReappearTimer();
-    
-     /*!
-      * This internal slot is called whenever a start of window animation 
-      * occurs. This is an atomic operation. 
-      */
-    virtual void beginAnimation(); 
-    
-    /*!
-      * This internal slot is called whenever the window has finished 
-      * animating its effects
-      */
-    virtual void endAnimation();
 
 private slots:
 
