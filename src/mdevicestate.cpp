@@ -74,6 +74,7 @@ void MDeviceState::callPropChanged()
     } else if (val == "alerting") {
         incoming_call = true;
         ongoing_call = false;
+        emit incomingCall();
     } else {
         ongoing_call = false;
         emit callStateChange(false);

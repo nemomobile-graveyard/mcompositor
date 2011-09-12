@@ -277,7 +277,7 @@ public:
     /*!
       * Grab/Ungrab the server as wanted.
       */
-    static void updateServerGrab();
+    void updateServerGrab();
 
      /*!
       * This is called whenever a start of window animation occurs.
@@ -330,6 +330,7 @@ private slots:
     void q_itemRestored();
     void q_fadeIn();
     void closeTimeout();
+    void incomingCall();
     
 signals:
     /*!
