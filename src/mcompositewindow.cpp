@@ -676,7 +676,21 @@ void MCompositeWindow::updateServerGrab()
     } else if (we_want_grab && !we_have_grab) {
         XGrabServer(QX11Info::display());
         we_have_grab = true;
+        MCompositeManager *m = (MCompositeManager*)qApp;
+        connect(&m->deviceState(), SIGNAL(incomingCall()),
+                this, SLOT(incomingCall()), Qt::UniqueConnection);
     }
+}
+
+void MCompositeWindow::incomingCall()
+{
+    if (we_have_grab) {
+        we_want_grab = false;
+        updateServerGrab();
+    }
+    MCompositeManager *m = (MCompositeManager*)qApp;
+    disconnect(&m->deviceState(), SIGNAL(incomingCall()),
+               this, SLOT(incomingCall()));
 }
 
 bool MCompositeWindow::hasTransitioningWindow()

@@ -277,7 +277,7 @@ public:
     /*!
       * Grab/Ungrab the server as wanted.
       */
-    static void updateServerGrab();
+    void updateServerGrab();
 
 public slots:
 
@@ -332,6 +332,7 @@ private slots:
     void q_itemRestored();
     void q_fadeIn();
     void closeTimeout();
+    void incomingCall();
     
 signals:
     /*!
