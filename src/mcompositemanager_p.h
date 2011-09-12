@@ -50,15 +50,6 @@ class MWindowPropertyCache;
 class MCompositeManagerExtension;
 class MSplashScreen;
 
-enum {
-    INPUT_LAYER = 0,
-    DOCK_LAYER,
-    SYSTEM_LAYER,
-    APPLICATION_LAYER,
-    DESKTOP_LAYER,
-    TOTAL_LAYERS
-};
-
 /*!
  * Internal implementation of MCompositeManager
  */
@@ -151,12 +142,6 @@ public:
 
     QGLWidget *glwidget;
 
-    // @stack:          Tells which window occupy a given static layer.
-    //                  These layers are assigned by window type, and
-    //                  are largely superseded by the Meego layers,
-    //                  which are not in this mapping.  A window's layer
-    //                  affects its stacking, but does not completely
-    //                  determine it.
     // @stacking_list:  The stacking to be effected by checkStacking(),
     //                  ie. how we'll restack the next time around.
     // @netClientList:  Mirrors the root window's _NET_CLIENT_LIST,
@@ -173,7 +158,7 @@ public:
     //                  toplevel windows (every children of the root).
     //                  It is loaded once when we start up, then kept up
     //                  to date as we receive X window events.
-    static Window stack[TOTAL_LAYERS];
+    Window desktop_window;
     QList<Window> stacking_list;
     QVector<Window> netClientList;
     QVector<Window> prevNetClientListStacking;

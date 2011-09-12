@@ -86,7 +86,6 @@
                      X->statusbarGeometry().isEmpty() && \
                      X->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU))
 
-Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
 static KeyCode switcher_key = 0;
 static bool lockscreen_painted = false;
 int MCompositeManager::sighupFd[2];
@@ -470,6 +469,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
       prev_focus(0),
       buttoned_win(0),
       glwidget(0),
+      desktop_window(0),
       compositing(true),
       changed_properties(false),
       orientationProvider(p->configInt("default-desktop-angle")),
@@ -839,7 +839,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
         dirtyStacking(true, e->time);
 
     if (pc->isMapped() && e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE)) {
-        if (e->window == stack[DESKTOP_LAYER])
+        if (e->window == desktop_window)
             orientationProvider.updateDesktopOrientationAngle(pc);
         if (e->window == current_app) {
             orientationProvider.updateCurrentWindowOrienationAngle(pc);
@@ -896,7 +896,7 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
             GTA("ignoring");
             continue;
         }
-        if (w == stack[DESKTOP_LAYER]) {
+        if (w == desktop_window) {
             /* desktop is above all applications */
             GTA("  desktop layer reached");
             return 0;
@@ -948,7 +948,7 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated(int *index)
 {
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);
-        if (w == stack[DESKTOP_LAYER])
+        if (w == desktop_window)
             break;
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         MWindowPropertyCache *pc;
@@ -993,7 +993,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         Window w = stacking_list.at(i);
         if (!(cw = COMPOSITE_WINDOW(w)) || cw->propertyCache()->isInputOnly())
             continue;
-        if (w == stack[DESKTOP_LAYER]) {
+        if (w == desktop_window) {
             top = w;
             win_i = i;
             break;
@@ -1029,7 +1029,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
     // that has XMapWindow() called but we have not yet received the MapNotify
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);
-        if (w == stack[DESKTOP_LAYER]) break;
+        if (w == desktop_window) break;
         MWindowPropertyCache *pc = prop_caches.value(w, 0);
         if (pc && pc->is_valid && pc->beingMapped())
             return false;
@@ -1092,10 +1092,10 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 
 void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 {
-    //if desktop window was unmapped we need apropriate context property to be set to default
-    if (e->window == stack[DESKTOP_LAYER]) {
+    // if desktop window was unmapped we need to set the appropriate context
+    // property to default value
+    if (e->window == desktop_window)
         orientationProvider.updateDesktopOrientationAngle(0);
-        }
 
     if (e->send_event == True || e->event != QX11Info::appRootWindow())
         // handle root's SubstructureNotifys (top-levels) only
@@ -1158,8 +1158,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 #endif
     }
 
-    for (int i = 0; i < TOTAL_LAYERS; ++i)
-        if (stack[i] == e->window) stack[i] = 0;
+    if (e->window == desktop_window)
+        desktop_window = 0;
 
     // Force visibility check because the unmapped window may not have been
     // in the prev_stacked_mapped list of checkStacking(), causing skipping
@@ -1242,7 +1242,7 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
         if (e->value_mask & CWSibling) {
             int above_i = stacking_list.indexOf(e->above);
             if (above_i >= 0) {
-                Window d = stack[DESKTOP_LAYER];
+                Window d = desktop_window;
                 if (d && pc->isMapped() && stacking_list.indexOf(d) > above_i)
                     // mark iconic if it goes under desktop
                     setWindowState(e->window, IconicState);
@@ -1282,7 +1282,7 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
         if (e->value_mask & CWSibling) {
             int above_i = stacking_list.indexOf(e->above);
             if (above_i >= 0) {
-                Window d = stack[DESKTOP_LAYER];
+                Window d = desktop_window;
                 if (d && pc->isMapped() && stacking_list.indexOf(d) >= above_i)
                     // mark iconic if it goes under desktop
                     setWindowState(e->window, IconicState);
@@ -1382,7 +1382,7 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
 
         // redirect home to keep it prepared for animations (if it's redirected
         // just before the animation, it does not always draw in time)
-        MCompositeWindow *d = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
+        MCompositeWindow *d = COMPOSITE_WINDOW(desktop_window);
         if (d && ((MTexturePixmapItem *)d)->isDirectRendered()) {
             ((MTexturePixmapItem *)d)->enableRedirectedRendering();
             setWindowDebugProperties(d->window());
@@ -1510,7 +1510,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     pc->setBeingMapped(true); // don't disable compositing & allow setting state
     const XWMHints &h = pc->getWMHints();
     if (pc->stackedUnmapped()) {
-        Window d = stack[DESKTOP_LAYER];
+        Window d = desktop_window;
         if (d && stacking_list.indexOf(d) > stacking_list.indexOf(e->window))
             setWindowState(e->window, IconicState);
         else
@@ -1682,7 +1682,7 @@ void MCompositeManagerPrivate::pingTopmost()
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
          MCompositeWindow *cw;
          Window w = stacking_list.at(i);
-         if (w == stack[DESKTOP_LAYER]) {
+         if (w == desktop_window) {
              saw_desktop = true;
              continue;
          }
@@ -1708,7 +1708,7 @@ void MCompositeManagerPrivate::setupButtonWindows(Window curr_app)
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
          MCompositeWindow *cw;
          Window w = stacking_list.at(i);
-         if (w == stack[DESKTOP_LAYER])
+         if (w == desktop_window)
              break;
          if (!(cw = COMPOSITE_WINDOW(w)))
              continue;
@@ -1768,7 +1768,7 @@ void MCompositeManagerPrivate::setCurrentApp(MCompositeWindow *cw,
                                              bool restacked)
 {
     static Window prev = (Window)-1;
-    Window w = cw ? cw->window() : stack[DESKTOP_LAYER];
+    Window w = cw ? cw->window() : desktop_window;
     if (prev == w) {
         if (restacked)
             // signal listener may need to restack its window
@@ -1845,7 +1845,7 @@ int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
 
     for (int i = last_i; i >= 0; --i) {
          Window w = stacking_list.at(i);
-         if (w == stack[DESKTOP_LAYER])
+         if (w == desktop_window)
              return i;
          MCompositeWindow *cw = COMPOSITE_WINDOW(w);
          MWindowPropertyCache *pc;
@@ -1883,7 +1883,7 @@ bool MCompositeManagerPrivate::hasTransientVKB(MWindowPropertyCache *pc) const
 void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
 {
     int covering_i = indexOfLastVisibleWindow();
-    Window duihome = stack[DESKTOP_LAYER];
+    Window duihome = desktop_window;
     int last_i = stacking_list.size() - 1;
     bool statusbar_visible = false;
     MWindowPropertyCache *ga_pc = 0;
@@ -1979,7 +1979,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         stacking_timer.stop();
         stacking_timeout_timestamp = CurrentTime;
     }
-    Window duihome = stack[DESKTOP_LAYER];
     int last_i = stacking_list.size() - 1;
     MDecoratorFrame *deco = MDecoratorFrame::instance();
 
@@ -2081,13 +2080,13 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                         XA_WINDOW, 32, PropModeReplace,
                         (unsigned char *)netClientListStacking.constData(),
                         netClientListStacking.size());
-        if (stack[DESKTOP_LAYER]) {
+        if (desktop_window) {
             XPropertyEvent p;
             p.type   = PropertyNotify;
             p.window = RootWindow(QX11Info::display(), 0);
             p.atom   = ATOM(_NET_CLIENT_LIST_STACKING);
             p.state  = PropertyNewValue;
-            XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER],
+            XSendEvent(QX11Info::display(), desktop_window,
                        False, PropertyChangeMask, (XEvent *)&p);
         }
     }
@@ -2109,7 +2108,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         if (!cw || !cw->propertyCache() || !cw->propertyCache()->is_valid
             || cw->propertyCache()->isVirtual())
             continue;
-        if (cw->propertyCache()->winId() == duihome)
+        if (cw->propertyCache()->winId() == desktop_window)
             break;
         Atom type = cw->propertyCache()->windowTypeAtom();
         if (type != ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
@@ -2143,7 +2142,7 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc,
     // Ignore initial_state == IconicState if the client stacked the window
     // somewhere, then only skip if it's below the desktop (which is still
     // not correct but better than nothing).
-    if (!iconic_is_ok && stack[DESKTOP_LAYER] && !pc->stackedUnmapped()) {
+    if (!iconic_is_ok && desktop_window && !pc->stackedUnmapped()) {
         const XWMHints &h = pc->getWMHints();
         if ((h.flags & StateHint) && h.initial_state == IconicState)
             return true;
@@ -2158,7 +2157,7 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc,
         Window w = stacking_list.at(i);
         if (w == pc->winId())
             above = true;
-        if (w && w == stack[DESKTOP_LAYER]) {
+        if (w && w == desktop_window) {
             if (iconic_is_ok)
                 return false;
             // skip the animation if the window is below the desktop,
@@ -2219,7 +2218,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
         c.width = a.width();
         c.height = a.height();
         c.border_width = 0;
-        c.above = stack[DESKTOP_LAYER];
+        c.above = desktop_window;
         c.override_redirect = 0;
         XSendEvent(QX11Info::display(), c.event, True, StructureNotifyMask,
                    (XEvent *)&c);
@@ -2227,14 +2226,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
 #endif // ENABLE_BROKEN_SIMPLEWINDOWFRAME
 
     MCompAtoms::Type wtype = pc->windowType();
-    // simple stacking model legacy code...
-    if (wtype == MCompAtoms::DESKTOP) {
-        stack[DESKTOP_LAYER] = win;
-    } else if (wtype == MCompAtoms::INPUT) {
-        stack[INPUT_LAYER] = win;
-    } else if (wtype == MCompAtoms::DOCK) {
-        stack[DOCK_LAYER] = win;
-    }
+    if (wtype == MCompAtoms::DESKTOP)
+        desktop_window = win;
 
     MCompositeWindow *item = COMPOSITE_WINDOW(win);
     if (!compositing && item && item->needsCompositing())
@@ -2315,7 +2308,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
     const XWMHints &h = pc->getWMHints();
     if (pc->stackedUnmapped()) {
         stacked = true;
-        Window d = stack[DESKTOP_LAYER];
+        Window d = desktop_window;
         if (d && stacking_list.indexOf(d) > stacking_list.indexOf(win))
             setWindowState(win, IconicState);
         else
@@ -2330,7 +2323,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
 
     /* do this after bindWindow() so that the window is in stacking_list */
     if (pc->windowState() != IconicState &&
-        (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win, true))) {
+        (desktop_window != win || !getTopmostApp(0, win, true))) {
         bool activate = true;
         if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)) {
             if (Window transient = pc->transientFor()) {
@@ -2351,7 +2344,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
             STACKING("positionWindow 0x%lx -> bottom", win);
             positionWindow(win, false);
         }
-        if (win == stack[DESKTOP_LAYER]) {
+        if (win == desktop_window) {
             // lower always mapped windows below the desktop
             for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
                  it != windows.end(); ++it) {
@@ -2402,11 +2395,11 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             // Not necessary to animate if not in desktop view or we have a plugin.
             Window raise = event->window;
             bool needComp = false;
-            if (!compositing && raise != stack[DESKTOP_LAYER])
+            if (!compositing && raise != desktop_window)
                 needComp = true;
             // Visibility notification to desktop window. Ensure this is sent
             // before transitions are started but after redirection
-            if (event->window != stack[DESKTOP_LAYER])
+            if (event->window != desktop_window)
                 setExposeDesktop(false);
             if (i && (i->propertyCache()->windowState() == IconicState
                       // if it's not iconic, let the plugin decide
@@ -2421,11 +2414,11 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                     i->restore();
                 }
             }
-        } else if (event->window != stack[DESKTOP_LAYER]) {
+        } else if (event->window != desktop_window) {
             // unless we redirect the desktop we run the risk of using trash
             // in the animation because nothing is drawn there and the buffer
             // contents is undefined
-            MCompositeWindow *d = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
+            MCompositeWindow *d = COMPOSITE_WINDOW(desktop_window);
             if (d && ((MTexturePixmapItem *)d)->isDirectRendered()) {
                 ((MTexturePixmapItem *)d)->enableRedirectedRendering();
                 setWindowDebugProperties(d->window());
@@ -2440,7 +2433,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         else
 #endif // ENABLE_BROKEN_SIMPLEWINDOWFRAME
             setWindowState(event->window, NormalState);
-        if (event->window == stack[DESKTOP_LAYER]) {
+        if (event->window == desktop_window) {
             // Mark normal applications on top of home Iconic to make our
             // qsort() function to work
             iconifyApps();
@@ -2492,7 +2485,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
 
             if (!(i = COMPOSITE_WINDOW(event->window)))
                 return;
-            if (!(d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER])))
+            if (!(d_item = COMPOSITE_WINDOW(desktop_window)))
                 return;
             if (i == d_item)
                 // not funny
@@ -2539,7 +2532,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                         lower_i = wi;
                         continue;
                     }
-                    if (w == stack[DESKTOP_LAYER])
+                    if (w == desktop_window)
                         break;
                     MCompositeWindow *cw = COMPOSITE_WINDOW(w);
                     if (cw && cw->isMapped() && (cw->isAppWindow(true)
@@ -2558,9 +2551,9 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 // exposeSwitcher() can choose 'lower' so that lower_i < 0
                 if (lower_i > 0) {
                     d_item->setZValue(d_zeta);
-                    STACKING_MOVE(stacking_list.indexOf(stack[DESKTOP_LAYER]),
+                    STACKING_MOVE(stacking_list.indexOf(desktop_window),
                                   lower_i - 1);
-                    stacking_list.move(stacking_list.indexOf(stack[DESKTOP_LAYER]),
+                    stacking_list.move(stacking_list.indexOf(desktop_window),
                                        lower_i - 1);
 
                     if (needComp)
@@ -2672,7 +2665,7 @@ void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
     if (!last || !(to_stack = COMPOSITE_WINDOW(last)))
         to_stack = window;
     if (to_stack->propertyCache()->stackedUnmapped()) {
-        Window d = stack[DESKTOP_LAYER];
+        Window d = desktop_window;
         if (d && stacking_list.indexOf(d) >
                  stacking_list.indexOf(to_stack->window()))
             setWindowState(to_stack->window(), IconicState);
@@ -2717,7 +2710,7 @@ void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
 void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
 {
     MCompositeWindow *cw;
-    if (!stack[DESKTOP_LAYER] || !(cw = COMPOSITE_WINDOW(stack[DESKTOP_LAYER])))
+    if (!desktop_window || !(cw = COMPOSITE_WINDOW(desktop_window)))
         return;
     cw->setWindowObscured(!exposed);
 }
@@ -2756,7 +2749,7 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
             STACKING("positionWindow 0x%lx -> bottom", w);
             positionWindow(w, false);
         }
-    } else if (w == stack[DESKTOP_LAYER]) {
+    } else if (w == desktop_window) {
         if (!stacked) {
             STACKING("positionWindow 0x%lx -> top", w);
             positionWindow(w, true);
@@ -3173,13 +3166,12 @@ void MCompositeManagerPrivate::removeWindow(Window w)
         // if something's been removed from any of them.
         dirtyStacking(false);
 
-    for (int i = 0; i < TOTAL_LAYERS; ++i)
-        if (stack[i] == w) stack[i] = 0;
+    if (desktop_window == w) desktop_window = 0;
 }
 
 Window MCompositeManager::desktopWindow() const
 {
-    return d->stack[DESKTOP_LAYER];
+    return d->desktop_window;
 }
 
 bool MCompositeManager::debugMode() const
@@ -3527,7 +3519,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
 
     const XWMHints &h = pc->getWMHints();
     if (pc->stackedUnmapped()) {
-        Window d = stack[DESKTOP_LAYER];
+        Window d = desktop_window;
         if (d && stacking_list.indexOf(d) > stacking_list.indexOf(window))
             setWindowState(window, IconicState);
         else
@@ -3574,7 +3566,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         return item;
     } else if (pc->windowType() == MCompAtoms::DESKTOP) {
         // just in case startup sequence changes
-        stack[DESKTOP_LAYER] = window;
+        desktop_window = window;
         orientationProvider.updateDesktopOrientationAngle(getPropertyCache(window));
         dirtyStacking(false);
         return item;
@@ -3638,13 +3630,13 @@ bool MCompositeManagerPrivate::updateNetClientList(Window w, bool addit)
                     XA_WINDOW, 32, PropModeReplace,
                     (unsigned char *)netClientList.constData(),
                     netClientList.size());
-    if (stack[DESKTOP_LAYER]) {
+    if (desktop_window) {
         XPropertyEvent p;
         p.type   = PropertyNotify;
         p.window = RootWindow(QX11Info::display(), 0);
         p.atom   = ATOM(_NET_CLIENT_LIST);
         p.state  = PropertyNewValue;
-        XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER],
+        XSendEvent(QX11Info::display(), desktop_window,
                    False, PropertyChangeMask, (XEvent *)&p);
     }
 
@@ -3690,7 +3682,7 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
             if (cw)
                 cw->stopCloseTimer();
             setWindowState(w, NormalState);
-            if (w == stack[DESKTOP_LAYER])
+            if (w == desktop_window)
                 // iconify apps for roughSort()
                 iconifyApps();
         }
@@ -3859,7 +3851,7 @@ void MCompositeManagerPrivate::exposeSwitcher()
     MCompositeWindow *i = 0;
     for (int j = stacking_list.size() - 1; j >= 0; --j, i = 0) {
         Window w = stacking_list.at(j);
-        if (w == stack[DESKTOP_LAYER])
+        if (w == desktop_window)
             // no windows to minimize
             return;
         if (!(i = COMPOSITE_WINDOW(w)) || !i->propertyCache() ||
@@ -3985,11 +3977,7 @@ void MCompositeManager::dumpState(const char *heading)
 
     // Top windows per stacking layer.
     qDebug("stacking layers:");
-    qDebug("    input: 0x%lx", d->stack[INPUT_LAYER]);
-    qDebug("     dock: 0x%lx", d->stack[DOCK_LAYER]);
-    qDebug("   system: 0x%lx", d->stack[SYSTEM_LAYER]);
-    qDebug("      app: 0x%lx", d->stack[APPLICATION_LAYER]);
-    qDebug("  desktop: 0x%lx", d->stack[DESKTOP_LAYER]);
+    qDebug("  desktop: 0x%lx", d->desktop_window);
 
     // Stacking order of mapped windows and mapping order of windows.
     qDebug("stacking_list (top->bottom): %s",
