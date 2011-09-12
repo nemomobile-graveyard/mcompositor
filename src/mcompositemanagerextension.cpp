@@ -51,8 +51,7 @@ void MCompositeManagerExtension::dumpState() const
 
 Qt::HANDLE MCompositeManagerExtension::desktopWindow() const
 {    
-    MCompositeManager *p = (MCompositeManager *) qApp;
-    return p->d->stack[DESKTOP_LAYER];
+    return ((MCompositeManager*)qApp)->d->desktop_window;
 }
 
 Qt::HANDLE MCompositeManagerExtension::currentAppWindow()

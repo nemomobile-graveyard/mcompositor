@@ -96,7 +96,7 @@ void ut_Compositing::prepareStack(QVector<MWindowPropertyCache *> &t)
         cmgr->d->stacking_list.append(t[i]->winId());
         cmgr->d->prop_caches[t[i]->winId()] = t[i];
         if (t[i]->windowType() == MCompAtoms::DESKTOP)
-            cmgr->d->stack[DESKTOP_LAYER] = t[i]->winId();
+            cmgr->d->desktop_window = t[i]->winId();
     }
     cmgr->d->xserver_stacking.setState(cmgr->d->stacking_list.toVector());
 }
