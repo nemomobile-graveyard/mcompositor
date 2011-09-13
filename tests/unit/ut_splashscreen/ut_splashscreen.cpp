@@ -87,12 +87,6 @@ public:
     xcb_get_window_attributes_reply_t attrs;
 };
 
-unsigned next_window_id()
-{
-    unsigned id = 0;
-    return ++id;
-}
-
 QList<QPair<pid_t, int> > kill_calls;
 
 extern "C" int kill(pid_t pid, int sig)
@@ -105,17 +99,20 @@ void ut_splashscreen::addWindow(MWindowPropertyCache *pc)
 {
     cmgr->d->prop_caches[pc->winId()] = pc;
     cmgr->d->xserver_stacking.windowCreated(pc->winId());
+    if (!cmgr->d->stacking_list.contains(pc->winId()))
+        cmgr->d->stacking_list.append(pc->winId());
 }
 
 // make sure no animations are running and composition is turned off
 void ut_splashscreen::verifyDisabledComposition ()
 {
-    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
-
     while (qApp->hasPendingEvents()) {
         qApp->processEvents();
         usleep(100);
     }
+
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
+
     QVERIFY(!cmgr->d->compositing);
 }
 
@@ -145,12 +142,29 @@ void ut_splashscreen::initTestCase()
 
 void ut_splashscreen::init()
 {
+    w = 157;
+    pc = new fake_LMT_window(w, false);
+    addWindow(pc);
 }
 
 void ut_splashscreen::cleanup()
 {
+    cmgr->d->splashTimeout();
     cmgr->d->dismissedSplashScreens.clear();
     cmgr->d->lastDestroyedSplash = MCompositeManagerPrivate::DestroyedSplash(0, 0);
+
+    cmgr->d->removeWindow(pc->winId());
+    cmgr->d->xserver_stacking.windowDestroyed(pc->winId());
+    pc->deleteLater();
+
+    MCompositeWindow *cw = cmgr->d->windows.value(pc->winId(), 0);
+    if (cw)
+        cw->deleteLater();
+
+    while (qApp->hasPendingEvents()) {
+        qApp->processEvents();
+        usleep(100);
+    }
 }
 
 void ut_splashscreen::requestSplash(const QString& pid, const QString& wmClass,
@@ -222,11 +236,8 @@ void ut_splashscreen::testFade()
 {
     cmgr->enableCompositing();
     unsigned int pid = 123;
-    Window w = next_window_id();
 
-    fake_LMT_window *pc = new fake_LMT_window(w, false);
     pc->setProcessId(pid);
-    addWindow(pc);
 
     requestSplash(QString::number(pid), "", "", "",
                   QString::number(splashPixmap.handle()));
@@ -270,9 +281,7 @@ void ut_splashscreen::testIconifyInMapRequestEvent()
     cmgr->enableCompositing();
     unsigned int pid = 123;
 
-    fake_LMT_window *pc = new fake_LMT_window(next_window_id(), false);
     pc->setProcessId(pid);
-    addWindow(pc);
 
     QVERIFY(!pc->stackedUnmapped());
     QCOMPARE(pc->windowState(), NormalState);
@@ -307,13 +316,12 @@ void ut_splashscreen::testTimerStartedInMapEvent()
 {
     unsigned int pid = 123;
 
-    fake_LMT_window *pc = new fake_LMT_window(next_window_id(), false);
     pc->setProcessId(pid);
-    addWindow(pc);
 
     MCompositeManagerPrivate::DismissedSplash &ds = cmgr->d->dismissedSplashScreens[pid];
     QVERIFY(!ds.blockTimer.isValid());
 
+    pc->setNoAnimations(1);
     XMapEvent me;
     memset(&me, 0, sizeof(me));
     me.window = pc->winId();
@@ -321,7 +329,6 @@ void ut_splashscreen::testTimerStartedInMapEvent()
     cmgr->d->mapEvent(&me);
 
     QVERIFY(ds.blockTimer.isValid());
-
 }
 
 // fakes a swipe animation which might stack the splash screen to the bottom
@@ -357,11 +364,8 @@ void ut_splashscreen::testSplashDismissalWhenSettingUpCrossFade()
 {
     cmgr->enableCompositing();
     unsigned int pid = 123;
-    Window w = next_window_id();
 
-    fake_LMT_window *pc = new fake_LMT_window(w, false);
     pc->setProcessId(pid);
-    addWindow(pc);
 
     requestSplash(QString::number(pid), "", "", "",
                   QString::number(splashPixmap.handle()));
@@ -406,7 +410,7 @@ void ut_splashscreen::testSplashDismissalWhenSettingUpCrossFade()
     QCOMPARE(sba->state(), QAbstractAnimation::Stopped);
     QCOMPARE(pc->windowState(), IconicState);
 
-    verifyDisabledComposition();
+
 }
 
 // When a splash screen is stacked to the bottom after splashTimeout() has been
@@ -442,11 +446,9 @@ void ut_splashscreen::testStackingSplashBelow()
     QFETCH(bool, timerToBeStarted);
 
     unsigned int pid = 123;
-    Window w = next_window_id();
 
-    fake_LMT_window *pc = new fake_LMT_window(w, windowMapped);
+    pc->setIsMapped(windowMapped);
     pc->setProcessId(pid);
-    addWindow(pc);
 
     requestSplash(QString::number(pid), "", "", "",
                   QString::number(splashPixmap.handle()));
@@ -508,9 +510,6 @@ public:
 // Verify that no animation is triggered in this case.
 void ut_splashscreen::testFadingUnmappedWindow()
 {
-    Window w = next_window_id();
-    fake_LMT_window *pc = new fake_LMT_window(w, false);
-
     MCompositeWindow *cw = new MTexturePixmapItem(w, pc);
     QVERIFY(!cw->isMapped());
 
@@ -526,6 +525,7 @@ void ut_splashscreen::testFadingUnmappedWindow()
     QCOMPARE(an->triggered, MCompositeWindowAnimation::NoAnimation);
 
     verifyDisabledComposition();
+    delete cw;
 }
 
 // A XConfigureRequestEvent to raise a window must not stack an app to the top if
@@ -536,12 +536,22 @@ void ut_splashscreen::testFadingUnmappedWindow()
 void ut_splashscreen::testConfigureWindow()
 {
     cmgr->enableCompositing();
-    Window w = next_window_id();
     unsigned int pid = 123;
 
-    fake_LMT_window *pc = new fake_LMT_window(w, false);
     pc->setProcessId(pid);
-    addWindow(pc);
+
+    pc->setNoAnimations(true);
+    // create a fake MapNotify event
+    XMapEvent me;
+    memset(&me, 0, sizeof(me));
+    me.window = pc->winId();
+    me.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&me);
+    pc->setNoAnimations(false);
+
+    MCompositeWindow *cw = cmgr->d->windows.value(w, 0);
+    QVERIFY(cw);
+
 
     QVERIFY(!cmgr->d->dismissedSplashScreens.contains(pid));
 
@@ -567,6 +577,7 @@ void ut_splashscreen::testConfigureWindow()
 
     // same game but now there is a dismissed splash entry
     cmgr->d->positionWindow(w, false);
+    QCOMPARE(cmgr->d->stacking_list.first(), w);
     // a splash screen has been dismissed
     MCompositeManagerPrivate::DismissedSplash &ds = cmgr->d->dismissedSplashScreens[pid];
     QVERIFY(!ds.blockTimer.isValid());
@@ -607,11 +618,10 @@ void ut_splashscreen::testNetActiveWindowMessage()
     QFETCH(bool, shouldBeStackedToBottom);
     QFETCH(bool, shouldNotBeDismissedAfterwards);
     QFETCH(bool, timerShouldBeRunningAfterwards);
-    Window w = next_window_id();
     unsigned int pid = 123;
     cmgr->enableCompositing();
 
-    fake_LMT_window *pc = new fake_LMT_window(w, true);
+    pc->setIsMapped(true);
     pc->setProcessId(pid);
     // disable animations to make sure stacking is applied immediately
     pc->setNoAnimations(1);
