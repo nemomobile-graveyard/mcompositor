@@ -20,6 +20,8 @@ private slots:
     void testScreenOffAndThenQuicklyOn();
 
 private:
+    void mapWindow(MWindowPropertyCache *pc);
+    void unmapLockscreen();
     MCompositeManager *cmgr;
 };
 

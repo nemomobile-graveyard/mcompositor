@@ -27,9 +27,9 @@ class fake_LMT_window : public MWindowPropertyCache
 {
 public:
     fake_LMT_window(Window w, bool is_mapped = true)
-        : MWindowPropertyCache(None, &attrs)
+        : MWindowPropertyCache(w, &attrs)
     {
-        window = w;
+        cancelAllRequests();
         memset(&attrs, 0, sizeof(attrs));
         setIsMapped(is_mapped);
         setRealGeometry(QRect(0, 0, dwidth, dheight));
@@ -39,6 +39,7 @@ public:
         window_state = NormalState;
         has_alpha = 0;
     }
+    Damage damageObject() const { return damage_object; }
 
     xcb_get_window_attributes_reply_t attrs;
     friend class ut_Lockscreen;
@@ -48,9 +49,9 @@ class fake_desktop_window : public MWindowPropertyCache
 {
 public:
     fake_desktop_window(Window w)
-        : MWindowPropertyCache(None, &attrs)
+        : MWindowPropertyCache(w, &attrs)
     {
-        window = w;
+        cancelAllRequests();
         memset(&attrs, 0, sizeof(attrs));
         setIsMapped(true);
         setRealGeometry(QRect(0, 0, dwidth, dheight));
@@ -77,6 +78,34 @@ static fake_device_state *device_state;
 static fake_LMT_window *lockscreen;
 static Window lockscreen_win = 1;
 
+void ut_Lockscreen::mapWindow(MWindowPropertyCache *pc)
+{
+    if (!cmgr->d->prop_caches.contains(pc->winId()))
+        cmgr->d->xserver_stacking.windowCreated(pc->winId());
+    cmgr->d->prop_caches[pc->winId()] = pc;
+
+    XMapRequestEvent mre;
+    memset(&mre, 0, sizeof(mre));
+    mre.window = pc->winId();
+    mre.parent = QX11Info::appRootWindow();
+    cmgr->d->mapRequestEvent(&mre);
+
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = pc->winId();
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+}
+
+void ut_Lockscreen::unmapLockscreen()
+{
+    XUnmapEvent ue;
+    memset(&ue, 0, sizeof(ue));
+    ue.window = lockscreen_win;
+    ue.event = QX11Info::appRootWindow();
+    cmgr->d->unmapEvent(&ue);
+}
+
 void ut_Lockscreen::initTestCase()
 {
     cmgr = (MCompositeManager*)qApp;
@@ -94,13 +123,7 @@ void ut_Lockscreen::initTestCase()
 
     // create a fake desktop window
     fake_desktop_window *pc = new fake_desktop_window(1000);
-    cmgr->d->prop_caches[1000] = pc;
-    cmgr->d->xserver_stacking.windowCreated(pc->winId());
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = 1000;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(1000, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(cw->isValid(), true);
@@ -114,16 +137,10 @@ void ut_Lockscreen::initTestCase()
 
     QCOMPARE(lockscreen->isLockScreen(), true);
 
-    memset(&e, 0, sizeof(e));
-    e.window = lockscreen_win;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(lockscreen);
+    QCOMPARE(lockscreen->damageObject() != 0, true);
 
-    XUnmapEvent ue;
-    memset(&ue, 0, sizeof(ue));
-    ue.window = lockscreen_win;
-    ue.event = QX11Info::appRootWindow();
-    cmgr->d->unmapEvent(&ue);
+    unmapLockscreen();
 }
 
 void ut_Lockscreen::testScreenOnBeforeLockscreenPaint()
@@ -140,12 +157,12 @@ void ut_Lockscreen::testScreenOnBeforeLockscreenPaint()
     cmgr->d->displayOff(false);
 
     // map lockscreen but don't paint it yet
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = lockscreen_win;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    fake_LMT_window *pc = (fake_LMT_window*)cmgr->d->prop_caches.value(
+                                                          lockscreen_win, 0);
+    mapWindow(pc);
+
     QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(pc->damageObject() != 0, true);
 
     MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
     QCOMPARE(cw != 0, true);
@@ -154,12 +171,10 @@ void ut_Lockscreen::testScreenOnBeforeLockscreenPaint()
     cw->damageReceived();
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
+    QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    QCOMPARE(pc->damageObject() == 0, true);
 
-    XUnmapEvent ue;
-    memset(&ue, 0, sizeof(ue));
-    ue.window = lockscreen_win;
-    ue.event = QX11Info::appRootWindow();
-    cmgr->d->unmapEvent(&ue);
+    unmapLockscreen();
 }
 
 void ut_Lockscreen::testScreenOnAfterLockscreenPaint()
@@ -172,13 +187,12 @@ void ut_Lockscreen::testScreenOnAfterLockscreenPaint()
     QCOMPARE(cmgr->d->compositing, true);
 
     // map and paint lockscreen
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = lockscreen_win;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    fake_LMT_window *pc = (fake_LMT_window*)cmgr->d->prop_caches.value(
+                                                          lockscreen_win, 0);
+    mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
     QCOMPARE(cw != 0, true);
+    QCOMPARE(pc->damageObject() != 0, true);
     cw->damageReceived();
     cw->damageReceived();
 
@@ -190,12 +204,10 @@ void ut_Lockscreen::testScreenOnAfterLockscreenPaint()
     cmgr->d->displayOff(false);
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
+    QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    QCOMPARE(pc->damageObject() == 0, true);
 
-    XUnmapEvent ue;
-    memset(&ue, 0, sizeof(ue));
-    ue.window = lockscreen_win;
-    ue.event = QX11Info::appRootWindow();
-    cmgr->d->unmapEvent(&ue);
+    unmapLockscreen();
 }
 
 void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
@@ -208,13 +220,12 @@ void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
     QCOMPARE(cmgr->d->compositing, true);
 
     // map the lockscreen
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = lockscreen_win;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    fake_LMT_window *pc = (fake_LMT_window*)cmgr->d->prop_caches.value(
+                                                          lockscreen_win, 0);
+    mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
     QCOMPARE(cw != 0, true);
+    QCOMPARE(pc->damageObject() != 0, true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
     QCOMPARE(cmgr->d->compositing, true);
@@ -232,12 +243,10 @@ void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
     cw->damageReceived();
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
+    QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    QCOMPARE(pc->damageObject() == 0, true);
 
-    XUnmapEvent ue;
-    memset(&ue, 0, sizeof(ue));
-    ue.window = lockscreen_win;
-    ue.event = QX11Info::appRootWindow();
-    cmgr->d->unmapEvent(&ue);
+    unmapLockscreen();
 }
 
 void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
@@ -250,13 +259,12 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
     QCOMPARE(cmgr->d->compositing, true);
 
     // map the lockscreen
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = lockscreen_win;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    fake_LMT_window *pc = (fake_LMT_window*)cmgr->d->prop_caches.value(
+                                                          lockscreen_win, 0);
+    mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
     QCOMPARE(cw != 0, true);
+    QCOMPARE(pc->damageObject() != 0, true);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
     QCOMPARE(cmgr->d->compositing, true);
@@ -275,12 +283,10 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
     QTest::qWait(t + 100);
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
+    QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    QCOMPARE(pc->damageObject() == 0, true);
 
-    XUnmapEvent ue;
-    memset(&ue, 0, sizeof(ue));
-    ue.window = lockscreen_win;
-    ue.event = QX11Info::appRootWindow();
-    cmgr->d->unmapEvent(&ue);
+    unmapLockscreen();
 }
 
 void ut_Lockscreen::testScreenOnButLockscreenTimesOut()
@@ -343,13 +349,12 @@ void ut_Lockscreen::testScreenOnAndThenQuicklyOff()
 void ut_Lockscreen::testScreenOffAndThenQuicklyOn()
 {
     // map the lockscreen
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = lockscreen_win;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    fake_LMT_window *pc = (fake_LMT_window*)cmgr->d->prop_caches.value(
+                                                          lockscreen_win, 0);
+    mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
     QCOMPARE(cw != 0, true);
+    QCOMPARE(pc->damageObject() != 0, true);
 
     // display off
     device_state->fake_display_off = true;
@@ -367,29 +372,25 @@ void ut_Lockscreen::testScreenOffAndThenQuicklyOn()
 
     // simulate case where lockscreen is still unmapping
     // because of screen off
-    XUnmapEvent ue;
-    memset(&ue, 0, sizeof(ue));
-    ue.window = lockscreen_win;
-    ue.event = QX11Info::appRootWindow();
-    cmgr->d->unmapEvent(&ue);
+    unmapLockscreen();
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
     QCOMPARE(cmgr->d->compositing, true);
 
     // map the lockscreen
-    memset(&e, 0, sizeof(e));
-    e.window = lockscreen_win;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(pc);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
     QCOMPARE(cmgr->d->compositing, true);
+    QCOMPARE(pc->damageObject() != 0, true);
 
     // paint the lockscreen
     cw->damageReceived();
     cw->damageReceived();
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
+    QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    QCOMPARE(pc->damageObject() == 0, true);
 }
 
 int main(int argc, char* argv[])
