@@ -1,3 +1,9 @@
+mcompositor (1.1.13-1) unstable; urgency=low
+
+  * Fixes: NB#281848 - Compositor swipe should freeze update events
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 13 Sep 2011 10:59:20 +0300
+
 mcompositor (1.1.12-1) unstable; urgency=low
 
   * Fixes: NB#279100 - WidgetsGallery: selecting system dialogs is...
