@@ -83,10 +83,9 @@ public:
     virtual bool event(QEvent *);
 
     /*!
-     * Iconify window with animation. If deferAnimation is set to true
-     * call startTransition() manually. Returns true if signal will come.
+     * Iconify window with animation. Returns true if signal will come.
     */
-    bool iconify(bool deferAnimation = false);
+    bool iconify();
 
     /*!
      * Sets whether or not the window is obscured and generates the
@@ -144,10 +143,9 @@ public:
     bool isNewlyMapped() const { return newly_mapped; }
 
     /*!
-     * Restores window with animation. If deferAnimation is set to true
-     * call startTransition() manually.
+     * Restores window with animation.
     */
-    void restore(bool deferAnimation = false);
+    void restore();
 
     /*!
      * Overrides QGraphicsItem::update() so we have complete control of item

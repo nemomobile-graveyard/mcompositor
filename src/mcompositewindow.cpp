@@ -126,10 +126,9 @@ MCompositeWindow::~MCompositeWindow()
         animator->deleteLater();
 }
 
-/* This is a delayed animation. Actual animation is triggered
- * when startTransition() is called. Returns true if signal will come.
+/* Returns true if signal will come.
  */
-bool MCompositeWindow::iconify(bool defer)
+bool MCompositeWindow::iconify()
 {
     if (damage_timer->isActive()) {
         damage_timer->stop();
@@ -150,10 +149,7 @@ bool MCompositeWindow::iconify(bool defer)
     
     // iconify handler
     if (animator) {
-        if (defer)
-            animator->deferAnimation(MCompositeWindowAnimation::Iconify);
-        else
-            animator->windowIconified();
+        animator->windowIconified();
         window_status = Normal;
         return true;
     }
@@ -233,7 +229,7 @@ void MCompositeWindow::updateIconGeometry()
 }
 
 // TODO: have an option of disabling the animation
-void MCompositeWindow::restore(bool defer)
+void MCompositeWindow::restore()
 {
     if (window_status == Restoring)
         return;
@@ -243,10 +239,7 @@ void MCompositeWindow::restore(bool defer)
      // Restore handler
     if (animator && !static_cast<MCompositeManager *>(qApp)->splashed(this)) {
         window_status = Restoring;
-        if (defer)
-            animator->deferAnimation(MCompositeWindowAnimation::Restore);
-        else
-            animator->windowRestored();
+        animator->windowRestored();
     }
 }
 
@@ -341,7 +334,8 @@ void MCompositeWindow::damageReceived()
     MCompositeWindow *splash;
     splash = m->splashed(this);
     if (splash) {
-        splash->startTransition();
+        setVisible(true);
+        splash->windowAnimator()->crossFadeTo(this);
         newly_mapped = false;
     } else if (isInanimate(false)) {
         newly_mapped = false;
@@ -435,20 +429,15 @@ void MCompositeWindow::closeWindowAnimation()
     window_status = Closing; // animating, do not disturb
 
     MCompositeManager *p = (MCompositeManager *) qApp;
-    bool defer = false;
     setVisible(true);
-    if (!p->isCompositing()) {
-        defer = true;
-    }
     
     // fade-out handler
     if (animator) {
-        if (defer) {
-            animator->deferAnimation(MCompositeWindowAnimation::Closing);
+        if (!p->isCompositing()) {
             p->d->enableCompositing();
             updateWindowPixmap();
-        } else
-            animator->windowClosed();
+        }
+        animator->windowClosed();
         window_status = Normal;
     }
 }

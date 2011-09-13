@@ -321,12 +321,6 @@ void MCompositeWindowAnimation::windowClosed()
     animationGroup()->start();
 }
 
-void MCompositeWindowAnimation::deferAnimation(MCompositeWindowAnimation::AnimationType type)
-{
-    Q_D(MCompositeWindowAnimation);
-    d->pending_animation = type;
-}
-
 void MCompositeWindowAnimation::windowIconified()
 {
     Q_D(MCompositeWindowAnimation);
@@ -377,8 +371,13 @@ void MCompositeWindowAnimation::crossFadeTo(MCompositeWindow *cw)
     d->crossfade->addAnimation(op);
 
     d->target_window2 = cw;
+    d->target_window2->show();
 
     d->crossfade->setDirection(QAbstractAnimation::Forward);
+
+    d->pending_animation = CrossFade;
+    d->crossfade->start();
+    d->pending_animation = NoAnimation;
 }
 
 void MCompositeWindowAnimation::requestStackTop()

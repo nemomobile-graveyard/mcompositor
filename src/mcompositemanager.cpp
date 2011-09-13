@@ -2373,12 +2373,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
             roughSort();
         }
     }
-    if (splash && splash->matches(pc)) {
-        splash->windowAnimator()->crossFadeTo(item);
-        splash->windowAnimator()->deferAnimation(
-                                       MCompositeWindowAnimation::CrossFade);
+    if (splash && splash->matches(pc))
         waiting_damage = item;
-    }
 
     dirtyStacking(false);
 }
@@ -2428,9 +2424,9 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                     STACKING("positionWindow 0x%lx -> top", i->window());
                     positionWindow(i->window(), true);
                 } else {
-                    i->restore(needComp);
                     if (needComp)
                         enableCompositing();
+                    i->restore();
                 }
             }
         } else if (event->window != stack[DESKTOP_LAYER]) {
@@ -2575,14 +2571,11 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                     stacking_list.move(stacking_list.indexOf(stack[DESKTOP_LAYER]),
                                        lower_i - 1);
 
-                    if (!i->iconify(needComp))
-                        // signal will not come, set it iconic now
-                        setWindowState(i->window(), IconicState);
-
                     if (needComp)
                         enableCompositing();
-                    if (i->needDecoration())
-                        i->startTransition();
+                    if (!i->iconify())
+                        // signal will not come, set it iconic now
+                        setWindowState(i->window(), IconicState);
                 } else
                     setWindowState(i->window(), IconicState);
                 i->stopPing();
@@ -3624,11 +3617,6 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
                                                == MCompAtoms::DESKTOP)
         return;
 
-    if (item->type() != MSplashScreen::Type)
-        // Don't let the crossfade transition be triggered by compositoing,
-        // but have the splashed window kick it out explicitly when it's
-        // ready.
-        connect(this, SIGNAL(compositingEnabled()), item, SLOT(startTransition()));
     connect(item, SIGNAL(itemRestored(MCompositeWindow *)), SLOT(restoreHandler(MCompositeWindow *)));
     connect(item, SIGNAL(itemIconified(MCompositeWindow *)), SLOT(lowerHandler(MCompositeWindow *)));
     connect(item, SIGNAL(closeWindowRequest(MCompositeWindow *)),

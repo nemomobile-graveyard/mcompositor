@@ -81,7 +81,6 @@ class MCompositeWindowAnimation: public QObject
                              MAbstractAnimationHandler* handler);
 
     void crossFadeTo(MCompositeWindow *cw);    
-    void deferAnimation(AnimationType type);
     void ensureAnimationVisible();
     
  signals:
