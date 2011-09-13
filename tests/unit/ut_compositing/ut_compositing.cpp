@@ -56,6 +56,7 @@ public:
     void setTransientFor(Window w) { transient_for = w; }
     void addToTransients(Window w) { transients.append(w); }
     void setAlpha(bool b) { has_alpha = b; }
+    Damage damageObject() const { return damage_object; }
 
     xcb_get_window_attributes_reply_t attrs;
 
@@ -81,6 +82,7 @@ public:
         // mark valid to create animation object
         is_valid = true;
     }
+    Damage damageObject() const { return damage_object; }
 
     xcb_get_window_attributes_reply_t attrs;
 };
@@ -113,6 +115,13 @@ void ut_Compositing::mapWindow(MWindowPropertyCache *pc)
     if (!cmgr->d->prop_caches.contains(pc->winId()))
         cmgr->d->xserver_stacking.windowCreated(pc->winId());
     cmgr->d->prop_caches[pc->winId()] = pc;
+
+    XMapRequestEvent mre;
+    memset(&mre, 0, sizeof(mre));
+    mre.window = pc->winId();
+    mre.parent = QX11Info::appRootWindow();
+    cmgr->d->mapRequestEvent(&mre);
+
     XMapEvent e;
     memset(&e, 0, sizeof(e));
     e.window = pc->winId();
@@ -140,6 +149,7 @@ void ut_Compositing::testDesktopMapping()
 
     QCOMPARE(!cmgr->d->stacking_list.isEmpty(), true);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    QCOMPARE(desk->damageObject() == 0, true);
     QCOMPARE(cmgr->d->compositing, false);
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(w->window() == 1, true);
@@ -156,6 +166,7 @@ void ut_Compositing::testAppMapping()
 
     // check that it is not visible after idle handlers
     QTest::qWait(10);
+    QCOMPARE(app->damageObject() != 0, true);
     QCOMPARE(w->isVisible(), false);
     QCOMPARE(w->windowObscured(), false);
 
@@ -171,6 +182,7 @@ void ut_Compositing::testAppMapping()
     }
     QCOMPARE(w->isVisible(), true);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    QCOMPARE(app->damageObject() == 0, true);
     QCOMPARE(cmgr->d->compositing, false);
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), true);
@@ -194,6 +206,10 @@ void ut_Compositing::testAppUnmapping()
         QTest::qWait(500); // wait the animation to finish
     }
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    // currently we have damage object after the window was unmapped since
+    // we could not figure out a good reason why not have it...
+    fake_LMT_window *app = (fake_LMT_window*)cmgr->d->prop_caches.value(2, 0);
+    QCOMPARE(app->damageObject() != 0, true);
     QCOMPARE(cmgr->d->compositing, false);
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(MCompositeWindow::we_have_grab, false);
@@ -203,12 +219,14 @@ void ut_Compositing::testAppUnmapping()
 void ut_Compositing::testAppRemapping()
 {
     MCompositeWindow *w = cmgr->d->windows.value(2, 0);
+    fake_LMT_window *app = (fake_LMT_window*)cmgr->d->prop_caches.value(2, 0);
     QCOMPARE(w != 0, true);
     QCOMPARE(w->isMapped(), false);
     mapWindow(w->propertyCache());
 
     // check that it is not visible after idle handlers
     QTest::qWait(10);
+    QCOMPARE(app->damageObject() != 0, true);
     QCOMPARE(w->isVisible(), false);
     QCOMPARE(w->windowObscured(), false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), false);
@@ -225,6 +243,7 @@ void ut_Compositing::testAppRemapping()
     }
     QCOMPARE(w->isVisible(), true);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    QCOMPARE(app->damageObject() == 0, true);
     QCOMPARE(cmgr->d->compositing, false);
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), true);
@@ -238,6 +257,7 @@ void ut_Compositing::testVkbMappingWhenAppAnimating()
     mapWindow(app);
     MCompositeWindow *w = cmgr->d->windows.value(3, 0);
     QCOMPARE(w != 0, true);
+    QCOMPARE(app->damageObject() != 0, true);
 
     w->damageReceived();
     w->damageReceived();
@@ -245,8 +265,9 @@ void ut_Compositing::testVkbMappingWhenAppAnimating()
     QCOMPARE(w->windowAnimator()->isActive(), true);
 
     MCompositeWindow *v;
+    fake_LMT_window *vkb;
     if (w->windowAnimator()->isActive()) {
-        fake_LMT_window *vkb = new fake_LMT_window(VKB_1);
+        vkb = new fake_LMT_window(VKB_1);
         vkb->prependType(ATOM(_NET_WM_WINDOW_TYPE_INPUT));
         // VKB mapped during the animation
         vkb->setTransientFor(3);
@@ -259,6 +280,7 @@ void ut_Compositing::testVkbMappingWhenAppAnimating()
         QCOMPARE(v->isVisible(), false);
         QCOMPARE(v->windowObscured(), false);
         QCOMPARE(v->paintedAfterMapping(), false);
+        QCOMPARE(vkb->damageObject() != 0, true);
 
         QCOMPARE(cmgr->d->compositing, true);
         QCOMPARE(cmgr->d->overlay_mapped, true);
@@ -274,6 +296,9 @@ void ut_Compositing::testVkbMappingWhenAppAnimating()
     } else
         QCOMPARE(false, true); // fail: animation did not start
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
+    // FIXME: app has the damage object even though we don't need it
+    QCOMPARE(app->damageObject() != 0, true);
+    QCOMPARE(vkb->damageObject() == 0, true);
     QCOMPARE(cmgr->d->compositing, false);
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(((MTexturePixmapItem*)v)->isDirectRendered(), true);
@@ -320,6 +345,9 @@ void ut_Compositing::testVkbMapping()
     QCOMPARE(w->windowObscured(), false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), false);
     QCOMPARE(MCompositeWindow::we_have_grab, false);
+    // FIXME: app has the damage object even though we don't need it
+    QCOMPARE(app->damageObject() != 0, true);
+    QCOMPARE(vkb->damageObject() == 0, true);
 }
 
 // transparent banner mapping case (depends on the previous test)
@@ -335,6 +363,7 @@ void ut_Compositing::testBannerMapping()
     QCOMPARE(w->isVisible(), true);
     QCOMPARE(w->windowObscured(), false);
     QCOMPARE(w->paintedAfterMapping(), true);
+    QCOMPARE(banner->damageObject() != 0, true);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), false);
     QCOMPARE(cmgr->d->compositing, true);
     QCOMPARE(cmgr->d->overlay_mapped, true);
@@ -346,6 +375,8 @@ void ut_Compositing::testBannerMapping()
     QCOMPARE(vkb->windowObscured(), false);
     QCOMPARE(vkb->paintedAfterMapping(), true);
     QCOMPARE(((MTexturePixmapItem*)vkb)->isDirectRendered(), false);
+    fake_LMT_window *pc = (fake_LMT_window*)cmgr->d->prop_caches.value(VKB_2, 0);
+    QCOMPARE(pc->damageObject() != 0, true);
     // self-compositing VKB requires unobscured and redirected app
     MCompositeWindow *app = cmgr->d->windows.value(4, 0);
     QCOMPARE(app->windowObscured(), false);
@@ -371,6 +402,8 @@ void ut_Compositing::testBannerUnmapping()
     QCOMPARE(vkb->windowObscured(), false);
     QCOMPARE(vkb->paintedAfterMapping(), true);
     QCOMPARE(((MTexturePixmapItem*)vkb)->isDirectRendered(), true);
+    fake_LMT_window *pc = (fake_LMT_window*)cmgr->d->prop_caches.value(VKB_2, 0);
+    QCOMPARE(pc->damageObject() == 0, true);
     // self-compositing VKB requires unobscured and redirected app
     MCompositeWindow *app = cmgr->d->windows.value(4, 0);
     QCOMPARE(app->windowObscured(), false);
