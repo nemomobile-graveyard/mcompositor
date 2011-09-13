@@ -5,6 +5,8 @@
 #include <QVector>
 #include "mcompositemanager.h"
 
+class fake_LMT_window;
+
 class ut_splashscreen : public QObject
 {
     Q_OBJECT
@@ -29,6 +31,7 @@ private slots:
     void testCloseHandler();
     void testDismissedSplash();
     void testDestroyedSplash();
+
 private:
     void requestSplash(const QString& pid, const QString& wmClass,
           const QString& pPixmap, const QString& lPixmap,
@@ -38,6 +41,8 @@ private:
     void verifyDisabledComposition();
     MCompositeManager *cmgr;
     QPixmap splashPixmap;
+    fake_LMT_window *pc;
+    Window w;
 };
 
 #endif
