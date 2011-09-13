@@ -730,5 +730,3 @@ int main(int argc, char* argv[])
 
     return QTest::qExec(&anim, argc, argv);
 }
-
-#include "moc_ut_splashscreen.cpp"
