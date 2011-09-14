@@ -97,8 +97,15 @@ public:
      */
     const QList<Window>& transientWindows() const { return transients; }
 
-    // used to set the atom list now, for immediate effect in e.g. stacking
-    void setNetWmState(const QList<Atom>& s);
+    // If @state is not in _NET_WM_STATE yet, addToNetWmState() adds it
+    // and returns true, otherwise just returns false.  Similarly,
+    // removeFromNetWmState() only updates the property if necessary,
+    // and returns whether it did.  forceSkippingTaskbar() is meant
+    // to set _NET_WM_STATE_SKIP_TASKBAR temporarily, remember the
+    // previous state, and restore it when the enforcement ends.
+    bool addToNetWmState(Atom state);
+    bool removeFromNetWmState(Atom state);
+    void forceSkippingTaskbar(bool force);
 
     /*!
      * Returns true if this window has received MapRequest but not
@@ -179,7 +186,7 @@ public slots:
     int windowState();
 
     //! Returns list of _NET_WM_STATE of the window.
-    const QList<Atom>& netWmState();
+    const QVector<Atom>& netWmState();
 
     //! Returns list of WM_PROTOCOLS of the window.
     const QList<Atom>& supportedProtocols();
@@ -294,7 +301,10 @@ protected:
     int global_alpha;
     int video_global_alpha;
     bool is_decorator;
-    QList<Atom> net_wm_state;
+    QVector<Atom> net_wm_state;
+    // @force_skipping_taskbar indicates whether forceSkippingTaskbar()
+    // is in effect, and whether @was_skipping_taskbar is to be restored
+    bool force_skipping_taskbar, was_skipping_taskbar;
     // geometry is requested only once in the beginning, after that, we
     // use ConfigureNotifys to update the size through setRealGeometry()
     QRect req_geom, real_geom, expected_geom, statusbar_geom;

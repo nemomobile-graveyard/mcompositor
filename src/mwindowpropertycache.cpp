@@ -1013,7 +1013,7 @@ const QList<Atom>& MWindowPropertyCache::supportedProtocols()
     return wm_protocols;
 }
 
-const QList<Atom> &MWindowPropertyCache::netWmState()
+const QVector<Atom> &MWindowPropertyCache::netWmState()
 {
     QLatin1String me(SLOT(netWmState()));
     if (!is_valid || !requests[me])
@@ -1023,22 +1023,90 @@ const QList<Atom> &MWindowPropertyCache::netWmState()
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, c, 0);
     replyCollected(me);
-    net_wm_state.clear();
-    if (!r)
+    if (!r) {
+        net_wm_state.clear();
         return net_wm_state;
+    }
     int n_atoms = xcb_get_property_value_length(r) / sizeof(Atom);
     Atom* atoms = (Atom*)xcb_get_property_value(r);
+    net_wm_state.resize(n_atoms);
     for (int i = 0; i < n_atoms; ++i)
-        net_wm_state.append(atoms[i]);
+        net_wm_state[i] = atoms[i];
     free(r);
     return net_wm_state;
 }
 
-void MWindowPropertyCache::setNetWmState(const QList<Atom>& s) {
-    if (!is_valid)
-        return;
-    cancelRequest(SLOT(netWmState()));
-    net_wm_state = s;
+bool MWindowPropertyCache::addToNetWmState(Atom state)
+{
+    if (!is_valid || is_virtual)
+        return false;
+
+    if (force_skipping_taskbar
+        && state == ATOM(_NET_WM_STATE_SKIP_TASKBAR))
+        // don't restore @was_skipping_taskbar whatever it was,
+        // @state is the new setting
+        force_skipping_taskbar = false;
+
+    // netWmState() will complete a pending request
+    if (netWmState().contains(state))
+        return false;
+    Q_ASSERT(!requestPending(SLOT(netWmState())));
+
+    net_wm_state.append(state);
+    XChangeProperty(QX11Info::display(), window,
+                    ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
+                    (unsigned char *)net_wm_state.constData(),
+                    net_wm_state.count());
+    return true;
+}
+
+bool MWindowPropertyCache::removeFromNetWmState(Atom state)
+{
+    if (!is_valid || is_virtual)
+        return false;
+
+    if (force_skipping_taskbar
+        && state == ATOM(_NET_WM_STATE_SKIP_TASKBAR))
+        force_skipping_taskbar = false;
+    netWmState(); // update @net_wm_state
+
+    // remove all occurrances of @state from @net_wm_state
+    bool state_changed = false;
+    int i = 0, nstates = net_wm_state.count();
+    while (i < nstates)
+        if (net_wm_state[i] == state) {
+            state_changed = true;
+            net_wm_state.remove(i);
+            nstates--;
+        } else
+            i++;
+    if (!state_changed)
+        // didn't actually remove anything
+        return false;
+
+    Q_ASSERT(!requestPending(SLOT(netWmState())));
+    XChangeProperty(QX11Info::display(), window,
+                    ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
+                    (unsigned char *)net_wm_state.constData(),
+                    net_wm_state.count());
+    return true;
+}
+
+void MWindowPropertyCache::forceSkippingTaskbar(bool force)
+{
+    Atom skipata = ATOM(_NET_WM_STATE_SKIP_TASKBAR);
+    if (force) {
+        if (!force_skipping_taskbar)
+            // !force => force, remember whether it @was_skipping_taskbar
+            was_skipping_taskbar = !addToNetWmState(skipata);
+        else // just reinforce the state
+            addToNetWmState(skipata);
+    } else {
+        if (force_skipping_taskbar && !was_skipping_taskbar)
+            // force => !force, restore the state
+            removeFromNetWmState(skipata);
+    }
+    force_skipping_taskbar = force;
 }
 
 const QRectF &MWindowPropertyCache::iconGeometry()
