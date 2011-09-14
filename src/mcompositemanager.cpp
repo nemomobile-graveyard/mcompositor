@@ -178,45 +178,17 @@ void MCompAtoms::init()
         qFatal("XInternAtoms failed");
 }
 
-static void skiptaskbar_wm_state(int toggle, Window window,
-                                 MWindowPropertyCache *pc)
+static void skiptaskbar_wm_state(int toggle, MWindowPropertyCache *pc)
 {
     Atom skip = ATOM(_NET_WM_STATE_SKIP_TASKBAR);
-    QList<Atom> states(pc->netWmState());
     bool update_root = false;
-    int i = states.indexOf(skip);
 
-    switch (toggle) {
-    case 0: {
-        if (i != -1) {
-            states.removeAll(skip);
-            pc->setNetWmState(states);
-            XChangeProperty(QX11Info::display(), window,
-                            ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                            (unsigned char *) states.toVector().data(),
-                            states.size());
-            update_root = true;
-        }
-    } break;
-    case 1: {
-        if (i == -1) {
-            states.append(skip);
-            pc->setNetWmState(states);
-            XChangeProperty(QX11Info::display(), window,
-                            ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                            (unsigned char *) states.toVector().data(),
-                            states.size());
-            update_root = true;
-        }
-    } break;
-    case 2: {
-        if (i == -1)
-            skiptaskbar_wm_state(1, window, pc);
-        else
-            skiptaskbar_wm_state(0, window, pc);
-    } break;
-    default: break;
-    }
+    if (toggle == 2)
+        toggle = !pc->netWmState().contains(skip);
+    if (toggle == 1)
+        update_root = pc->addToNetWmState(skip);
+    if (toggle == 0)
+        update_root = pc->removeFromNetWmState(skip);
 
     if (update_root) {
         XPropertyEvent p;
@@ -238,20 +210,12 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
 {
     Atom fullscreen = ATOM(_NET_WM_STATE_FULLSCREEN);
     Display *dpy = QX11Info::display();
-    QList<Atom> states(pc->netWmState());
-    int i = states.indexOf(fullscreen);
 
-    switch (toggle) {
-    case 0: /* remove */ {
-        if (i != -1) {
-            states.removeAll(fullscreen);
-            pc->setNetWmState(states);
-            XChangeProperty(dpy, window,
-                            ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                            (unsigned char *) states.toVector().data(),
-                            states.size());
-        }
-
+    if (toggle == 2)
+        toggle = !pc->netWmState().contains(fullscreen);
+    if (toggle == 0) {
+        /* remove */
+        pc->removeFromNetWmState(fullscreen);
         MCompositeWindow *win = MCompositeWindow::compositeWindow(window);
         if (win && priv->needDecoration(win->propertyCache()))
             win->setDecorated(true);
@@ -260,17 +224,10 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             priv->dirtyStacking(false); // reset decorator's managed window
         if (pc->isMapped())
             priv->dirtyStacking(false);
-    } break;
-    case 1: /* add */ {
-        if (i == -1) {
-            states.append(fullscreen);
-            pc->setNetWmState(states);
-            XChangeProperty(dpy, window,
-                            ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                            (unsigned char *) states.toVector().data(),
-                            states.size());
-        }
-
+    }
+    if (toggle == 1) {
+        /* add */
+        pc->addToNetWmState(fullscreen);
         int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
         int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
         XMoveResizeWindow(dpy, window, 0, 0, xres, yres);
@@ -288,14 +245,6 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
         }
         if (pc->isMapped())
             priv->dirtyStacking(false);
-    } break;
-    case 2: /* toggle */ {
-        if (i == -1)
-            fullscreen_wm_state(priv, 1, window, pc);
-        else
-            fullscreen_wm_state(priv, 0, window, pc);
-    } break;
-    default: break;
     }
 }
 
@@ -2519,7 +2468,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     } else if (event->message_type == ATOM(_NET_WM_STATE)) {
         MWindowPropertyCache *pc = getPropertyCache(event->window);
         if (pc && event->data.l[1] == (long)ATOM(_NET_WM_STATE_SKIP_TASKBAR))
-            skiptaskbar_wm_state(event->data.l[0], event->window, pc);
+            skiptaskbar_wm_state(event->data.l[0], pc);
         else if (pc && event->data.l[1] == (long)ATOM(_NET_WM_STATE_FULLSCREEN))
             fullscreen_wm_state(this, event->data.l[0], event->window, pc);
     }
@@ -3913,6 +3862,11 @@ void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
 void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
 {
     MDecoratorFrame *deco = MDecoratorFrame::instance();
+    if (is_hung)
+        // re-add the window to the switcher in case the user
+        // tried to close it by swiping and we made the window
+        // skip the taskbar with the expectation that it would go
+        w->propertyCache()->forceSkippingTaskbar(false);
     if (!mayShowApplicationHungDialog || !deco->decoratorItem())
         return;
     if (!is_hung) {
