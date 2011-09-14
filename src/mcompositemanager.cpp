@@ -1953,8 +1953,9 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
             cw->setWindowObscured(false);
             if (!cw->hasTransitioningWindow() && cw->paintedAfterMapping())
                 cw->setVisible(true);
-            if (!ga_pc && (cw->propertyCache()->globalAlpha() < 255 ||
-                cw->propertyCache()->videoGlobalAlpha() < 255))
+            if (!ga_pc && !cw->isWindowTransitioning() &&
+                (cw->propertyCache()->globalAlpha() < 255 ||
+                 cw->propertyCache()->videoGlobalAlpha() < 255))
                 // select topmost window with global alpha properties
                 ga_pc = cw->propertyCache();
             if (!statusbar_visible &&
@@ -2761,12 +2762,23 @@ void MCompositeManagerPrivate::onFirstAnimationStarted()
 
 void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
 {
+    static QTimer *t = 0;
     fixZValues();
     if (window->propertyCache()->windowTypeAtom() ==
         ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         /* desktop is on top, direct render it */
         possiblyUnredirectTopmostWindow();
-    sendSyntheticVisibilityEventsForOurBabies();
+
+    // call sendSyntheticVisibilityEventsForOurBabies() later so that the
+    // plugin can do window stacking changes first
+    if (!t) {
+        t = new QTimer();
+        t->setInterval(0);
+        t->setSingleShot(true);
+        connect(t, SIGNAL(timeout()),
+                SLOT(sendSyntheticVisibilityEventsForOurBabies()));
+    }
+    t->start();
 }
 
 void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
