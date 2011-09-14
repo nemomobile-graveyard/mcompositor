@@ -2894,7 +2894,11 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
              if (i->windowAnimator() && i->windowAnimator()->isActive())
                  i->windowAnimator()->finish();
              // stop damage tracking while the display is off
-             if (i->propertyCache())
+             if (i->propertyCache() &&
+                 // don't disturb unmapped or waiting-for-damage lockscreen
+                 (!i->propertyCache()->isLockScreen()
+                  || (i->propertyCache()->isMapped()
+                      && i->paintedAfterMapping())))
                  i->propertyCache()->damageTracking(false);
         }
     } else {
