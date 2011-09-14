@@ -682,6 +682,8 @@ void MCompositeWindow::updateServerGrab()
         MCompositeManager *m = (MCompositeManager*)qApp;
         connect(&m->deviceState(), SIGNAL(incomingCall()),
                 this, SLOT(incomingCall()), Qt::UniqueConnection);
+        // reset global alpha
+        m->d->sendSyntheticVisibilityEventsForOurBabies();
     }
 }
 

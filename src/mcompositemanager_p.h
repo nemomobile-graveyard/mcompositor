@@ -109,7 +109,6 @@ public:
     void enableRedirection(bool emit_signal);
     void setExposeDesktop(bool exposed);
     void fixZValues();
-    void sendSyntheticVisibilityEventsForOurBabies();
     void setStatusbarVisibleProperty(bool visiblity);
     void checkStacking(bool force_visibility_check,
                        Time timestamp = CurrentTime);
@@ -205,6 +204,7 @@ signals:
 
 public slots:
 
+    void sendSyntheticVisibilityEventsForOurBabies();
     void gotHungWindow(MCompositeWindow *window, bool is_hung);
     void enableCompositing();
 
