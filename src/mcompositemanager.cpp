@@ -555,7 +555,8 @@ void MCompositeManagerPrivate::prepare()
     xoverlay = XCompositeGetOverlayWindow(QX11Info::display(),
                                           RootWindow(QX11Info::display(), 0));
     overlay_mapped = false; // make sure we try to map it in startup
-    XReparentWindow(QX11Info::display(), localwin, xoverlay, 0, 0);
+    if (localwin)
+        XReparentWindow(QX11Info::display(), localwin, xoverlay, 0, 0);
     localwin_parent = xoverlay;
 
     XDamageQueryExtension(QX11Info::display(), &damage_event, &damage_error);
@@ -3822,7 +3823,7 @@ void MCompositeManagerPrivate::enableCompositing()
 }
 
 void MCompositeManagerPrivate::showOverlayWindow(bool show)
-{
+{   // don't change shapes if we're a unit test
     static bool first_call = true;
     static XRectangle empty = {0, 0, 0, 0},
                       fs = {0, 0,
@@ -3832,29 +3833,33 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
                                 DefaultScreen(QX11Info::display()))->height};
     if (!show && (overlay_mapped || first_call)) {
         scene()->views()[0]->setUpdatesEnabled(false);
-        XShapeCombineRectangles(QX11Info::display(), xoverlay,
-                                ShapeBounding, 0, 0, &empty, 1,
-                                ShapeSet, Unsorted);
-        XShapeCombineRectangles(QX11Info::display(), localwin,
-                                ShapeBounding, 0, 0, &empty, 1,
-                                ShapeSet, Unsorted);
+        if (localwin) { // do we own @xoverlay?
+            XShapeCombineRectangles(QX11Info::display(), xoverlay,
+                                    ShapeBounding, 0, 0, &empty, 1,
+                                    ShapeSet, Unsorted);
+            XShapeCombineRectangles(QX11Info::display(), localwin,
+                                    ShapeBounding, 0, 0, &empty, 1,
+                                    ShapeSet, Unsorted);
+        }
         overlay_mapped = false;
     } else if (show && (!overlay_mapped || first_call)) {
 #ifdef GLES2_VERSION
         enableRedirection();
 #endif
-        XShapeCombineRectangles(QX11Info::display(), xoverlay,
-                                ShapeBounding, 0, 0, &fs, 1,
-                                ShapeSet, Unsorted);
-        XShapeCombineRectangles(QX11Info::display(), localwin,
-                                ShapeBounding, 0, 0, &fs, 1,
-                                ShapeSet, Unsorted);
-        XserverRegion r = XFixesCreateRegion(QX11Info::display(), &empty, 1);
-        XFixesSetWindowShapeRegion(QX11Info::display(), xoverlay,
-                                   ShapeInput, 0, 0, r);
-        XFixesSetWindowShapeRegion(QX11Info::display(), localwin,
-                                   ShapeInput, 0, 0, r);
-        XFixesDestroyRegion(QX11Info::display(), r);
+        if (localwin) {
+            XShapeCombineRectangles(QX11Info::display(), xoverlay,
+                                    ShapeBounding, 0, 0, &fs, 1,
+                                    ShapeSet, Unsorted);
+            XShapeCombineRectangles(QX11Info::display(), localwin,
+                                    ShapeBounding, 0, 0, &fs, 1,
+                                    ShapeSet, Unsorted);
+            XserverRegion r = XFixesCreateRegion(QX11Info::display(), &empty, 1);
+            XFixesSetWindowShapeRegion(QX11Info::display(), xoverlay,
+                                       ShapeInput, 0, 0, r);
+            XFixesSetWindowShapeRegion(QX11Info::display(), localwin,
+                                       ShapeInput, 0, 0, r);
+            XFixesDestroyRegion(QX11Info::display(), r);
+        }
         overlay_mapped = true;
 #ifndef GLES2_VERSION
         enableRedirection();
