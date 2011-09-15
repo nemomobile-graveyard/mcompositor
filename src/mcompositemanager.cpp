@@ -3798,6 +3798,11 @@ const QRect &MCompositeManager::availableRect() const
     return MDecoratorFrame::instance()->availableRect();
 }
 
+void MCompositeManager::playFeedback(const QString &name) const
+{
+    MDecoratorFrame::instance()->playFeedback(name);
+}
+
 const QList<Window> &MCompositeManager::stackingList() const
 {
     return d->stacking_list;

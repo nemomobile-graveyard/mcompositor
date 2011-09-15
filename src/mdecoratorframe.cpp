@@ -135,6 +135,12 @@ void MDecoratorFrame::hideQueryDialog()
                              "RemoteHideQueryDialog");
 }
 
+void MDecoratorFrame::playFeedback(const QString &name)
+{
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemotePlayFeedback", name);
+}
+
 void MDecoratorFrame::setOnlyStatusbar(bool mode)
 {
     only_statusbar = mode;

@@ -36,7 +36,7 @@
 #include <QGLWidget>
 #include <QLabel>
 #include <QWindowStateChangeEvent>
-#include <QSettings>
+#include <MFeedback>
 
 #include "mdecoratorwindow.h"
 
@@ -63,7 +63,7 @@ public:
     {
     }
 
-    virtual void manageEvent(Qt::HANDLE window,
+    void manageEvent(Qt::HANDLE window,
                              const QString &wmname,
                              M::OrientationAngle orient,
                              bool sbonly, bool hung)
@@ -74,23 +74,28 @@ public:
     }
 
 protected:
-    virtual void activateEvent() {
+    void activateEvent() {
     }
 
-    virtual void hideQueryDialog() {
+    void hideQueryDialog() {
         decorwindow->hideQueryDialog();
     }
 
-    virtual void setOnlyStatusbar(bool mode) 
+    void setOnlyStatusbar(bool mode) 
     {
         decorwindow->setOnlyStatusbar(mode);
         decorwindow->setInputRegion();
         setAvailableGeometry(decorwindow->availableClientRect());
     }
+    void playFeedback(const QString &name) {
+        feedback.setName(name);
+        feedback.play();
+    }
 
 private:
 
     MDecoratorWindow *decorwindow;
+    MFeedback feedback;
 };
 
 class MDecoratorAppInterface : public MAbstractAppInterface

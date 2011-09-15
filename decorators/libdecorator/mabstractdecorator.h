@@ -81,6 +81,7 @@ public slots:
     void RemoteActivateWindow();
     void RemoteSetOnlyStatusbar(bool mode);
     void RemoteHideQueryDialog();
+    void RemotePlayFeedback(const QString &name);
 
 protected:
 
@@ -110,6 +111,11 @@ protected:
       * Pure virtual function to hide the "not responding" query dialog.
       */
     virtual void hideQueryDialog() = 0;
+
+     /*!
+      * Pure virtual function to play a named feedback.
+      */
+    virtual void playFeedback(const QString &name) = 0;
 
 private:
     

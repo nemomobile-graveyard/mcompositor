@@ -159,3 +159,8 @@ void MAbstractDecorator::RemoteHideQueryDialog()
 {
     hideQueryDialog();
 }
+
+void MAbstractDecorator::RemotePlayFeedback(const QString &name)
+{
+    playFeedback(name);
+}
