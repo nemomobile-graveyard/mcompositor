@@ -2714,7 +2714,6 @@ void MCompositeManagerPrivate::onFirstAnimationStarted()
 
 void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
 {
-    static QTimer *t = 0;
     fixZValues();
     if (window->propertyCache()->windowTypeAtom() ==
         ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
@@ -2723,14 +2722,8 @@ void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
 
     // call sendSyntheticVisibilityEventsForOurBabies() later so that the
     // plugin can do window stacking changes first
-    if (!t) {
-        t = new QTimer();
-        t->setInterval(0);
-        t->setSingleShot(true);
-        connect(t, SIGNAL(timeout()),
-                SLOT(sendSyntheticVisibilityEventsForOurBabies()));
-    }
-    t->start();
+    QTimer::singleShot(0, this,
+                       SLOT(sendSyntheticVisibilityEventsForOurBabies()));
 }
 
 void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
