@@ -216,6 +216,11 @@ public slots:
      */
     const QRect &availableRect() const;
 
+    /*!
+     * Play a named feedback.
+     */
+    void playFeedback(const QString &name) const;
+
 #ifdef WINDOW_DEBUG
     void remoteControl(int fd);
 #endif

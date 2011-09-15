@@ -86,6 +86,11 @@ public:
     void hideQueryDialog();
 
     /*!
+     * Play a named feedback.
+     */
+    void playFeedback(const QString &name);
+
+    /*!
      * Sets the "only statusbar" mode.
      */
     void setOnlyStatusbar(bool mode);
