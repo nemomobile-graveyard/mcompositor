@@ -1,3 +1,13 @@
+mcompositor (1.1.14-1) unstable; urgency=low
+
+  * Partially fixes NB#245236 - All applications get X events when a fore..
+  * NB#260316 - mdecorator is missing credentials
+  * NB#254641 - mcompositor is missing capabilities
+  * NB#282411 - swiping video application transparent background
+  * Fixes: NB#227751 - Status bar updates are expensive in mcompositor
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 16 Sep 2011 10:58:55 +0300
+
 mcompositor (1.1.13-1) unstable; urgency=low
 
   * Fixes: NB#281848 - Compositor swipe should freeze update events
