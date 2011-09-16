@@ -3676,6 +3676,7 @@ void MCompositeManagerPrivate::iconifyApps()
             && cw->isAppWindow(true))
             setWindowState(cw->window(), IconicState);
     }
+    roughSort(); // sort iconic windows below the desktop
 }
 
 void MCompositeManager::iconifyApps()
