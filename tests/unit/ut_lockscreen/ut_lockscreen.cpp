@@ -40,6 +40,7 @@ public:
         has_alpha = 0;
     }
     Damage damageObject() const { return damage_object; }
+    bool pendingDamage() const { return pending_damage; }
 
     xcb_get_window_attributes_reply_t attrs;
     friend class ut_Lockscreen;
@@ -167,8 +168,8 @@ void ut_Lockscreen::testScreenOnBeforeLockscreenPaint()
     MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
     QCOMPARE(cw != 0, true);
     // paint it now
-    cw->damageReceived();
-    cw->damageReceived();
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
@@ -193,8 +194,8 @@ void ut_Lockscreen::testScreenOnAfterLockscreenPaint()
     MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(pc->damageObject() != 0, true);
-    cw->damageReceived();
-    cw->damageReceived();
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
     QCOMPARE(cmgr->d->compositing, true);
@@ -239,8 +240,8 @@ void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
     QCOMPARE(cmgr->d->compositing, true);
 
     // paint the lockscreen
-    cw->damageReceived();
-    cw->damageReceived();
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
@@ -385,12 +386,54 @@ void ut_Lockscreen::testScreenOffAndThenQuicklyOn()
     QCOMPARE(pc->damageObject() != 0, true);
 
     // paint the lockscreen
-    cw->damageReceived();
-    cw->damageReceived();
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
 
     QCOMPARE(cmgr->d->watch->keep_black, false);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
     QCOMPARE(pc->damageObject() == 0, true);
+}
+
+void ut_Lockscreen::fakeDamageEvent(MCompositeWindow *cw)
+{
+    XDamageNotifyEvent e;
+    memset(&e, 0, sizeof(e));
+    e.drawable = cw->window();
+    cmgr->d->damageEvent(&e);
+}
+
+void ut_Lockscreen::testPaintingDuringScreenOff()
+{
+    unmapLockscreen();
+    // map the lockscreen
+    fake_LMT_window *pc = (fake_LMT_window*)cmgr->d->prop_caches.value(
+                                                          lockscreen_win, 0);
+    mapWindow(pc);
+    MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
+    QCOMPARE(cw != 0, true);
+    QCOMPARE(pc->damageObject() != 0, true);
+
+    // display off
+    device_state->fake_display_off = true;
+    cmgr->d->displayOff(true);
+
+    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
+
+    // test that damage is not handled until the screen is on again
+    fakeDamageEvent(cw);
+    QCOMPARE(pc->pendingDamage(), true);
+
+    // display on
+    device_state->fake_display_off = false;
+    cmgr->d->displayOff(false);
+
+    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QCOMPARE(cmgr->d->compositing, true);
+
+    QCOMPARE(pc->pendingDamage(), true);
+    fakeDamageEvent(cw); // second damage stops the wait
+    QCOMPARE(pc->pendingDamage(), false);
 }
 
 int main(int argc, char* argv[])

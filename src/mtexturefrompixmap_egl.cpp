@@ -73,6 +73,7 @@ EglResourceManager *MTexturePixmapPrivate::eglresource = 0;
 
 MTextureFromPixmap::MTextureFromPixmap()
     : drawable(0),
+      textureId(0),
       d(0),
       valid(false)
 {

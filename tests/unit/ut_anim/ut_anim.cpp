@@ -33,9 +33,9 @@ class fake_LMT_window : public MWindowPropertyCache
 {
 public:
     fake_LMT_window(Window w, bool is_mapped = true)
-        : MWindowPropertyCache(None, &attrs)
+        : MWindowPropertyCache(w, &attrs)
     {
-        window = w;
+        cancelAllRequests();
         memset(&attrs, 0, sizeof(attrs));
         setIsMapped(is_mapped);
         setRealGeometry(QRect(0, 0, dwidth, dheight));
@@ -56,6 +56,7 @@ public:
     {
         orientation_angle = a;
     }
+    bool pendingDamage() { return pending_damage; }
 
     xcb_get_window_attributes_reply_t attrs;
     friend class ut_Anim;
@@ -65,9 +66,9 @@ class fake_desktop_window : public MWindowPropertyCache
 {
 public:
     fake_desktop_window(Window w)
-        : MWindowPropertyCache(None, &attrs)
+        : MWindowPropertyCache(w, &attrs)
     {
-        window = w;
+        cancelAllRequests();
         memset(&attrs, 0, sizeof(attrs));
         setIsMapped(true);
         setRealGeometry(QRect(0, 0, dwidth, dheight));
@@ -76,6 +77,8 @@ public:
         has_alpha = 0;
         is_valid = true;
     }
+    bool pendingDamage() { return pending_damage; }
+    Damage damageObject() { return damage_object; }
 
     xcb_get_window_attributes_reply_t attrs;
 };
@@ -84,6 +87,21 @@ void ut_Anim::addWindow(MWindowPropertyCache *pc)
 {
     cmgr->d->prop_caches[pc->winId()] = pc;
     cmgr->d->xserver_stacking.windowCreated(pc->winId());
+}
+
+void ut_Anim::mapWindow(MWindowPropertyCache *pc)
+{
+    XMapRequestEvent mre;
+    memset(&mre, 0, sizeof(mre));
+    mre.window = pc->winId();
+    mre.parent = QX11Info::appRootWindow();
+    cmgr->d->mapRequestEvent(&mre);
+
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = pc->winId();
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
 }
 
 void ut_Anim::initTestCase()
@@ -97,14 +115,12 @@ void ut_Anim::initTestCase()
     // create a fake desktop window
     fake_desktop_window *pc = new fake_desktop_window(1000);
     addWindow(pc);
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = 1000;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(1000, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(cw->isValid(), true);
+    QCOMPARE(cw->propertyCache()->windowType(), MCompAtoms::DESKTOP);
+    QCOMPARE(cmgr->d->desktop_window == cw->window(), true);
 }
 
 // check that window that does not paint itself will be made visible
@@ -114,11 +130,7 @@ void ut_Anim::testDamageTimeout()
     fake_LMT_window *pc = new fake_LMT_window(123, false);
     addWindow(pc);
     // create a fake MapNotify event
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = 123;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(123, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(cw->isVisible(), false);
@@ -127,24 +139,29 @@ void ut_Anim::testDamageTimeout()
     QCOMPARE(MCompositeWindow::we_have_grab, false);
 }
 
+void ut_Anim::fakeDamageEvent(MCompositeWindow *cw)
+{
+    XDamageNotifyEvent e;
+    memset(&e, 0, sizeof(e));
+    e.drawable = cw->window();
+    cmgr->d->damageEvent(&e);
+}
+
 void ut_Anim::testStartupAnimForFirstTimeMapped()
 {
     fake_LMT_window *pc = new fake_LMT_window(1, false);
     addWindow(pc);
     // create a fake MapNotify event
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = 1;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(pc);
 
     MCompositeWindow *cw = cmgr->d->windows.value(1, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(cw->isValid(), true);
     QCOMPARE(cw->windowAnimator() != 0, true);
 
-    cw->damageReceived();
-    cw->damageReceived();
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
+    QCOMPARE(pc->pendingDamage(), false);
 
     QCOMPARE(MCompositeWindow::we_have_grab, true);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
@@ -174,11 +191,7 @@ void ut_Anim::testOpenChainingAnimation()
 
     addWindow(pc2);
     // invoked window
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = 2000;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(pc2);
 
     MCompositeWindow *cw2 = cmgr->d->windows.value(2000, 0);
     QCOMPARE(cw2 != 0, true);
@@ -189,8 +202,9 @@ void ut_Anim::testOpenChainingAnimation()
     QCOMPARE(qobject_cast<MChainedAnimation*> (cw2->windowAnimator()) != 0, 
              true);
     
-    cw2->damageReceived();
-    cw2->damageReceived();
+    fakeDamageEvent(cw2);
+    fakeDamageEvent(cw2);
+    QCOMPARE(pc2->pendingDamage(), false);
 
     // window position check
     QCOMPARE(cw2->windowAnimator()->isActive(), true);
@@ -243,6 +257,13 @@ void ut_Anim::testCloseChainingAnimation()
 
 void ut_Anim::testIconifyingAnimation()
 {
+    MCompositeWindow *d = cmgr->d->windows.value(cmgr->d->desktop_window, 0);
+    fake_desktop_window *d_pc = (fake_desktop_window*)d->propertyCache();
+    QCOMPARE(d_pc->damageObject() != 0, true);
+    // check that damage to desktop window is not handled
+    fakeDamageEvent(d);
+    QCOMPARE(d_pc->pendingDamage(), true);
+
     // iconifies window 1
     cmgr->d->exposeSwitcher();
     MCompositeWindow *cw = cmgr->d->windows.value(1, 0);
@@ -251,6 +272,8 @@ void ut_Anim::testIconifyingAnimation()
     QCOMPARE(cw->windowAnimator() != 0, true);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(MCompositeWindow::we_have_grab, true);
+    // damage to desktop window is now handled
+    QCOMPARE(d_pc->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(1000); // wait the animation to finish
 
@@ -260,11 +283,20 @@ void ut_Anim::testIconifyingAnimation()
     QCOMPARE(d_i >= 0 && w_i >= 0, true);
     QCOMPARE(d_i > w_i, true);
     QCOMPARE(MCompositeWindow::we_have_grab, false);
+
+    // check that damage is not subtracted for iconic window
+    fakeDamageEvent(cw);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), true);
+
+    // desktop is on top and should not have damage object
+    QCOMPARE(d_pc->damageObject() == 0, true);
 }
 
 void ut_Anim::testRestoreAnimation()
 {    
     MCompositeWindow *cw = cmgr->d->windows.value(1, 0);
+    fakeDamageEvent(cw);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), true);
     XClientMessageEvent cme;
     memset(&cme, 0, sizeof(cme));
     cme.window = 1;
@@ -273,6 +305,7 @@ void ut_Anim::testRestoreAnimation()
     cmgr->d->rootMessageEvent(&cme);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(MCompositeWindow::we_have_grab, true);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(1000); // wait the animation to finish
 
@@ -286,6 +319,13 @@ void ut_Anim::testRestoreAnimation()
 
 void ut_Anim::testCloseAnimation()
 {
+    MCompositeWindow *d = cmgr->d->windows.value(cmgr->d->desktop_window, 0);
+    fake_desktop_window *d_pc = (fake_desktop_window*)d->propertyCache();
+    QCOMPARE(d_pc->damageObject() != 0, true);
+    // check that damage to desktop window is not handled
+    fakeDamageEvent(d);
+    QCOMPARE(d_pc->pendingDamage(), true);
+
     MCompositeWindow *cw = cmgr->d->windows.value(1, 0);
     XUnmapEvent ue;
     memset(&ue, 0, sizeof(ue));
@@ -296,6 +336,8 @@ void ut_Anim::testCloseAnimation()
     
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(MCompositeWindow::we_have_grab, true);
+    // damage to desktop window is now handled
+    QCOMPARE(d_pc->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(1000); // wait the animation to finish
     QCOMPARE(cw->propertyCache()->windowState(), WithdrawnState);
@@ -307,18 +349,15 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     fake_LMT_window *pc = new fake_LMT_window(2, false);
     addWindow(pc);
     // create a fake MapNotify event
-    XMapEvent me;
-    memset(&me, 0, sizeof(me));
-    me.window = 2;
-    me.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&me);
+    mapWindow(pc);
 
     MCompositeWindow *cw = cmgr->d->windows.value(2, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(cw->isValid(), true);
 
-    cw->damageReceived();
-    cw->damageReceived();
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
+    QCOMPARE(pc->pendingDamage(), false);
 
     // create a fake UnmapNotify event
     XUnmapEvent ue;
@@ -333,10 +372,11 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     QCOMPARE(MCompositeWindow::we_have_grab, false);
 
     // map it again and check that there is an animation
-    cmgr->d->mapEvent(&me);
+    mapWindow(pc);
 
-    cw->damageReceived();
-    cw->damageReceived();
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
+    QCOMPARE(pc->pendingDamage(), false);
 
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(MCompositeWindow::we_have_grab, true);
@@ -350,6 +390,13 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     QCOMPARE(d_i >= 0 && w_i >= 0, true);
     QCOMPARE(d_i < w_i, true);
     QCOMPARE(MCompositeWindow::we_have_grab, false);
+
+    MCompositeWindow *d = cmgr->d->windows.value(cmgr->d->desktop_window, 0);
+    fake_desktop_window *d_pc = (fake_desktop_window*)d->propertyCache();
+    QCOMPARE(d_pc->damageObject() != 0, true);
+    // check that damage to desktop window is not handled
+    fakeDamageEvent(d);
+    QCOMPARE(d_pc->pendingDamage(), true);
 }
 
 void ut_Anim::testNoAnimations()
@@ -358,19 +405,15 @@ void ut_Anim::testNoAnimations()
     pc->no_animations = true;
     addWindow(pc);
     // create a fake MapNotify event
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = 3;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(pc);
 
     MCompositeWindow *cw = cmgr->d->windows.value(3, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(cw->isValid(), true);
     QCOMPARE(cw->windowAnimator() != 0, true);
 
-    cw->damageReceived();
-    cw->damageReceived();
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
 
     // check that there is no animation
     QCOMPARE(cw->windowAnimator()->isActive(), false);
@@ -499,14 +542,11 @@ void ut_Anim::testDerivedAnimHandler()
     an->setTargetWindow(cw);
 
     // window shown
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = 1;
-    e.event = QX11Info::appRootWindow();
     ((MTexturePixmapItem*)cw)->d->TFP.drawable = request_testpixmap();
-    cmgr->d->mapEvent(&e);
-    cw->damageReceived();
-    cw->damageReceived();
+    mapWindow(cw->propertyCache());
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
 
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(MCompositeWindow::we_have_grab, true);
@@ -526,6 +566,11 @@ void ut_Anim::testDerivedAnimHandler()
         QTest::qWait(500); 
 
     QCOMPARE(MCompositeWindow::we_have_grab, false);
+
+    // simulate damage while the window is iconic
+    fakeDamageEvent(cw);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), true);
+
     // restore
     XClientMessageEvent cme;
     memset(&cme, 0, sizeof(cme));
@@ -536,6 +581,7 @@ void ut_Anim::testDerivedAnimHandler()
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Restore, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;    
     QCOMPARE(MCompositeWindow::we_have_grab, true);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(500); 
 
@@ -567,14 +613,11 @@ void ut_Anim::testExternalAnimHandler()
     cw->windowAnimator()->setAnimationHandler(MCompositeWindowAnimation::Restore, 
                                               an);                                    
     // window shown
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = 1;
-    e.event = QX11Info::appRootWindow();
     ((MTexturePixmapItem*)cw)->d->TFP.drawable = request_testpixmap();
-    cmgr->d->mapEvent(&e);
-    cw->damageReceived();
-    cw->damageReceived();
+    mapWindow(cw->propertyCache());
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
 
     QCOMPARE(MCompositeWindow::we_have_grab, true);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
@@ -593,6 +636,10 @@ void ut_Anim::testExternalAnimHandler()
     while (cw->windowAnimator()->isActive())
         QTest::qWait(500); 
 
+    // simulate damage while the window is iconic
+    fakeDamageEvent(cw);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), true);
+
     QCOMPARE(MCompositeWindow::we_have_grab, false);
     // restore
     XClientMessageEvent cme;
@@ -604,6 +651,7 @@ void ut_Anim::testExternalAnimHandler()
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Restore, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;    
     QCOMPARE(MCompositeWindow::we_have_grab, true);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(500); 
 
@@ -621,7 +669,6 @@ void ut_Anim::testExternalAnimHandler()
         QTest::qWait(500);
 
     QCOMPARE(MCompositeWindow::we_have_grab, false);
-    qDebug()<< cmgr->d->stacking_list;
 }
 
 int main(int argc, char* argv[])

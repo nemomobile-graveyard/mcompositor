@@ -18,10 +18,12 @@ private slots:
     void testScreenOnButLockscreenTimesOut();  
     void testScreenOnAndThenQuicklyOff();  
     void testScreenOffAndThenQuicklyOn();
+    void testPaintingDuringScreenOff();
 
 private:
     void mapWindow(MWindowPropertyCache *pc);
     void unmapLockscreen();
+    void fakeDamageEvent(MCompositeWindow *cw);
     MCompositeManager *cmgr;
 };
 

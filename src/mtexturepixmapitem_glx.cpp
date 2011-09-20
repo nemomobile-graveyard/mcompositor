@@ -137,6 +137,7 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
         || propertyCache()->isInputOnly())
         return;
 
+    propertyCache()->damageSubtract();
     d->TFP.update();
     update();
 }

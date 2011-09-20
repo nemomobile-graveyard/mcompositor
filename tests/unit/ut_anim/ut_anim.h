@@ -26,7 +26,9 @@ private slots:
     void testExternalAnimHandler();
 
 private:
+    void fakeDamageEvent(MCompositeWindow *cw);
     void addWindow(MWindowPropertyCache *pc);
+    void mapWindow(MWindowPropertyCache *pc);
     MCompositeManager *cmgr;
 };
 

@@ -149,6 +149,7 @@ void MWindowPropertyCache::init()
     damage_object = 0;
     collect_timer = 0;
     no_animations = 0;
+    pending_damage = false;
 }
 
 void MWindowPropertyCache::init_invalid()
@@ -1328,6 +1329,34 @@ bool MWindowPropertyCache::readSplashProperty(Window win,
         free(r);
     }
     return ret;
+}
+
+void MWindowPropertyCache::damageTracking(bool enabled)
+{
+    if (!is_valid)
+        return;
+    if (enabled) {
+        if (!damage_object && !isInputOnly() && !isOverrideRedirect())
+            damage_object = XDamageCreate(QX11Info::display(), window,
+                                          XDamageReportNonEmpty);
+    } else if (damage_object) {
+        XDamageDestroy(QX11Info::display(), damage_object);
+        damage_object = 0;
+        pending_damage = false;
+    }
+}
+
+void MWindowPropertyCache::damageSubtract()
+{
+    if (damage_object)
+        XDamageSubtract(QX11Info::display(), damage_object, None, None);
+    pending_damage = false;
+}
+
+void MWindowPropertyCache::damageReceived()
+{
+    if (damage_object) // <-- check object for unit tests
+        pending_damage = true;
 }
 
 bool MWindowPropertyCache::isAppWindow(bool include_transients)

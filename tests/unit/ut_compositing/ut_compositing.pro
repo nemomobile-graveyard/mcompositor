@@ -29,3 +29,6 @@ SOURCES += ut_compositing.cpp
 
 QT += testlib core gui opengl dbus
 CONFIG += debug
+
+CONFIG += link_pkgconfig
+PKGCONFIG += contextsubscriber-1.0 contextprovider-1.0

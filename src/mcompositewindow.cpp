@@ -151,6 +151,9 @@ bool MCompositeWindow::iconify()
     
     // iconify handler
     if (animator) {
+        MCompositeManager *m = (MCompositeManager*)qApp;
+        MCompositeWindow *d = compositeWindow(m->desktopWindow());
+        d->updateWindowPixmap();
         animator->windowIconified();
         window_status = Normal;
         updateServerGrab();
@@ -241,6 +244,7 @@ void MCompositeWindow::restore()
     iconified = false;
      // Restore handler
     if (animator && !static_cast<MCompositeManager *>(qApp)->splashed(this)) {
+        updateWindowPixmap();
         window_status = Restoring;
         animator->windowRestored();
         updateServerGrab();
@@ -456,6 +460,8 @@ void MCompositeWindow::closeWindowAnimation()
             p->d->enableCompositing();
             updateWindowPixmap();
         }
+        MCompositeWindow *d = compositeWindow(p->desktopWindow());
+        d->updateWindowPixmap();
         animator->windowClosed();
         window_status = Normal;
         updateServerGrab();
