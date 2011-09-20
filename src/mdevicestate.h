@@ -61,6 +61,7 @@ private slots:
     void mceDisplayStatusIndSignal(QString mode);
     void mceTouchScreenLockSignal(QString mode);
     void gotTouchScreenLockMode(QDBusPendingCallWatcher *watcher);
+    void gotDisplayStatus(QDBusPendingCallWatcher *watcher);
 #endif
     void callPropChanged();
     void topPropChanged();
@@ -71,6 +72,7 @@ private:
 #ifdef GLES2_VERSION
     QDBusConnection *systembus_conn;
     QDBusPendingCallWatcher *tsmode_call;
+    QDBusPendingCallWatcher *display_call;
 #endif
     ContextProperty *call_prop;
     ContextProperty *top_prop;

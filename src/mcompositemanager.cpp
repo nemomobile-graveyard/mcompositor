@@ -641,9 +641,7 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
          * check for EGL_BUFFER_PRESERVED or GLX_SWAP_COPY_OML first, see
          * http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html and
          * http://www.opengl.org/registry/specs/OML/glx_swap_method.txt */
-        if (item->isVisible()
-            // desktop can be visible but obscured
-            && !item->windowObscured() && !device_state->displayOff())
+        if (item->isVisible() && !device_state->displayOff())
             item->updateWindowPixmap(0, 0, e->timestamp);
         item->damageReceived();
     }

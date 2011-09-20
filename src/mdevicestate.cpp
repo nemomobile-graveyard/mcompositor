@@ -48,6 +48,21 @@ void MDeviceState::mceTouchScreenLockSignal(QString mode)
     touchScreenLockMode = mode;
 }
 
+void MDeviceState::gotDisplayStatus(QDBusPendingCallWatcher *watcher)
+{
+    QDBusPendingReply<QString> reply = *watcher;
+    if (reply.isError()) {
+        qDebug() << __func__ << "getting display state failed:"
+                 << reply.error().message();
+        goto away;
+    }
+    mceDisplayStatusIndSignal(reply);
+
+away:
+    delete display_call;
+    display_call = 0;
+}
+
 void MDeviceState::gotTouchScreenLockMode(QDBusPendingCallWatcher *watcher)
 {
     QDBusPendingReply<QString> reply = *watcher;
@@ -133,19 +148,15 @@ MDeviceState::MDeviceState(QObject* parent)
     connect(tsmode_call, SIGNAL(finished(QDBusPendingCallWatcher*)),
             this, SLOT(gotTouchScreenLockMode(QDBusPendingCallWatcher*)));
 
-    /* FIXME: Temporary workaround, current MCE does not seem to provide
-     * get_display_status interface */
-    QFile file("/sys/class/backlight/himalaya/brightness");
-    if (file.open(QIODevice::ReadOnly)) {
-        char buf[50];
-        qint64 len = file.readLine(buf, sizeof(buf));
-        buf[49] = '\0';
-        if (len != -1) {
-            int i = atoi(buf);
-            if (i == 0) display_off = true;
-        }
-        file.close();
-    }
+    // get the initial state of the display
+    display_call = new QDBusPendingCallWatcher(
+        systembus_conn->asyncCall(
+            QDBusMessage::createMethodCall(MCE_SERVICE,
+                                           MCE_REQUEST_PATH,
+                                           MCE_REQUEST_IF,
+                                           MCE_DISPLAY_STATUS_GET)), this);
+    connect(display_call, SIGNAL(finished(QDBusPendingCallWatcher*)),
+            this, SLOT(gotDisplayStatus(QDBusPendingCallWatcher*)));
 #endif
 }
 
