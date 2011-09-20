@@ -242,18 +242,11 @@ public:
         MWindowPropertyCache::xcb_conn = c;
     }
 
-    void damageTracking(bool enabled)
-    {
-        if (!is_valid || (damage_object && enabled))
-            return;
-        if (damage_object && !enabled) {
-            XDamageDestroy(QX11Info::display(), damage_object);
-            damage_object = 0;
-        }
-        else if (enabled && !damage_object && !isInputOnly())
-            damage_object = XDamageCreate(QX11Info::display(), window,
-                                          XDamageReportNonEmpty); 
-    }
+    void damageTracking(bool enabled);
+    // XDamageSubtract wrapper for unit testing
+    void damageSubtract();
+    // for unit testing of damage handling code
+    void damageReceived();
 
     /*! 
      * Returns whether this is an application window
@@ -376,6 +369,7 @@ protected:
     Damage damage_object;
     QString wm_name;
     unsigned wm_pid, no_animations;
+    bool pending_damage;
 };
 
 // Non-deletable dummy MWindowPropertyCache.

@@ -246,6 +246,7 @@ void MCompositeWindow::restore()
     iconified = false;
      // Restore handler
     if (animator && !static_cast<MCompositeManager *>(qApp)->splashed(this)) {
+        updateWindowPixmap();
         window_status = Restoring;
         animator->windowRestored();
         updateServerGrab();
@@ -461,6 +462,8 @@ void MCompositeWindow::closeWindowAnimation()
             p->d->enableCompositing();
             updateWindowPixmap();
         }
+        MCompositeWindow *d = compositeWindow(p->desktopWindow());
+        d->updateWindowPixmap();
         animator->windowClosed();
         window_status = Normal;
         updateServerGrab();

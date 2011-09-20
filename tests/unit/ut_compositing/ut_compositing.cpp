@@ -7,6 +7,7 @@
 #include <mcompositewindow.h>
 #include <mtexturepixmapitem.h>
 #include <mcompositewindowanimation.h>
+#include <mdevicestate.h>
 #include "ut_compositing.h"
 
 #include <QtDebug>
@@ -57,6 +58,7 @@ public:
     void addToTransients(Window w) { transients.append(w); }
     void setAlpha(bool b) { has_alpha = b; }
     Damage damageObject() const { return damage_object; }
+    bool pendingDamage() { return pending_damage; }
 
     xcb_get_window_attributes_reply_t attrs;
 
@@ -87,12 +89,31 @@ public:
     xcb_get_window_attributes_reply_t attrs;
 };
 
+class fake_device_state : public MDeviceState
+{
+public:
+    fake_device_state() : fake_display_off(false) {}
+    bool displayOff() const { return fake_display_off; }
+    bool fake_display_off;
+    const QString &touchScreenLock() const { return fake_touchScreenLockMode; }
+    QString fake_touchScreenLockMode;
+};
+
+static fake_device_state *device_state;
+
 void ut_Compositing::initTestCase()
 {
     cmgr = (MCompositeManager*)qApp;
     cmgr->setSurfaceWindow(0);
     cmgr->d->prepare();
     cmgr->d->xserver_stacking.init();
+
+    // create an altered MDeviceState
+    device_state = new fake_device_state();
+    delete cmgr->d->device_state;
+    cmgr->d->device_state = device_state;
+    device_state->fake_touchScreenLockMode = "unlocked";
+
     QVector<MWindowPropertyCache *> empty;
     prepareStack(empty);
 }
@@ -138,14 +159,22 @@ void ut_Compositing::unmapWindow(MWindowPropertyCache *pc)
     cmgr->d->unmapEvent(&e);
 }
 
+void ut_Compositing::fakeDamageEvent(MCompositeWindow *cw)
+{
+    XDamageNotifyEvent e;
+    memset(&e, 0, sizeof(e));
+    e.drawable = cw->window();
+    cmgr->d->damageEvent(&e);
+}
+
 void ut_Compositing::testDesktopMapping()
 {
     fake_desktop_window *desk = new fake_desktop_window(1);
     mapWindow(desk);
     MCompositeWindow *w = cmgr->d->windows.value(1, 0);
     QCOMPARE(w != 0, true);
-    w->damageReceived();
-    w->damageReceived();
+    fakeDamageEvent(w);
+    fakeDamageEvent(w);
 
     QCOMPARE(!cmgr->d->stacking_list.isEmpty(), true);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
@@ -170,8 +199,8 @@ void ut_Compositing::testAppMapping()
     QCOMPARE(w->isVisible(), false);
     QCOMPARE(w->windowObscured(), false);
 
-    w->damageReceived();
-    w->damageReceived();
+    fakeDamageEvent(w);
+    fakeDamageEvent(w);
     QCOMPARE(w->windowAnimator()->isActive(), true);
     while (w->windowAnimator()->isActive()) {
         QCOMPARE(cmgr->d->compositing, true);
@@ -231,8 +260,8 @@ void ut_Compositing::testAppRemapping()
     QCOMPARE(w->windowObscured(), false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), false);
 
-    w->damageReceived();
-    w->damageReceived();
+    fakeDamageEvent(w);
+    fakeDamageEvent(w);
     QCOMPARE(w->windowAnimator()->isActive(), true);
     while (w->windowAnimator()->isActive()) {
         QCOMPARE(cmgr->d->compositing, true);
@@ -315,8 +344,8 @@ void ut_Compositing::testVkbMapping()
     MCompositeWindow *w = cmgr->d->windows.value(4, 0);
     QCOMPARE(w != 0, true);
 
-    w->damageReceived();
-    w->damageReceived();
+    fakeDamageEvent(w);
+    fakeDamageEvent(w);
     QCOMPARE(w->windowAnimator()->isActive(), true);
     while (w->windowAnimator()->isActive())
         QTest::qWait(500); // wait the animation to finish
@@ -348,6 +377,9 @@ void ut_Compositing::testVkbMapping()
     // FIXME: app has the damage object even though we don't need it
     QCOMPARE(app->damageObject() != 0, true);
     QCOMPARE(vkb->damageObject() == 0, true);
+    // check that damage of the app is not handled
+    fakeDamageEvent(w);
+    QCOMPARE(app->pendingDamage(), true);
 }
 
 // transparent banner mapping case (depends on the previous test)
@@ -368,6 +400,11 @@ void ut_Compositing::testBannerMapping()
     QCOMPARE(cmgr->d->compositing, true);
     QCOMPARE(cmgr->d->overlay_mapped, true);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), false);
+    // check that damage is handled
+    for (int i = 0; i < 100; ++i) {
+        fakeDamageEvent(w);
+        QCOMPARE(banner->pendingDamage(), false);
+    }
 
     // check the windows below
     MCompositeWindow *vkb = cmgr->d->windows.value(VKB_2, 0);
@@ -377,11 +414,19 @@ void ut_Compositing::testBannerMapping()
     QCOMPARE(((MTexturePixmapItem*)vkb)->isDirectRendered(), false);
     fake_LMT_window *pc = (fake_LMT_window*)cmgr->d->prop_caches.value(VKB_2, 0);
     QCOMPARE(pc->damageObject() != 0, true);
+    // check that damage is handled
+    for (int i = 0; i < 100; ++i) {
+        fakeDamageEvent(vkb);
+        QCOMPARE(pc->pendingDamage(), false);
+    }
     // self-compositing VKB requires unobscured and redirected app
     MCompositeWindow *app = cmgr->d->windows.value(4, 0);
     QCOMPARE(app->windowObscured(), false);
     QCOMPARE(((MTexturePixmapItem*)app)->isDirectRendered(), false);
     QCOMPARE(MCompositeWindow::we_have_grab, false);
+    // check that damage of the app is not handled
+    fakeDamageEvent(app);
+    QCOMPARE(((fake_LMT_window*)app->propertyCache())->pendingDamage(), true);
 }
 
 // transparent banner unmapping case (depends on the previous test)
@@ -409,6 +454,76 @@ void ut_Compositing::testBannerUnmapping()
     QCOMPARE(app->windowObscured(), false);
     QCOMPARE(((MTexturePixmapItem*)app)->isDirectRendered(), false);
     QCOMPARE(MCompositeWindow::we_have_grab, false);
+}
+
+// test that damage that arrived when display is off is handled after
+// display is turned on
+void ut_Compositing::testDamageDuringDisplayOff()
+{
+    fake_LMT_window *rgba_app = new fake_LMT_window(6);
+    rgba_app->setAlpha(true);
+    mapWindow(rgba_app);
+    QTest::qWait(10); // run the idle handlers
+    MCompositeWindow *cw = cmgr->d->windows.value(6, 0);
+
+    fakeDamageEvent(cw);
+    QCOMPARE(rgba_app->pendingDamage(), true);
+    fakeDamageEvent(cw);
+    QCOMPARE(rgba_app->pendingDamage(), false);
+    QCOMPARE(rgba_app->damageObject() != 0, true);
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(500); // wait the animation to finish
+
+    // display off
+    device_state->fake_display_off = true;
+    cmgr->d->displayOff(true);
+    QCOMPARE(cmgr->d->device_state->displayOff(), true);
+
+    // damage object was destroyed
+    QCOMPARE(rgba_app->damageObject() == 0, true);
+    QCOMPARE(rgba_app->pendingDamage(), false);
+
+    // display on
+    device_state->fake_display_off = false;
+    cmgr->d->displayOff(false);
+    QCOMPARE(cmgr->d->device_state->displayOff(), false);
+
+    QCOMPARE(rgba_app->damageObject() != 0, true);
+    fakeDamageEvent(cw);
+    QCOMPARE(rgba_app->pendingDamage(), false);
+}
+
+// status menu open on top of opaque app window
+void ut_Compositing::testDamageDuringTransparentMenu()
+{
+    fake_LMT_window *app = new fake_LMT_window(8);
+    mapWindow(app);
+    MCompositeWindow *app_cw = cmgr->d->windows.value(8, 0);
+    fakeDamageEvent(app_cw);
+    fakeDamageEvent(app_cw);
+    while (app_cw->windowAnimator()->isActive())
+        QTest::qWait(500); // wait the animation to finish
+    QCOMPARE(app->damageObject() == 0, true);
+
+    fake_LMT_window *menu = new fake_LMT_window(7);
+    menu->setAlpha(true);
+    menu->prependType(ATOM(_NET_WM_WINDOW_TYPE_MENU));
+    mapWindow(menu);
+    QTest::qWait(10); // run the idle handlers
+    MCompositeWindow *menu_cw = cmgr->d->windows.value(7, 0);
+
+    QCOMPARE(cmgr->d->compositing, true);
+    QCOMPARE(cmgr->d->overlay_mapped, true);
+    QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), false);
+
+    QCOMPARE(menu->damageObject() != 0, true);
+    QCOMPARE(app->damageObject() != 0, true);
+
+    fakeDamageEvent(app_cw);
+    QCOMPARE(app->pendingDamage(), false);
+
+    fakeDamageEvent(menu_cw);
+    QCOMPARE(menu->pendingDamage(), false);
 }
 
 int main(int argc, char* argv[])

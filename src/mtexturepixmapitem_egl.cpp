@@ -214,8 +214,10 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
     // we want to update the pixmap even if the item is not visible because
     // certain animations require up-to-date pixmap (alternatively we could mark
     // it dirty and update it before the animation starts...)
-    if (d->direct_fb_render || propertyCache()->isInputOnly())
+    if (d->direct_fb_render || propertyCache()->isInputOnly()) {
+        propertyCache()->damageSubtract();
         return;
+    }
 
     if (!rects)
         // no rects means the whole area
@@ -237,4 +239,5 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
         else
             d->current_window_group->updateWindowPixmap();
     }
+    propertyCache()->damageSubtract();
 }

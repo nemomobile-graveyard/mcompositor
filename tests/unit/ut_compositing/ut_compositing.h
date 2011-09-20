@@ -19,12 +19,15 @@ private slots:
     void testVkbMapping();
     void testBannerMapping();
     void testBannerUnmapping();
+    void testDamageDuringDisplayOff();
+    void testDamageDuringTransparentMenu();
 
 private:
     MCompositeManager *cmgr;
     void prepareStack(QVector<MWindowPropertyCache *> &t);
     void mapWindow(MWindowPropertyCache *pc);  
     void unmapWindow(MWindowPropertyCache *pc);  
+    void fakeDamageEvent(MCompositeWindow *cw);
 };
 
 #endif

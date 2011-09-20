@@ -634,15 +634,17 @@ bool MCompositeManagerPrivate::needDecoration(MWindowPropertyCache *pc)
 
 void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 {
-    XDamageSubtract(QX11Info::display(), e->damage, None, None);
-
     MCompositeWindow *item = COMPOSITE_WINDOW(e->drawable);
     if (item) {
+        item->propertyCache()->damageReceived();
         /* partial updates disabled for now, does not always work, unless we
          * check for EGL_BUFFER_PRESERVED or GLX_SWAP_COPY_OML first, see
          * http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html and
          * http://www.opengl.org/registry/specs/OML/glx_swap_method.txt */
-        item->updateWindowPixmap(0, 0, e->timestamp);
+        if (item->isVisible()
+            // desktop can be visible but obscured
+            && !item->windowObscured() && !device_state->displayOff())
+            item->updateWindowPixmap(0, 0, e->timestamp);
         item->damageReceived();
     }
 }
@@ -1834,8 +1836,6 @@ int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
          if (!cw || !(pc = cw->propertyCache()) || !pc->isMapped()
              || cw->opacity() < 1.0
              || pc->hasAlphaAndIsNotOpaque() || pc->isInputOnly()
-             // allow input windows to composite their app, see NB#223280
-             || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)
              || cw->isWindowTransitioning()
              // don't subtract hidden items during transition (example:
              // a hidden window between the desktop and swiped window)
