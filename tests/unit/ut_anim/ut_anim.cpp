@@ -287,9 +287,9 @@ void ut_Anim::testIconifyingAnimation()
     MCompositeWindow *d = cmgr->d->windows.value(cmgr->d->desktop_window, 0);
     fake_desktop_window *d_pc = (fake_desktop_window*)d->propertyCache();
     QCOMPARE(d_pc->damageObject() != 0, true);
-    // check that damage to desktop window is not handled
+    // check that damage to desktop window is handled (plugin requirement)
     fakeDamageEvent(d);
-    QCOMPARE(d_pc->pendingDamage(), true);
+    QCOMPARE(d_pc->pendingDamage(), false);
 
     // iconifies window 1
     cmgr->d->exposeSwitcher();
@@ -402,9 +402,9 @@ void ut_Anim::testCloseAnimation()
     MCompositeWindow *d = cmgr->d->windows.value(cmgr->d->desktop_window, 0);
     fake_desktop_window *d_pc = (fake_desktop_window*)d->propertyCache();
     QCOMPARE(d_pc->damageObject() != 0, true);
-    // check that damage to desktop window is not handled
+    // check that damage to desktop window is handled
     fakeDamageEvent(d);
-    QCOMPARE(d_pc->pendingDamage(), true);
+    QCOMPARE(d_pc->pendingDamage(), false);
 
     MCompositeWindow *cw = cmgr->d->windows.value(1, 0);
     XUnmapEvent ue;
@@ -478,9 +478,9 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     MCompositeWindow *d = cmgr->d->windows.value(cmgr->d->desktop_window, 0);
     fake_desktop_window *d_pc = (fake_desktop_window*)d->propertyCache();
     QCOMPARE(d_pc->damageObject() != 0, true);
-    // check that damage to desktop window is not handled
+    // check that damage to desktop window is handled
     fakeDamageEvent(d);
-    QCOMPARE(d_pc->pendingDamage(), true);
+    QCOMPARE(d_pc->pendingDamage(), false);
 }
 
 void ut_Anim::testNoAnimations()

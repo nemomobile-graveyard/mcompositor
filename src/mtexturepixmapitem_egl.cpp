@@ -175,11 +175,17 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
     const int      limit  =   30;
 
     if (hasTransitioningWindow()) {
-        
+
         if (!windowAnimator()->isManuallyUpdated() &&
-            MCompositeWindowAnimation::hasActiveAnimation())
+            MCompositeWindowAnimation::hasActiveAnimation()) {
+            if (!d->damageRetryTimer.isActive()) {
+                // try again later (otherwise damage is not subtracted)
+                d->damageRetryTimer.setInterval(100);
+                d->damageRetryTimer.start();
+            }
             return;
-            
+        }
+
         // Limit the number of damages we're willing to process if we're
         // in the middle of a transition, so the competition for the GL
         // resources will be less tight.
