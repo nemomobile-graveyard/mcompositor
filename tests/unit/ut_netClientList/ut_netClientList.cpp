@@ -40,7 +40,6 @@ public:
     fake_LMT_window(Window w, bool is_mapped = true)
         : MWindowPropertyCache(w, &attrs)
     {
-        cancelAllRequests();
         window = w;
         memset(&attrs, 0, sizeof(attrs));
         setIsMapped(is_mapped);
@@ -53,6 +52,7 @@ public:
         has_alpha = 0;
         // mark valid to create animation object
         is_valid = true;
+        cancelAllRequests();
     }
     void prependType(Atom a) { type_atoms.prepend(a);
                                window_type = MCompAtoms::INVALID; }
