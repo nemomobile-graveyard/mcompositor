@@ -14,6 +14,7 @@ private slots:
     void testDamageTimeout();
     void testStartupAnimForFirstTimeMapped();
     void testIconifyingAnimation();
+    void testIconifyingAnimationBelowLockscreen();
     void testRestoreAnimation();
     void testCloseAnimation();
     void testStartupAnimForSecondTimeMapped();
@@ -27,6 +28,7 @@ private slots:
 
 private:
     void addWindow(MWindowPropertyCache *pc);
+    void mapWindow(MWindowPropertyCache *pc);
     MCompositeManager *cmgr;
 };
 

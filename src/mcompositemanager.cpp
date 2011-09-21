@@ -1443,6 +1443,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     // Composition is enabled by default because we are introducing animations
     // on window map. It will be turned off once transitions are done
     if (!compositing && !pc->isInputOnly() && !device_state->displayOff()
+        && !pc->noAnimations()
         && (pc->hasAlphaAndIsNotOpaque() ||
             (wtype != MCompAtoms::INPUT &&
              pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DIALOG))))
@@ -2513,7 +2514,6 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 }
                 setExposeDesktop(false); // don't update thumbnails now
 
-                bool needComp = !compositing;
                 d_item->setVisible(true);
 
                 // mark other applications on top of the desktop Iconified and
@@ -2554,8 +2554,6 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                     stacking_list.move(stacking_list.indexOf(desktop_window),
                                        lower_i - 1);
 
-                    if (needComp)
-                        enableCompositing();
                     if (skipStartupAnim(i->propertyCache())
                         || !i->iconify())
                         // signal will not come, set it iconic now

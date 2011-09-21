@@ -151,6 +151,11 @@ bool MCompositeWindow::iconify()
     
     // iconify handler
     if (animator) {
+        MCompositeManager *m = (MCompositeManager*)qApp;
+        MCompositeWindow *d = compositeWindow(m->desktopWindow());
+        if (!m->isCompositing())
+            m->d->enableCompositing();
+        d->updateWindowPixmap();
         animator->windowIconified();
         window_status = Normal;
         updateServerGrab();
