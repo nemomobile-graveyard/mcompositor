@@ -40,13 +40,13 @@ windowctl o | (
 
 	# Move $win systematically around and verify that the scene looks
 	# different every step.
-	for x in `seq 0 $((scrw / $steps)) $scrw`;
+	for x in `seq 0 $((scrw / $steps)) $((scrw-1))`;
 	do
-		for y in `seq 0 $((scrh / $steps)) $scrh`;
+		for y in `seq 0 $((scrh / $steps)) $((scrh-1))`;
 		do
 			geo="${winw}x${winh}+$x+$y";
 			windowctl g $win $x $y $winw $winh;
-			windowctl -fill $RANDOM $win;
+			windowctl -fill HotPink$((1+RANDOM%4)) $win;
 			sleep 0.1;
 			windowctl -shot "$shot2";
 

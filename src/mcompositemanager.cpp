@@ -948,8 +948,10 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
     MCompositeWindow *cw = 0;
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);
-        if (!(cw = COMPOSITE_WINDOW(w)) || cw->propertyCache()->isInputOnly()
-                || (!splash && cw->type() == MSplashScreen::Type))
+        if (!(cw = COMPOSITE_WINDOW(w))
+                || (!splash && cw->type() == MSplashScreen::Type)
+                || cw->propertyCache()->isInputOnly()
+                || cw->propertyCache()->isOverrideRedirect())
             continue;
         if (w == desktop_window) {
             top = w;
