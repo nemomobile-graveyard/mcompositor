@@ -21,6 +21,7 @@ private slots:
     void testBannerUnmapping();
     void testDamageDuringDisplayOff();
     void testDamageDuringTransparentMenu();
+    void testDamageToObscuredRGBAWindow();
 
 private:
     MCompositeManager *cmgr;

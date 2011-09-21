@@ -467,7 +467,7 @@ void ut_Compositing::testDamageDuringDisplayOff()
     MCompositeWindow *cw = cmgr->d->windows.value(6, 0);
 
     fakeDamageEvent(cw);
-    QCOMPARE(rgba_app->pendingDamage(), true);
+    QCOMPARE(rgba_app->pendingDamage(), false);
     fakeDamageEvent(cw);
     QCOMPARE(rgba_app->pendingDamage(), false);
     QCOMPARE(rgba_app->damageObject() != 0, true);
@@ -500,7 +500,9 @@ void ut_Compositing::testDamageDuringTransparentMenu()
     mapWindow(app);
     MCompositeWindow *app_cw = cmgr->d->windows.value(8, 0);
     fakeDamageEvent(app_cw);
+    QCOMPARE(app->pendingDamage(), false);
     fakeDamageEvent(app_cw);
+    QCOMPARE(app->pendingDamage(), false);
     while (app_cw->windowAnimator()->isActive())
         QTest::qWait(500); // wait the animation to finish
     QCOMPARE(app->damageObject() == 0, true);
@@ -524,6 +526,60 @@ void ut_Compositing::testDamageDuringTransparentMenu()
 
     fakeDamageEvent(menu_cw);
     QCOMPARE(menu->pendingDamage(), false);
+}
+
+// RGBA window that is first obscured and then gets revealed
+// --- test that damage that was received while the window was obscured
+// is handled as soon as it's visible again
+void ut_Compositing::testDamageToObscuredRGBAWindow()
+{
+    fake_LMT_window *rgba_app = new fake_LMT_window(9);
+    rgba_app->setAlpha(true);
+    mapWindow(rgba_app);
+    QTest::qWait(10); // run the idle handlers
+    MCompositeWindow *rgba_cw = cmgr->d->windows.value(9, 0);
+    fakeDamageEvent(rgba_cw);
+    QCOMPARE(rgba_app->pendingDamage(), false);
+    fakeDamageEvent(rgba_cw);
+    QCOMPARE(rgba_app->pendingDamage(), false);
+    while (rgba_cw->windowAnimator()->isActive())
+        QTest::qWait(500); // wait the animation to finish
+    QCOMPARE(rgba_app->damageObject() != 0, true);
+
+    // obscure it with opaque window
+    fake_LMT_window *rgb_app = new fake_LMT_window(10);
+    mapWindow(rgb_app);
+    MCompositeWindow *rgb_cw = cmgr->d->windows.value(10, 0);
+    fakeDamageEvent(rgb_cw);
+    QCOMPARE(rgb_app->pendingDamage(), false);
+    fakeDamageEvent(rgb_cw);
+    QCOMPARE(rgb_app->pendingDamage(), false);
+    while (rgb_cw->windowAnimator()->isActive())
+        QTest::qWait(500); // wait the animation to finish
+    QCOMPARE(rgb_app->damageObject() == 0, true);
+    QCOMPARE(rgba_app->damageObject() != 0, true);
+
+    QCOMPARE(rgba_cw->isVisible(), false);
+    QCOMPARE(rgba_cw->windowObscured(), true);
+
+    // now damage the RGBA window (not handled)
+    fakeDamageEvent(rgba_cw);
+    QCOMPARE(rgba_app->pendingDamage(), true);
+    fakeDamageEvent(rgba_cw);
+    QCOMPARE(rgba_app->pendingDamage(), true);
+
+    // unmap the opaque window to reveal the RGBA window
+    unmapWindow(rgb_app);
+    QTest::qWait(10); // run the idle handlers
+    QCOMPARE(rgba_cw->isVisible(), true);
+    QCOMPARE(rgba_cw->windowObscured(), false);
+
+    // now damage the RGBA window (handled -- also the old damage)
+    QCOMPARE(rgba_app->pendingDamage(), false);
+    fakeDamageEvent(rgba_cw);
+    QCOMPARE(rgba_app->pendingDamage(), false);
+    fakeDamageEvent(rgba_cw);
+    QCOMPARE(rgba_app->pendingDamage(), false);
 }
 
 int main(int argc, char* argv[])

@@ -184,6 +184,7 @@ void ut_Anim::testStartupAnimForFirstTimeMapped()
     QCOMPARE(cw->windowAnimator() != 0, true);
 
     fakeDamageEvent(cw);
+    QCOMPARE(pc->pendingDamage(), false);
     fakeDamageEvent(cw);
     QCOMPARE(pc->pendingDamage(), false);
 
@@ -228,6 +229,7 @@ void ut_Anim::testOpenChainingAnimation()
              true);
     
     fakeDamageEvent(cw2);
+    QCOMPARE(pc2->pendingDamage(), false);
     fakeDamageEvent(cw2);
     QCOMPARE(pc2->pendingDamage(), false);
 
@@ -436,6 +438,7 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     QCOMPARE(cw->isValid(), true);
 
     fakeDamageEvent(cw);
+    QCOMPARE(pc->pendingDamage(), false);
     fakeDamageEvent(cw);
     QCOMPARE(pc->pendingDamage(), false);
 
@@ -457,6 +460,7 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     mapWindow(pc);
 
     fakeDamageEvent(cw);
+    QCOMPARE(pc->pendingDamage(), false);
     fakeDamageEvent(cw);
     QCOMPARE(pc->pendingDamage(), false);
 
@@ -861,6 +865,7 @@ void ut_Anim::testDerivedAnimHandler()
     ((MTexturePixmapItem*)cw)->d->TFP.drawable = request_testpixmap();
     mapWindow(cw->propertyCache());
     fakeDamageEvent(cw);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     fakeDamageEvent(cw);
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
 
@@ -935,6 +940,7 @@ void ut_Anim::testExternalAnimHandler()
     ((MTexturePixmapItem*)cw)->d->TFP.drawable = request_testpixmap();
     mapWindow(cw->propertyCache());
     fakeDamageEvent(cw);
+    QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     fakeDamageEvent(cw);
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
 
