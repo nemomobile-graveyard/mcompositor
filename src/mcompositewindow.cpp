@@ -521,6 +521,7 @@ void MCompositeWindow::setVisible(bool visible)
         || (!visible && is_transitioning)) 
         return;
 
+    bool old_value = isVisible();
     QGraphicsItem::setVisible(visible);
     MCompositeManager *p = (MCompositeManager *) qApp;
     p->d->setWindowDebugProperties(window());
@@ -528,6 +529,10 @@ void MCompositeWindow::setVisible(bool visible)
     QGraphicsScene* sc = scene();    
     if (sc && !visible && sc->items().count() == 1)
         clearTexture();
+    else if (visible && old_value != visible &&
+             pc->hasAlphaAndIsNotOpaque())
+        // handle old damage that possibly came while we were invisible
+        updateWindowPixmap();
 }
 
 void MCompositeWindow::startPing(bool restart)
