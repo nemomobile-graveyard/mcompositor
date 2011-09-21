@@ -38,11 +38,15 @@ private:
           const QString &pixmapId);
 
     void addWindow(MWindowPropertyCache *pc);
-    void verifyDisabledComposition();
+    void mapWindow(MWindowPropertyCache *pc);
+    void verifyDisabledComposition(MCompositeWindow *cw);
     MCompositeManager *cmgr;
     QPixmap splashPixmap;
     fake_LMT_window *pc;
     Window w;
+
+private slots:
+    void onAnimationsFinished(MCompositeWindow *cw);
 };
 
 #endif

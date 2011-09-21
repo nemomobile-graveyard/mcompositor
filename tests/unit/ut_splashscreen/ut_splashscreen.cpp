@@ -32,6 +32,7 @@ public:
     fake_LMT_window(Window w, bool is_mapped = true)
         : MWindowPropertyCache(None, &attrs)
     {
+        cancelAllRequests();
         window = w;
         memset(&attrs, 0, sizeof(attrs));
         setIsMapped(is_mapped);
@@ -74,11 +75,13 @@ public:
     fake_desktop_window(Window w)
         : MWindowPropertyCache(None, &attrs)
     {
+        cancelAllRequests();
         window = w;
         memset(&attrs, 0, sizeof(attrs));
         setIsMapped(true);
         setRealGeometry(QRect(0, 0, dwidth, dheight));
         type_atoms.append(ATOM(_NET_WM_WINDOW_TYPE_DESKTOP));
+        type_atoms.append(ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE));
         window_state = NormalState;
         has_alpha = 0;
         is_valid = true;
@@ -103,15 +106,40 @@ void ut_splashscreen::addWindow(MWindowPropertyCache *pc)
         cmgr->d->stacking_list.append(pc->winId());
 }
 
-// make sure no animations are running and composition is turned off
-void ut_splashscreen::verifyDisabledComposition ()
+void ut_splashscreen::mapWindow(MWindowPropertyCache *pc)
 {
-    while (qApp->hasPendingEvents()) {
-        qApp->processEvents();
-        usleep(100);
-    }
+    XMapRequestEvent mre;
+    memset(&mre, 0, sizeof(mre));
+    mre.window = pc->winId();
+    mre.parent = QX11Info::appRootWindow();
+    cmgr->d->mapRequestEvent(&mre);
 
-    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = pc->winId();
+    e.event = QX11Info::appRootWindow();
+    cmgr->d->mapEvent(&e);
+}
+
+static bool anim_finished;
+
+void ut_splashscreen::onAnimationsFinished(MCompositeWindow *cw)
+{
+    Q_UNUSED(cw);
+    anim_finished = true;
+}
+
+// make sure no animations are running and composition is turned off
+void ut_splashscreen::verifyDisabledComposition(MCompositeWindow *cw)
+{
+    anim_finished = false;
+    connect(cw, SIGNAL(lastAnimationFinished(MCompositeWindow *)),
+            SLOT(onAnimationsFinished(MCompositeWindow *)));
+
+    while (!anim_finished)
+        QTest::qWait(500);
+    disconnect(cw, SIGNAL(lastAnimationFinished(MCompositeWindow *)),
+               this, SLOT(onAnimationsFinished(MCompositeWindow *)));
 
     QVERIFY(!cmgr->d->compositing);
 }
@@ -127,11 +155,7 @@ void ut_splashscreen::initTestCase()
     // create a fake desktop window
     fake_desktop_window *pc = new fake_desktop_window(1000);
     addWindow(pc);
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = 1000;
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(1000, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(cw->isValid(), true);
@@ -201,7 +225,6 @@ void ut_splashscreen::requestSplash(const QString& pid, const QString& wmClass,
 void ut_splashscreen::showSplashScreen()
 {
     QVERIFY(!cmgr->d->splash);
-    cmgr->enableCompositing();
 
     unsigned int pid = 123;
     QString portrait("portrait");
@@ -228,13 +251,12 @@ void ut_splashscreen::showSplashScreen()
     QCOMPARE(cmgr->d->lastDestroyedSplash.pid, pid);
     QCOMPARE(cmgr->d->lastDestroyedSplash.window, splash->window());
 
-    verifyDisabledComposition();
+    verifyDisabledComposition(splash);
 }
 
 // After the fade animation the splash screen must be gone.
 void ut_splashscreen::testFade()
 {
-    cmgr->enableCompositing();
     unsigned int pid = 123;
 
     pc->setProcessId(pid);
@@ -252,11 +274,8 @@ void ut_splashscreen::testFade()
     QVERIFY(!splash->windowAnimator()->pendingAnimation());
 
     // create a fake MapNotify event
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = pc->winId();
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    QVERIFY(!pc->isMapped());
+    mapWindow(pc);
 
     QVERIFY(cmgr->d->splash);
 
@@ -271,14 +290,13 @@ void ut_splashscreen::testFade()
     QVERIFY(!cmgr->d->splash);
     QCOMPARE(pc->windowState(), NormalState);
 
-    verifyDisabledComposition();
+    QVERIFY(!cmgr->d->compositing);
 }
 
 // When a splash screen has been minimized the matching application has to
 // be forcefully iconified once it is mapped.
 void ut_splashscreen::testIconifyInMapRequestEvent()
 {
-    cmgr->enableCompositing();
     unsigned int pid = 123;
 
     pc->setProcessId(pid);
@@ -307,7 +325,8 @@ void ut_splashscreen::testIconifyInMapRequestEvent()
 
     QCOMPARE(pc->windowState(), IconicState);
 
-    verifyDisabledComposition();
+    QTest::qWait(10);
+    QVERIFY(!cmgr->d->compositing);
 }
 
 // When the splash screen is already dismissed mapEvent() has to make sure
@@ -322,13 +341,12 @@ void ut_splashscreen::testTimerStartedInMapEvent()
     QVERIFY(!ds.blockTimer.isValid());
 
     pc->setNoAnimations(1);
-    XMapEvent me;
-    memset(&me, 0, sizeof(me));
-    me.window = pc->winId();
-    me.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&me);
+    mapWindow(pc);
 
     QVERIFY(ds.blockTimer.isValid());
+
+    QTest::qWait(1000);
+    QVERIFY(!cmgr->d->compositing);
 }
 
 // fakes a swipe animation which might stack the splash screen to the bottom
@@ -362,7 +380,6 @@ protected:
 // Cross fade must be canceled and the splash screen must be gone.
 void ut_splashscreen::testSplashDismissalWhenSettingUpCrossFade()
 {
-    cmgr->enableCompositing();
     unsigned int pid = 123;
 
     pc->setProcessId(pid);
@@ -389,11 +406,7 @@ void ut_splashscreen::testSplashDismissalWhenSettingUpCrossFade()
     splash->windowAnimator()->animationGroup()->start(QAbstractAnimation::DeleteWhenStopped);
 
     // create a fake MapNotify event
-    XMapEvent e;
-    memset(&e, 0, sizeof(e));
-    e.window = pc->winId();
-    e.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&e);
+    mapWindow(pc);
 
     MCompositeWindow *cw = cmgr->d->windows.value(w, 0);
     QVERIFY(w);
@@ -410,7 +423,8 @@ void ut_splashscreen::testSplashDismissalWhenSettingUpCrossFade()
     QCOMPARE(sba->state(), QAbstractAnimation::Stopped);
     QCOMPARE(pc->windowState(), IconicState);
 
-
+    QTest::qWait(1000);
+    QVERIFY(!cmgr->d->compositing);
 }
 
 // When a splash screen is stacked to the bottom after splashTimeout() has been
@@ -428,6 +442,8 @@ void ut_splashscreen::testTimerStartingWhenDismissedSplashScreenIsStackedToBotto
     QVERIFY(cmgr->d->dismissedSplashScreens.contains(pid));
     MCompositeManagerPrivate::DismissedSplash &ds = cmgr->d->dismissedSplashScreens[pid];
     QVERIFY(ds.blockTimer.isValid());
+    QTest::qWait(1000);
+    QVERIFY(!cmgr->d->compositing);
 }
 
 void ut_splashscreen::testStackingSplashBelow_data()
@@ -467,6 +483,9 @@ void ut_splashscreen::testStackingSplashBelow()
     QVERIFY(cmgr->d->dismissedSplashScreens.contains(pid));
     MCompositeManagerPrivate::DismissedSplash &ds = cmgr->d->dismissedSplashScreens[pid];
     QCOMPARE(ds.blockTimer.isValid(), timerToBeStarted);
+
+    QTest::qWait(1000);
+    QVERIFY(!cmgr->d->compositing);
 }
 
 class CompositeWindowAnimationProxy : public MCompositeWindowAnimation
@@ -518,13 +537,11 @@ void ut_splashscreen::testFadingUnmappedWindow()
 
     QCOMPARE(an->triggered, MCompositeWindowAnimation::NoAnimation);
 
-    cmgr->enableCompositing();
-
     cw->q_fadeIn();
 
     QCOMPARE(an->triggered, MCompositeWindowAnimation::NoAnimation);
 
-    verifyDisabledComposition();
+    QVERIFY(!cmgr->d->compositing);
     delete cw;
 }
 
@@ -535,18 +552,13 @@ void ut_splashscreen::testFadingUnmappedWindow()
 // stacked on top.
 void ut_splashscreen::testConfigureWindow()
 {
-    cmgr->enableCompositing();
     unsigned int pid = 123;
 
     pc->setProcessId(pid);
 
     pc->setNoAnimations(true);
     // create a fake MapNotify event
-    XMapEvent me;
-    memset(&me, 0, sizeof(me));
-    me.window = pc->winId();
-    me.event = QX11Info::appRootWindow();
-    cmgr->d->mapEvent(&me);
+    mapWindow(pc);
     pc->setNoAnimations(false);
 
     MCompositeWindow *cw = cmgr->d->windows.value(w, 0);
@@ -588,7 +600,11 @@ void ut_splashscreen::testConfigureWindow()
     QCOMPARE(cmgr->d->stacking_list.first(), w);
     QVERIFY(ds.blockTimer.isValid());
 
-    verifyDisabledComposition();
+    while (qApp->hasPendingEvents()) {
+        qApp->processEvents();
+        usleep(100);
+    }
+    QVERIFY(!cmgr->d->compositing);
 }
 
 void ut_splashscreen::testNetActiveWindowMessage_data()
@@ -619,7 +635,6 @@ void ut_splashscreen::testNetActiveWindowMessage()
     QFETCH(bool, shouldNotBeDismissedAfterwards);
     QFETCH(bool, timerShouldBeRunningAfterwards);
     unsigned int pid = 123;
-    cmgr->enableCompositing();
 
     pc->setIsMapped(true);
     pc->setProcessId(pid);
@@ -664,7 +679,8 @@ void ut_splashscreen::testNetActiveWindowMessage()
 
     cmgr->d->positionWindow(w, false);
 
-    verifyDisabledComposition();
+    QTest::qWait(10);
+    QVERIFY(!cmgr->d->compositing);
 }
 
 // When a splash screen is closed an entry needs to be created in dismissedSplashScreens
