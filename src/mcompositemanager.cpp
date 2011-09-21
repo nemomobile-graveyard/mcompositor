@@ -727,9 +727,11 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 
 void MCompositeManagerPrivate::splashTimeout()
 {
-    if (!splash) return;
+    if (!splash)
+        goto check_compositing_and_stacking;
 
-    lastDestroyedSplash = DestroyedSplash(splash->window(), splash->propertyCache()->pid());
+    lastDestroyedSplash = DestroyedSplash(splash->window(),
+                                          splash->propertyCache()->pid());
 
     splash->hide();
     prop_caches.remove(splash->window());
@@ -737,6 +739,7 @@ void MCompositeManagerPrivate::splashTimeout()
     splash->deleteLater();
     splash = 0;
     waiting_damage = 0;
+check_compositing_and_stacking:
     glwidget->update();
     dirtyStacking(false);
 
