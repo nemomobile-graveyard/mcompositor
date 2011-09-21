@@ -130,6 +130,7 @@ void MWindowPropertyCache::init()
     global_alpha = 255;
     video_global_alpha = -1;
     is_decorator = false;
+    force_skipping_taskbar = false;
     wmhints = XAllocWMHints();
     attrs = 0;
     meego_layer = 0;
