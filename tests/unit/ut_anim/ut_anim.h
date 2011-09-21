@@ -14,6 +14,7 @@ private slots:
     void testDamageTimeout();
     void testStartupAnimForFirstTimeMapped();
     void testIconifyingAnimation();
+    void testIconifyingAnimationBelowLockscreen();
     void testRestoreAnimation();
     void testCloseAnimation();
     void testStartupAnimForSecondTimeMapped();
