@@ -82,6 +82,7 @@
 #define MODAL_WINDOW(X) \
         ((X)->netWmState().contains(ATOM(_NET_WM_STATE_MODAL)))
 #define DECORATED_FS_WINDOW(X) (device_state->ongoingCall() && \
+                     !X->isCallUi() && \
                      FULLSCREEN_WINDOW(X) && \
                      X->statusbarGeometry().isEmpty() && \
                      X->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU))
