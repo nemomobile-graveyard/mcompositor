@@ -169,6 +169,7 @@ public:
 
     Window desktopWindow() const;
     bool debugMode() const;
+    bool runningInTestImage() const;
     int configInt(const char *key) const;
     int configInt(const char *key, int defaultValue) const;
     QVariant config(const char *key) const;

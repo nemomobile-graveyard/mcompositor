@@ -3195,6 +3195,20 @@ bool MCompositeManager::debugMode() const
 #endif
 }
 
+bool MCompositeManager::runningInTestImage() const
+{
+    static bool checked = false, in_test_image = false;
+    if (!checked) {
+        checked = true;
+        QFile f;
+        if (f.exists("/etc/init/test/ci-testing.conf")) {
+            in_test_image = true;
+            qWarning("MCompositeManager: running in CITA image");
+        }
+    }
+    return in_test_image;
+}
+
 // Determine whether a decorator should be ordered above or below @win.
 // If the answer is definite it is stored in *@cmpp and NULL is returned.
 // Otherwise the decorator should be ordered exatly like the returned window,
@@ -4397,6 +4411,7 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
     ensureSettingsFile();
+    runningInTestImage();
 
     d = new MCompositeManagerPrivate(this);
     connect(d, SIGNAL(windowBound(MCompositeWindow*)), SIGNAL(windowBound(MCompositeWindow*)));
