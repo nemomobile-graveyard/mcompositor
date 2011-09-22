@@ -82,7 +82,7 @@ public:
     /*!
      * Reimplemented from QApplication::x11EventFilter() to catch X11 events
      */
-    virtual bool x11EventFilter(XEvent *event);
+    bool x11EventFilter(XEvent *event);
 
     /*!
      * Returns the scene where the items are rendered
@@ -175,6 +175,7 @@ public:
     QVariant config(const char *key) const;
     void config(const char *key, const QVariant &val) const;
     void reloadConfig();
+    void recheckVisibility() const;
 
 #ifdef WINDOW_DEBUG
     // Dump the current state of MCompositeManager and MCompositeWindow:s

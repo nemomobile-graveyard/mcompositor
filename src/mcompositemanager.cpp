@@ -4601,6 +4601,11 @@ void MCompositeManager::reloadConfig()
                  << "is in invalid format";
 }
 
+void MCompositeManager::recheckVisibility() const
+{
+    d->sendSyntheticVisibilityEventsForOurBabies();
+}
+
 void MCompositeManager::ensureSettingsFile()
 {
     // $HOME/.config/mcompositor/new-mcompositor.conf
