@@ -702,13 +702,15 @@ void MCompositeWindow::endAnimation()
 
 void MCompositeWindow::updateServerGrab()
 {
+    MCompositeManager *m = (MCompositeManager*)qApp;
     if (!we_want_grab && we_have_grab) {
-        XUngrabServer(QX11Info::display());
+        if (!m->runningInTestImage())
+            XUngrabServer(QX11Info::display());
         we_have_grab = false;
     } else if (we_want_grab && !we_have_grab) {
-        XGrabServer(QX11Info::display());
+        if (!m->runningInTestImage())
+            XGrabServer(QX11Info::display());
         we_have_grab = true;
-        MCompositeManager *m = (MCompositeManager*)qApp;
         connect(&m->deviceState(), SIGNAL(incomingCall()),
                 this, SLOT(incomingCall()), Qt::UniqueConnection);
         // reset global alpha
