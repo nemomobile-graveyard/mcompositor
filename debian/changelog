@@ -1,3 +1,11 @@
+mcompositor (1.1.16-1) unstable; urgency=low
+
+  * Add two new functional tests test26 and test27.
+  * Disable server grab/ungrab when running in a CITA image.
+  * Fixes: NB#272089 - When swipe is ongoing incoming call can result..
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Thu, 22 Sep 2011 16:18:22 +0300
+
 mcompositor (1.1.15-1) unstable; urgency=low
 
   * fix regression caused by the fix for NB#282411
