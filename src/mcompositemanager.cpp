@@ -89,6 +89,7 @@
 static KeyCode switcher_key = 0;
 static bool lockscreen_painted = false;
 int MCompositeManager::sighupFd[2];
+static QHash<QLatin1String, QVariant> default_settings;
 
 static bool should_be_pinged(MCompositeWindow *cw);
 static bool compareWindows(Window w_a, Window w_b);
@@ -4437,7 +4438,6 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
 
     d = new MCompositeManagerPrivate(this);
     connect(d, SIGNAL(windowBound(MCompositeWindow*)), SIGNAL(windowBound(MCompositeWindow*)));
-    d->mayShowApplicationHungDialog = !arguments().contains("-nohung");
 
     // Publish ourselves
     new MDecoratorFrame(this);
@@ -4498,6 +4498,23 @@ QGraphicsScene *MCompositeManager::scene()
 
 void MCompositeManager::prepareEvents()
 {
+    const QStringList &args = arguments();
+
+    d->mayShowApplicationHungDialog = !args.contains("-nohung");
+    if (args.contains("-settings")) {
+
+        foreach (QString const &key, settings->allKeys())
+            default_settings[QLatin1String(key.toLatin1().constData())] =
+                settings->value(key);
+        QHash<QLatin1String, QVariant>::const_iterator ds;
+        puts("[General]");
+        for (ds = default_settings.constBegin();
+             ds != default_settings.constEnd(); ++ds)
+            printf("%s=%s\n", ds.key().latin1(),
+                   ds->toString().toLatin1().constData());
+        ::exit(0);
+    }
+
     if (QX11Info::isCompositingManagerRunning()) {
         qCritical("Compositing manager already running.");
         ::exit(0);
@@ -4583,32 +4600,34 @@ void MCompositeManager::exposeSwitcher()
     d->exposeSwitcher();
 }
 
-static QHash<QString, QVariant> default_settings;
-
-void MCompositeManager::config(char const *key, QVariant const &val) const
+void MCompositeManager::config(char const *ckey, QVariant const &val) const
 {
+    QLatin1String key(ckey);
     if (!default_settings.contains(key))
         default_settings[key] = val;
 }
 
-QVariant MCompositeManager::config(char const *key) const
+QVariant MCompositeManager::config(char const *ckey) const
 {
+    QLatin1String key(ckey);
     if (settings->contains(key))
         return settings->value(key);
     Q_ASSERT(default_settings.contains(key));
     return default_settings.value(key);
 }
 
-int MCompositeManager::configInt(char const *key) const
+int MCompositeManager::configInt(char const *ckey) const
 {
+    QLatin1String key(ckey);
     if (settings->contains(key))
         return settings->value(key).toInt();
     Q_ASSERT(default_settings.contains(key));
     return default_settings.value(key).toInt();
 }
 
-int MCompositeManager::configInt(char const *key, int defaultValue) const
+int MCompositeManager::configInt(char const *ckey, int defaultValue) const
 {
+    QLatin1String key(ckey);
     return settings->value(key, defaultValue).toInt();
 }
 
