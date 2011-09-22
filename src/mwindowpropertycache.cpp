@@ -1337,7 +1337,7 @@ void MWindowPropertyCache::damageTracking(bool enabled)
     if (!is_valid)
         return;
     if (enabled) {
-        if (!damage_object && !isInputOnly() && !isOverrideRedirect())
+        if (!damage_object && !isInputOnly())
             damage_object = XDamageCreate(QX11Info::display(), window,
                                           XDamageReportNonEmpty);
     } else if (damage_object) {
