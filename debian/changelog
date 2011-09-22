@@ -1,3 +1,22 @@
+mcompositor (1.1.15-1) unstable; urgency=low
+
+  * fix regression caused by the fix for NB#282411
+  * Fixes: NB#274854 - Splash screens' orientation information should be
+    available
+  * Fixes: NB#261519 - Swipe, right after launching application, does not move
+    application to the switcher
+  * One more fix for NB#261758 - Transition when invoking 'Share this page'...
+  * Fixes: NB#281956 - application not responding dialog missing for Search +
+    VKB
+  * Partially fixes NB#274835 - Closing an application by swiping down is not
+    smooth
+  * fix a bug with waiting damage for the lockscreen, making it appear faster
+  * don't show iconifying animation on top when we have higher priority
+    windows
+  * Fix couple of cases where we needlessly switch on compositing
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Thu, 22 Sep 2011 11:27:54 +0300
+
 mcompositor (1.1.14-1) unstable; urgency=low
 
   * Partially fixes NB#245236 - All applications get X events when a fore..
