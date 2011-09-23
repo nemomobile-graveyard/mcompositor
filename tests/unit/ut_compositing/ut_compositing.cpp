@@ -36,14 +36,15 @@ static Drawable request_testpixmap()
 class fake_LMT_window : public MWindowPropertyCache
 {
 public:
-    fake_LMT_window(Window w, bool is_mapped = true)
+    fake_LMT_window(Window w, unsigned width = dwidth,
+                    unsigned height = dheight)
         : MWindowPropertyCache(w, &attrs)
     {
         cancelAllRequests();
         window = w;
         memset(&attrs, 0, sizeof(attrs));
-        setIsMapped(is_mapped);
-        setRealGeometry(QRect(0, 0, dwidth, dheight));
+        setIsMapped(false);
+        setRealGeometry(QRect(0, 0, width, height));
         // icon geometry can be required for iconifying animation
         icon_geometry = QRect(0, 0, dwidth / 2, dheight / 2);
         type_atoms.append(ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE));
@@ -580,6 +581,66 @@ void ut_Compositing::testDamageToObscuredRGBAWindow()
     QCOMPARE(rgba_app->pendingDamage(), false);
     fakeDamageEvent(rgba_cw);
     QCOMPARE(rgba_app->pendingDamage(), false);
+}
+
+// Smaller-than-fullscreen window that is first obscured and then gets revealed
+// --- test that damage that was received while the window was obscured
+// is handled as soon as it's visible again.
+// NOTE: this is only necessary because smaller-than-fullscreen windows cause
+// compositing in the current code.
+void ut_Compositing::testDamageToObscuredSmallWindow()
+{
+    fake_LMT_window *dlg = new fake_LMT_window(11, dwidth / 2, dheight / 2);
+    // use a dialog because those are not resized
+    dlg->prependType(ATOM(_NET_WM_WINDOW_TYPE_DIALOG));
+    mapWindow(dlg);
+    QVERIFY(dlg->realGeometry().width() == dwidth / 2
+            && dlg->realGeometry().height() == dheight / 2);
+    QTest::qWait(10); // run the idle handlers
+    MCompositeWindow *dlg_cw = cmgr->d->windows.value(11, 0);
+    fakeDamageEvent(dlg_cw);
+    QCOMPARE(dlg->pendingDamage(), false);
+    fakeDamageEvent(dlg_cw);
+    QCOMPARE(dlg->pendingDamage(), false);
+    QVERIFY(!dlg_cw->windowAnimator()->isActive()); // no animation
+    QCOMPARE(dlg->damageObject() != 0, true);
+
+    QVERIFY(cmgr->d->compositing);
+
+    // obscure it with opaque window
+    fake_LMT_window *rgb_app = new fake_LMT_window(12);
+    mapWindow(rgb_app);
+    MCompositeWindow *rgb_cw = cmgr->d->windows.value(12, 0);
+    fakeDamageEvent(rgb_cw);
+    QCOMPARE(rgb_app->pendingDamage(), false);
+    fakeDamageEvent(rgb_cw);
+    QCOMPARE(rgb_app->pendingDamage(), false);
+    while (rgb_cw->windowAnimator()->isActive())
+        QTest::qWait(500); // wait the animation to finish
+    QCOMPARE(rgb_app->damageObject() == 0, true);
+    QCOMPARE(dlg->damageObject() != 0, true);
+
+    QCOMPARE(dlg_cw->isVisible(), false);
+    QCOMPARE(dlg_cw->windowObscured(), true);
+
+    // now damage the dialog (not handled)
+    fakeDamageEvent(dlg_cw);
+    QCOMPARE(dlg->pendingDamage(), true);
+    fakeDamageEvent(dlg_cw);
+    QCOMPARE(dlg->pendingDamage(), true);
+
+    // unmap the opaque window to reveal the dialog
+    unmapWindow(rgb_app);
+    QTest::qWait(10); // run the idle handlers
+    QCOMPARE(dlg_cw->isVisible(), true);
+    QCOMPARE(dlg_cw->windowObscured(), false);
+
+    // now damage the dialog (handled -- also the old damage)
+    QCOMPARE(dlg->pendingDamage(), false);
+    fakeDamageEvent(dlg_cw);
+    QCOMPARE(dlg->pendingDamage(), false);
+    fakeDamageEvent(dlg_cw);
+    QCOMPARE(dlg->pendingDamage(), false);
 }
 
 int main(int argc, char* argv[])

@@ -531,8 +531,7 @@ void MCompositeWindow::setVisible(bool visible)
     QGraphicsScene* sc = scene();    
     if (sc && !visible && sc->items().count() == 1)
         clearTexture();
-    else if (visible && old_value != visible &&
-             pc->hasAlphaAndIsNotOpaque())
+    else if (visible && old_value != visible)
         // handle old damage that possibly came while we were invisible
         updateWindowPixmap();
 }
