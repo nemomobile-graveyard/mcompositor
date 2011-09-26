@@ -2165,6 +2165,15 @@ bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc,
             continue;
         if (tmp->meegoStackingLayer() > pc->meegoStackingLayer())
             return true;
+        // is 'tmp' a system-modal and 'pc' has Meego level 0 and is not a
+        // system-modal?
+        if (MODAL_WINDOW(tmp) &&
+            tmp->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)
+            && !getLastVisibleParent(tmp)
+            && !pc->meegoStackingLayer() &&
+            (!MODAL_WINDOW(pc) ||
+             pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DIALOG)))
+            return true;
     }
     return false;
 }

@@ -19,6 +19,9 @@ private slots:
     void testCloseAnimation();
     void testStartupAnimForSecondTimeMapped();
     void testNoAnimations();  
+    void testSkipAnimationsWhenMeegoLevelWindowIsMapped();
+    void testSkipAnimationsWhenSystemModalIsMapped();
+    void testDontSkipAnimationsWhenHigherMeegoLevelWindowIsMapped();
 
     void testOpenChainingAnimation();
     void testCloseChainingAnimation();
