@@ -19,6 +19,9 @@ private slots:
     void testCloseAnimation();
     void testStartupAnimForSecondTimeMapped();
     void testNoAnimations();  
+    void testSkipAnimationsWhenMeegoLevelWindowIsMapped();
+    void testSkipAnimationsWhenSystemModalIsMapped();
+    void testDontSkipAnimationsWhenHigherMeegoLevelWindowIsMapped();
 
     void testOpenChainingAnimation();
     void testCloseChainingAnimation();
@@ -27,6 +30,7 @@ private slots:
     void testExternalAnimHandler();
 
 private:
+    void fakeDamageEvent(MCompositeWindow *cw);
     void addWindow(MWindowPropertyCache *pc);
     void mapWindow(MWindowPropertyCache *pc);
     MCompositeManager *cmgr;
