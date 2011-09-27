@@ -1,3 +1,12 @@
+mcompositor (1.1.17-1) unstable; urgency=low
+
+  * Fixes: NB#278344 - A white vertical bar flickers in the left of the screen
+    when creating an emergency call.
+  * Add recheckVisibility() API for fixing NB#282864
+  * Partial fix for NB#284015 
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 27 Sep 2011 13:12:56 +0300
+
 mcompositor (1.1.16-1) unstable; urgency=low
 
   * Add two new functional tests test26 and test27.
