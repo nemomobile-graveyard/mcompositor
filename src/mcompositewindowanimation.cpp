@@ -78,6 +78,7 @@ protected:
             }
             if (parent->targetWindow2())
                 parent->targetWindow2()->beginAnimation();
+            emit parent->animationStarted(parent);
         } else if (newState == QAbstractAnimation::Paused &&
                    oldState == QAbstractAnimation::Running) {
             parent->setManuallyUpdated(true);
