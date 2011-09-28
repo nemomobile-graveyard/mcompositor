@@ -15,6 +15,18 @@
 
 #include <X11/Xlib.h>
 
+#ifdef WINDOW_DEBUG
+#define SET_PAINTED(X, V) ((MTexturePixmapItem*)X)->d->item_painted = V
+#define VERIFY_PAINTED(X, V) \
+               QVERIFY(((MTexturePixmapItem*)X)->d->item_painted >= V)
+#define VERIFY_NOT_PAINTED(X, V) \
+               QVERIFY(((MTexturePixmapItem*)X)->d->item_painted <= V)
+#else
+#define SET_PAINTED(X, V)
+#define VERIFY_PAINTED(X, V)
+#define VERIFY_NOT_PAINTED(X, V)
+#endif
+
 static int dheight, dwidth;
 
 // Skip bad window messages for mock windows
@@ -183,6 +195,7 @@ void ut_Anim::testStartupAnimForFirstTimeMapped()
     QCOMPARE(cw->isValid(), true);
     QCOMPARE(cw->windowAnimator() != 0, true);
 
+    SET_PAINTED(cw, 0);
     fakeDamageEvent(cw);
     QCOMPARE(pc->pendingDamage(), false);
     fakeDamageEvent(cw);
@@ -195,6 +208,7 @@ void ut_Anim::testStartupAnimForFirstTimeMapped()
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
 
+    VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), NormalState);
     int d_i = cmgr->d->stacking_list.indexOf(1000);
     int w_i = cmgr->d->stacking_list.indexOf(1);
@@ -296,6 +310,7 @@ void ut_Anim::testIconifyingAnimation()
     // iconifies window 1
     cmgr->d->exposeSwitcher();
     MCompositeWindow *cw = cmgr->d->windows.value(1, 0);
+    SET_PAINTED(cw, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(cw->isValid(), true);
     QCOMPARE(cw->windowAnimator() != 0, true);
@@ -307,6 +322,7 @@ void ut_Anim::testIconifyingAnimation()
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
 
+    VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), IconicState);
     int d_i = cmgr->d->stacking_list.indexOf(1000);
     int w_i = cmgr->d->stacking_list.indexOf(1);
@@ -344,6 +360,7 @@ void ut_Anim::testIconifyingAnimationBelowLockscreen()
     addWindow(app);
     mapWindow(app);
     MCompositeWindow *app_cw = cmgr->d->windows.value(4999, 0);
+    SET_PAINTED(app_cw, 0);
     QVERIFY(!app_cw->windowAnimator()->isActive());
     QTest::qWait(10);
     QVERIFY(!cmgr->d->compositing); // hidden window: not animated
@@ -372,6 +389,7 @@ void ut_Anim::testIconifyingAnimationBelowLockscreen()
     while (lock_cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
     QVERIFY(!cmgr->d->compositing);
+    VERIFY_NOT_PAINTED(app_cw, 0);
 }
 
 void ut_Anim::testRestoreAnimation()
@@ -385,12 +403,14 @@ void ut_Anim::testRestoreAnimation()
     cme.type = ClientMessage;
     cme.message_type = ATOM(_NET_ACTIVE_WINDOW);
     cmgr->d->rootMessageEvent(&cme);
+    SET_PAINTED(cw, 0);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(MCompositeWindow::we_have_grab, true);
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
 
+    VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), NormalState);
     int d_i = cmgr->d->stacking_list.indexOf(1000);
     int w_i = cmgr->d->stacking_list.indexOf(1);
@@ -416,12 +436,14 @@ void ut_Anim::testCloseAnimation()
     ((MTexturePixmapItem*)cw)->d->TFP.drawable = request_testpixmap();
     cmgr->d->unmapEvent(&ue);
     
+    SET_PAINTED(cw, 0);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(MCompositeWindow::we_have_grab, true);
     // damage to desktop window is now handled
     QCOMPARE(d_pc->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
+    VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), WithdrawnState);
     QCOMPARE(MCompositeWindow::we_have_grab, false);
 }
@@ -459,6 +481,7 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     // map it again and check that there is an animation
     mapWindow(pc);
 
+    SET_PAINTED(cw, 0);
     fakeDamageEvent(cw);
     QCOMPARE(pc->pendingDamage(), false);
     fakeDamageEvent(cw);
@@ -471,6 +494,7 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
 
+    VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), NormalState);
     int d_i = cmgr->d->stacking_list.indexOf(1000);
     int w_i = cmgr->d->stacking_list.indexOf(1);
@@ -496,6 +520,7 @@ void ut_Anim::testNoAnimations()
     mapWindow(pc);
 
     MCompositeWindow *cw = cmgr->d->windows.value(3, 0);
+    SET_PAINTED(cw, 0);
     QCOMPARE(cw != 0, true);
     QCOMPARE(cw->isValid(), true);
     QCOMPARE(cw->windowAnimator() != 0, true);
@@ -507,7 +532,7 @@ void ut_Anim::testNoAnimations()
     QCOMPARE(cw->windowAnimator()->isActive(), false);
     QCOMPARE(MCompositeWindow::we_have_grab, false);
     QCOMPARE(cw->isMapped(), true);
-    QCOMPARE(cw->isVisible(), true);
+    QCOMPARE(cw->isVisible(), false);
     QCOMPARE(cw->propertyCache()->windowState(), NormalState);
     int d_i = cmgr->d->stacking_list.indexOf(1000);
     int w_i = cmgr->d->stacking_list.indexOf(3);
@@ -550,6 +575,7 @@ void ut_Anim::testNoAnimations()
     QCOMPARE(cw->windowAnimator()->isActive(), false);
     QCOMPARE(MCompositeWindow::we_have_grab, false);
     QVERIFY(!cmgr->d->compositing);
+    VERIFY_NOT_PAINTED(cw, 0);
 }
 
 void ut_Anim::testSkipAnimationsWhenMeegoLevelWindowIsMapped()
@@ -580,6 +606,7 @@ void ut_Anim::testSkipAnimationsWhenMeegoLevelWindowIsMapped()
     addWindow(pc);
     mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(5, 0);
+    SET_PAINTED(cw, 0);
     QVERIFY(cw != 0);
     QVERIFY(cw->isValid());
     fakeDamageEvent(cw);
@@ -624,6 +651,7 @@ void ut_Anim::testSkipAnimationsWhenMeegoLevelWindowIsMapped()
     while (meegocw->windowAnimator()->isActive())
         QTest::qWait(100);
     QVERIFY(!cmgr->d->compositing);
+    VERIFY_NOT_PAINTED(cw, 0);
 }
 
 void ut_Anim::testSkipAnimationsWhenSystemModalIsMapped()
@@ -652,6 +680,7 @@ void ut_Anim::testSkipAnimationsWhenSystemModalIsMapped()
     addWindow(pc);
     mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(7, 0);
+    SET_PAINTED(cw, 0);
     QVERIFY(cw != 0);
     QVERIFY(cw->isValid());
     fakeDamageEvent(cw);
@@ -693,6 +722,7 @@ void ut_Anim::testSkipAnimationsWhenSystemModalIsMapped()
     cmgr->d->unmapEvent(&ue);
     QVERIFY(!dlg_cw->windowAnimator()->isActive());
     QVERIFY(!cmgr->d->compositing);
+    VERIFY_NOT_PAINTED(cw, 0);
 }
 
 void ut_Anim::testDontSkipAnimationsWhenHigherMeegoLevelWindowIsMapped()
@@ -724,6 +754,7 @@ void ut_Anim::testDontSkipAnimationsWhenHigherMeegoLevelWindowIsMapped()
     addWindow(pc);
     mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(9, 0);
+    SET_PAINTED(cw, 0);
     QVERIFY(cw != 0);
     QVERIFY(cw->isValid());
     fakeDamageEvent(cw);
@@ -733,6 +764,7 @@ void ut_Anim::testDontSkipAnimationsWhenHigherMeegoLevelWindowIsMapped()
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100);
 
+    VERIFY_PAINTED(cw, 10);
     XClientMessageEvent cme;
     memset(&cme, 0, sizeof(cme));
     cme.window = 9;
@@ -741,11 +773,13 @@ void ut_Anim::testDontSkipAnimationsWhenHigherMeegoLevelWindowIsMapped()
     cme.data.l[0] = IconicState;
     cme.format = 32;
     cmgr->d->clientMessageEvent(&cme);
+    SET_PAINTED(cw, 0);
     QVERIFY(cw->windowAnimator()->isActive());
     QVERIFY(cmgr->d->compositing);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100);
 
+    VERIFY_PAINTED(cw, 10);
     memset(&cme, 0, sizeof(cme));
     cme.window = 9;
     cme.type = ClientMessage;
@@ -763,11 +797,13 @@ void ut_Anim::testDontSkipAnimationsWhenHigherMeegoLevelWindowIsMapped()
     ue.event = QX11Info::appRootWindow();
     ((MTexturePixmapItem*)cw)->d->TFP.drawable = request_testpixmap();
     cmgr->d->unmapEvent(&ue);
+    SET_PAINTED(cw, 0);
     QVERIFY(!pc->isMapped());
     QVERIFY(cw->windowAnimator()->isActive());
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100);
 
+    VERIFY_PAINTED(cw, 10);
     ue.window = 8;
     ((MTexturePixmapItem*)meegocw)->d->TFP.drawable = request_testpixmap();
     cmgr->d->unmapEvent(&ue);
@@ -1011,6 +1047,18 @@ int main(int argc, char* argv[])
     QGraphicsScene *scene = app.scene();
     QGraphicsView view(scene);
     view.setFrameStyle(0);
+    view.setProperty("NoMStyle", true);
+    view.setUpdatesEnabled(false);
+    view.setAutoFillBackground(false);
+    view.setBackgroundBrush(Qt::NoBrush);
+    view.setForegroundBrush(Qt::NoBrush);
+    view.setFrameShadow(QFrame::Plain);
+
+    view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+    view.setAttribute(Qt::WA_NoSystemBackground);
+    view.setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
+    view.setOptimizationFlags(QGraphicsView::IndirectPainting);
+    app.setSurfaceWindow(view.winId());
     
     QGLFormat fmt;
     fmt.setSamples(0);
@@ -1027,6 +1075,7 @@ int main(int argc, char* argv[])
 
     view.setViewport(&w);
     w.makeCurrent();
+    view.show();
 
     ut_Anim anim;
 

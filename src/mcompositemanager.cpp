@@ -2273,9 +2273,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
                 // there is an animation, don't show it unpainted on top
                 item->setVisible(false);
                 item->waitForPainting();
-            } else if (!splash || !splash->matches(pc)) {
-                item->setVisible(true);
-                item->setPaintedAfterMapping(true);
             } else
                 item->setPaintedAfterMapping(true);
         }
