@@ -1843,7 +1843,7 @@ int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
     for (int i = last_i; i >= 0; --i) {
          Window w = stacking_list.at(i);
          if (w == desktop_window
-                 || (splash && splash->window() == desktop_window))
+                 || (splash && splash->window() == w))
              return i;
          MCompositeWindow *cw = COMPOSITE_WINDOW(w);
          MWindowPropertyCache *pc;
