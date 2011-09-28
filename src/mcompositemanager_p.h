@@ -100,7 +100,7 @@ public:
     
     void redirectWindows();
     void showOverlayWindow(bool show);
-    void enableRedirection(bool emit_signal);
+    void enableRedirection();
     void setExposeDesktop(bool exposed);
     void fixZValues();
     void setStatusbarVisibleProperty(bool visiblity);
@@ -240,7 +240,6 @@ public:
     } lastDestroyedSplash;
 
 signals:
-    void compositingEnabled();
     void currentAppChanged(Window w);
     void windowBound(MCompositeWindow* window);
 

@@ -3812,7 +3812,7 @@ void MCompositeManagerPrivate::enableCompositing()
     if (!overlay_mapped)
         showOverlayWindow(true);
     else
-        enableRedirection(true);
+        enableRedirection();
 }
 
 void MCompositeManagerPrivate::showOverlayWindow(bool show)
@@ -3835,7 +3835,7 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
         overlay_mapped = false;
     } else if (show && (!overlay_mapped || first_call)) {
 #ifdef GLES2_VERSION
-        enableRedirection(false);
+        enableRedirection();
 #endif
         XShapeCombineRectangles(QX11Info::display(), xoverlay,
                                 ShapeBounding, 0, 0, &fs, 1,
@@ -3851,14 +3851,13 @@ void MCompositeManagerPrivate::showOverlayWindow(bool show)
         XFixesDestroyRegion(QX11Info::display(), r);
         overlay_mapped = true;
 #ifndef GLES2_VERSION
-        enableRedirection(false);
+        enableRedirection();
 #endif
-        emit compositingEnabled();
     }
     first_call = false;
 }
 
-void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
+void MCompositeManagerPrivate::enableRedirection()
 {
     // redirect from bottom to top
     for (int i = 0; i < stacking_list.size(); ++i) {
@@ -3880,9 +3879,6 @@ void MCompositeManagerPrivate::enableRedirection(bool emit_signal)
     // no delay: application does not need to redraw when maximizing it
     scene()->views()[0]->setUpdatesEnabled(true);
     // NOTE: enableRedirectedRendering() calls glwidget->update() if needed
-    if (emit_signal)
-        // At this point everything should be rendered off-screen 
-        emit compositingEnabled();        
 }
 
 void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
