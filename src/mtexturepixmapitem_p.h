@@ -99,6 +99,9 @@ public:
     // notifications for this window.  Only used by the EGL variant
     // to throttle repairs if the window is transitioning.
     QList<Time> *pastDamages;
+#ifdef WINDOW_DEBUG
+    unsigned item_painted; // for unit testing
+#endif
 
 #ifdef GLES2_VERSION
     static EglTextureManager *texman;

@@ -360,6 +360,9 @@ void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
     // still has blending left-over even if we call glDisable(GL_BLEND)
     glBlendFunc(GL_ONE, GL_ZERO);
     glDisable(GL_BLEND);
+#ifdef WINDOW_DEBUG
+    ++item_painted;
+#endif
 }
 
 void MTexturePixmapPrivate::clearTexture()

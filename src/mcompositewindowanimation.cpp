@@ -429,8 +429,9 @@ void MCompositeWindowAnimation::ensureAnimationVisible()
 {
     // Always ensure the animation is REALLY visible. Z-values get corrected 
     // later at checkStacking if needed
-    if (targetWindow() && 
-        targetWindow()->propertyCache()->windowState() != IconicState)
+    MCompositeWindow *t = targetWindow();
+    if (t && (t->status() == MCompositeWindow::Restoring ||
+              t->propertyCache()->windowState() != IconicState))
         targetWindow()->setZValue(
               ((MCompositeManager*)qApp)->d->stacking_list.size() + 1);
     if (targetWindow2())
