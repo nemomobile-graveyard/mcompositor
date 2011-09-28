@@ -282,13 +282,8 @@ private:
 MShaderProgram *MGLResourceManager::shader[ShaderTotal];
 #endif
 
-void MTexturePixmapPrivate::paint(QPainter *painter,
-                                  const QStyleOptionGraphicsItem *option,
-                                  QWidget *widget)
+void MTexturePixmapPrivate::paint(QPainter *painter)
 {
-    Q_UNUSED(option)
-    Q_UNUSED(widget)
-
     if (direct_fb_render) {
         glBindTexture(GL_TEXTURE_2D, 0);
         return;
@@ -613,7 +608,9 @@ void MTexturePixmapItem::paint(QPainter *painter,
                                const QStyleOptionGraphicsItem *option,
                                QWidget *widget)
 {
-    d->paint(painter, option, widget);
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+    d->paint(painter);
 }
 
 void MTexturePixmapItem::renderTexture(const QTransform& transform)
