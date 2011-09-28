@@ -583,11 +583,6 @@ void MTexturePixmapPrivate::saveBackingStore()
         return;
 
     Drawable pixmap = XCompositeNameWindowPixmap(QX11Info::display(), item->window());
-#ifdef GLES2_VERSION
-    // Copied from EGL MTexturePixmapItem::doTFP but no idea why it was there
-    // See commit a5481daa6cd1951f5
-    ctx->makeCurrent();
-#endif
     TFP.bind(pixmap);
 }
 
