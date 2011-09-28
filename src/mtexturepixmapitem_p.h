@@ -72,9 +72,7 @@ public:
     void q_drawTexture(const QTransform& transform, const QRectF& drawRect,
                        qreal opacity, const GLvoid* texCoords);
     void installEffect(MCompositeWindowShaderEffect* effect);
-    void paint(QPainter *painter,
-               const QStyleOptionGraphicsItem *option,
-               QWidget *widget);
+    void paint(QPainter *painter);
     void renderTexture(const QTransform& transform);
     static GLuint installPixelShader(const QByteArray& code);
                 
