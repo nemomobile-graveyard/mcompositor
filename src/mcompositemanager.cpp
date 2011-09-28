@@ -2391,26 +2391,28 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     MWindowPropertyCache *pc = prop_caches.value(event->window, 0);
 
     if (event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
-        QHash<unsigned int, DismissedSplash>::iterator it = dismissedSplashScreens.find(pc->pid());
+        if (!pc)
+            return;
+        QHash<unsigned int, DismissedSplash>::iterator it =
+            dismissedSplashScreens.find(pc->pid());
         if (it != dismissedSplashScreens.end()) {
             DismissedSplash &ds = it.value();
             if (!ds.blockTimer.isValid()) {
                 ds.blockTimer.start();
                 // no XMapRequestEvent received yet - ignore event
                 return;
-            }
-            else if (ds.blockTimer.elapsed() < 1000)
+            } else if (ds.blockTimer.elapsed() < 1000)
                 return;
             else
                 dismissedSplashScreens.erase(it);
         }
-        if (pc && !pc->isMapped() && pc->beingMapped()) {
+        if (!pc->isMapped() && pc->beingMapped()) {
             // _NET_ACTIVE_WINDOW came between MapRequest and MapNotify,
             // mark it as "stacked unmapped" to ignore initial_state==Iconic
             STACKING("positionWindow 0x%lx -> botton", event->window);
             positionWindow(event->window, true);
             pc->setStackedUnmapped(true);
-        } else if (pc && pc->isMapped()) {
+        } else if (pc->isMapped()) {
             Window topmost = getTopmostApp();
             if (!m_extensions.values(MapNotify).isEmpty() || !topmost) {
                 // Not necessary to animate if not in desktop view or we have a plugin.
