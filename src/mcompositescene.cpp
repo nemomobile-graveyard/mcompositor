@@ -29,6 +29,7 @@
 #include "mcompositescene.h"
 #include "mcompositewindowgroup.h"
 #include "mdecoratorframe.h"
+#include "mcompositemanager.h"
 
 #include <X11/extensions/Xfixes.h>
 #ifdef HAVE_SHAPECONST
@@ -86,6 +87,11 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         views()[0]->setUpdatesEnabled(false);
         return;
     }
+
+    MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
+    if (mc->servergrab.has_grab)
+        mc->servergrab.reinforce();
+
     QRegion visible(sceneRect().toRect());
     QVector<int> to_paint(10);
     int size = 0;

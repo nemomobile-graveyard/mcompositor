@@ -274,11 +274,6 @@ public:
     void startCloseTimer();
     void stopCloseTimer();
 
-    /*!
-      * Grab/Ungrab the server as wanted.
-      */
-    void updateServerGrab();
-
      /*!
       * This is called whenever a start of window animation occurs.
       */
@@ -330,7 +325,6 @@ private slots:
     void q_itemRestored();
     void q_fadeIn();
     void closeTimeout();
-    void incomingCall();
     
 signals:
     /*!
@@ -382,8 +376,6 @@ private:
     bool painted_after_mapping;
 
     static int window_transitioning;
-    static bool we_want_grab;
-    static bool we_have_grab;
 
     // Main ping timer
     QTimer *t_ping, *t_reappear;

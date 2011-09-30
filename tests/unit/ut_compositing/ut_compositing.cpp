@@ -184,7 +184,7 @@ void ut_Compositing::testDesktopMapping()
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(w->window() == 1, true);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), true);
-    QCOMPARE(MCompositeWindow::we_have_grab, false);
+    QCOMPARE(cmgr->servergrab.has_grab, false);
 }
 
 void ut_Compositing::testAppMapping()
@@ -216,7 +216,7 @@ void ut_Compositing::testAppMapping()
     QCOMPARE(cmgr->d->compositing, false);
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), true);
-    QCOMPARE(MCompositeWindow::we_have_grab, false);
+    QCOMPARE(cmgr->servergrab.has_grab, false);
 }
 
 // unmap an application (depends on the previous test)
@@ -242,7 +242,7 @@ void ut_Compositing::testAppUnmapping()
     QCOMPARE(app->damageObject() != 0, true);
     QCOMPARE(cmgr->d->compositing, false);
     QCOMPARE(cmgr->d->overlay_mapped, false);
-    QCOMPARE(MCompositeWindow::we_have_grab, false);
+    QCOMPARE(cmgr->servergrab.has_grab, false);
 }
 
 // test re-mapping of an unmapped app (depends on the previous test)
@@ -277,7 +277,7 @@ void ut_Compositing::testAppRemapping()
     QCOMPARE(cmgr->d->compositing, false);
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), true);
-    QCOMPARE(MCompositeWindow::we_have_grab, false);
+    QCOMPARE(cmgr->servergrab.has_grab, false);
 }
 
 // VKB appearing for an app when that app is showing the mapping animation
@@ -334,7 +334,7 @@ void ut_Compositing::testVkbMappingWhenAppAnimating()
     QCOMPARE(((MTexturePixmapItem*)v)->isDirectRendered(), true);
     // self-compositing VKB requires redirected app
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), false);
-    QCOMPARE(MCompositeWindow::we_have_grab, false);
+    QCOMPARE(cmgr->servergrab.has_grab, false);
 }
 
 // normal VKB mapping case
@@ -374,7 +374,7 @@ void ut_Compositing::testVkbMapping()
     // self-compositing VKB requires unobscured and redirected app
     QCOMPARE(w->windowObscured(), false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), false);
-    QCOMPARE(MCompositeWindow::we_have_grab, false);
+    QCOMPARE(cmgr->servergrab.has_grab, false);
     // FIXME: app has the damage object even though we don't need it
     QCOMPARE(app->damageObject() != 0, true);
     QCOMPARE(vkb->damageObject() == 0, true);
@@ -424,7 +424,7 @@ void ut_Compositing::testBannerMapping()
     MCompositeWindow *app = cmgr->d->windows.value(4, 0);
     QCOMPARE(app->windowObscured(), false);
     QCOMPARE(((MTexturePixmapItem*)app)->isDirectRendered(), false);
-    QCOMPARE(MCompositeWindow::we_have_grab, false);
+    QCOMPARE(cmgr->servergrab.has_grab, false);
     // check that damage of the app is not handled
     fakeDamageEvent(app);
     QCOMPARE(((fake_LMT_window*)app->propertyCache())->pendingDamage(), true);
@@ -454,7 +454,7 @@ void ut_Compositing::testBannerUnmapping()
     MCompositeWindow *app = cmgr->d->windows.value(4, 0);
     QCOMPARE(app->windowObscured(), false);
     QCOMPARE(((MTexturePixmapItem*)app)->isDirectRendered(), false);
-    QCOMPARE(MCompositeWindow::we_have_grab, false);
+    QCOMPARE(cmgr->servergrab.has_grab, false);
 }
 
 // test that damage that arrived when display is off is handled after

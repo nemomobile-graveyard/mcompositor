@@ -35,8 +35,6 @@
 #include <X11/Xatom.h>
 
 int MCompositeWindow::window_transitioning = 0;
-bool MCompositeWindow::we_want_grab = false;
-bool MCompositeWindow::we_have_grab = false;
 
 MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
                                    MWindowPropertyCache *mpc, 
@@ -158,7 +156,7 @@ bool MCompositeWindow::iconify()
         d->updateWindowPixmap();
         animator->windowIconified();
         window_status = Normal;
-        updateServerGrab();
+        m->servergrab.commit();
         return true;
     }
     return false;
@@ -245,11 +243,12 @@ void MCompositeWindow::restore()
     setVisible(true);
     iconified = false;
      // Restore handler
-    if (animator && !static_cast<MCompositeManager *>(qApp)->splashed(this)) {
+    MCompositeManager *mc = static_cast<MCompositeManager *>(qApp);
+    if (animator && !mc->splashed(this)) {
         updateWindowPixmap();
         window_status = Restoring;
         animator->windowRestored();
-        updateServerGrab();
+        mc->servergrab.commit();
     }
 }
 
@@ -391,18 +390,18 @@ void MCompositeWindow::q_fadeIn()
     iconified = false;
 
     // fade-in handler
+    MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
     if (animator && isMapped()) {
         if (!static_cast<MCompositeManager*>(qApp)->isCompositing())
             static_cast<MCompositeManager*>(qApp)->d->enableCompositing();
         // always ensure the animation is visible. zvalues get corrected later 
         // at checkStacking 
-        setZValue(((MCompositeManager *) qApp)->d->stacking_list.size()+1);
+        setZValue(mc->d->stacking_list.size()+1);
         animator->windowShown();
-        updateServerGrab();
+        mc->servergrab.commit();
     } else {
-        MCompositeManager *m = static_cast<MCompositeManager*>(qApp);
         endAnimation();
-        m->possiblyUnredirectTopmostWindow();
+        mc->possiblyUnredirectTopmostWindow();
     }
 }
 
@@ -466,7 +465,7 @@ void MCompositeWindow::closeWindowAnimation()
         d->updateWindowPixmap();
         animator->windowClosed();
         window_status = Normal;
-        updateServerGrab();
+        p->servergrab.commit();
     }
 }
 
@@ -673,11 +672,9 @@ void MCompositeWindow::beginAnimation()
     if (!isMapped() && window_status != Closing)
         return;
 
-    if (!is_transitioning) {
+    if (!is_transitioning)
         if (!window_transitioning) {
             emit firstAnimationStarted();
-            we_want_grab = true;
-        }
         ++window_transitioning;
         is_transitioning = true;
     }
@@ -691,41 +688,9 @@ void MCompositeWindow::endAnimation()
     if (is_transitioning) {
         is_transitioning = false;
         --window_transitioning;
-        if (!window_transitioning) {
+        if (!window_transitioning)
             emit lastAnimationFinished(this);
-            we_want_grab = false;
-            updateServerGrab();
-        }
     }
-}
-
-void MCompositeWindow::updateServerGrab()
-{
-    MCompositeManager *m = (MCompositeManager*)qApp;
-    if (!we_want_grab && we_have_grab) {
-        if (!m->runningInTestImage())
-            XUngrabServer(QX11Info::display());
-        we_have_grab = false;
-    } else if (we_want_grab && !we_have_grab) {
-        if (!m->runningInTestImage())
-            XGrabServer(QX11Info::display());
-        we_have_grab = true;
-        connect(&m->deviceState(), SIGNAL(incomingCall()),
-                this, SLOT(incomingCall()), Qt::UniqueConnection);
-        // reset global alpha
-        m->d->sendSyntheticVisibilityEventsForOurBabies();
-    }
-}
-
-void MCompositeWindow::incomingCall()
-{
-    if (we_have_grab) {
-        we_want_grab = false;
-        updateServerGrab();
-    }
-    MCompositeManager *m = (MCompositeManager*)qApp;
-    disconnect(&m->deviceState(), SIGNAL(incomingCall()),
-               this, SLOT(incomingCall()));
 }
 
 bool MCompositeWindow::hasTransitioningWindow()

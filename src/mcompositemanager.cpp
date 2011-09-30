@@ -2722,6 +2722,7 @@ void MCompositeManagerPrivate::onFirstAnimationStarted()
 {
     // make sure animations use up to date statusbar content
     setStatusbarVisibleProperty(true);
+    static_cast<MCompositeManager*>(qApp)->servergrab.grabLater();
 }
 
 void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
@@ -2736,6 +2737,7 @@ void MCompositeManagerPrivate::onAnimationsFinished(MCompositeWindow *window)
     // plugin can do window stacking changes first
     QTimer::singleShot(0, this,
                        SLOT(sendSyntheticVisibilityEventsForOurBabies()));
+    static_cast<MCompositeManager*>(qApp)->servergrab.ungrab();
 }
 
 void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
@@ -3217,20 +3219,6 @@ bool MCompositeManager::debugMode() const
 #else
     return false;
 #endif
-}
-
-bool MCompositeManager::runningInTestImage() const
-{
-    static bool checked = false, in_test_image = false;
-    if (!checked) {
-        checked = true;
-        QFile f;
-        if (f.exists("/etc/init/test/ci-testing.conf")) {
-            in_test_image = true;
-            qWarning("MCompositeManager: running in CITA image");
-        }
-    }
-    return in_test_image;
 }
 
 // Determine whether a decorator should be ordered above or below @win.
@@ -4441,10 +4429,13 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
     ensureSettingsFile();
-    runningInTestImage();
 
     d = new MCompositeManagerPrivate(this);
     connect(d, SIGNAL(windowBound(MCompositeWindow*)), SIGNAL(windowBound(MCompositeWindow*)));
+    connect(&servergrab, SIGNAL(ungrabbed()),
+            d, SLOT(sendSyntheticVisibilityEventsForOurBabies()));
+    connect(d->device_state, SIGNAL(incomingCall()),
+            &servergrab, SLOT(ungrab()));
 
     // Publish ourselves
     new MDecoratorFrame(this);
@@ -4702,3 +4693,50 @@ void MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
     d->mapEvent(&e);
 }
 #endif
+
+// Implementation of Micro...^W MSGrabber.
+MSGrabber::MSGrabber()
+{
+    mercytimer.setInterval(50);
+    connect(&mercytimer, SIGNAL(timeout()), this, SLOT(ungrab()));
+    has_grab = needs_grab = false;
+}
+
+void MSGrabber::grab()
+{
+    needs_grab = true;
+    commit();
+}
+
+void MSGrabber::ungrab()
+{
+    needs_grab = false;
+    commit();
+}
+
+// Make the @needs_grab setting effective.
+void MSGrabber::commit()
+{
+    if (has_grab == needs_grab)
+        return;
+
+    if (needs_grab) {
+        Q_ASSERT(!has_grab && !mercytimer.isActive());
+        XGrabServer(QX11Info::display());
+        mercytimer.start();
+    } else {
+        Q_ASSERT(has_grab && mercytimer.isActive());
+        XUngrabServer(QX11Info::display());
+        mercytimer.stop();
+        emit ungrabbed();
+    }
+
+    has_grab = needs_grab;
+}
+
+// Tells Miss Grabber that you still need the grab, and restarts @mercytimer.
+void MSGrabber::reinforce()
+{
+    Q_ASSERT(has_grab && mercytimer.isActive());
+    mercytimer.start();
+}

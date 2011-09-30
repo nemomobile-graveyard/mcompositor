@@ -24,6 +24,7 @@
 #include <QGLWidget>
 #include <QDir>
 #include <QSettings>
+#include <QTimer>
 #include <mwindowpropertycache.h>
 
 class QGraphicsScene;
@@ -31,6 +32,43 @@ class MCompositeManagerPrivate;
 class MCompAtoms;
 class MCompositeWindow;
 class MDeviceState;
+
+// Encapsulates the details of grabbing the X server.
+// While a grab is effective, only our commands are processed.
+class MSGrabber: public QObject
+{
+    Q_OBJECT
+
+public:
+    MSGrabber();
+
+    // grab() later when someone calls commit()
+    void grabLater()
+    {
+        needs_grab = true;
+    }
+    void commit();
+
+    // grab() calls xlib immediately, but does not explicitly flush
+    // the output queue.  Does nothing if the grab is already effective.
+    // The grab is automatically released after a while unless reinforce()d.
+    void grab();
+    void reinforce();
+
+public slots:
+    // It is OK to ungrab() an ungrabbed server.
+    void ungrab();
+signals:
+    // Emitted when the server server grab is actually released.
+    void ungrabbed();
+
+protected:
+    QTimer mercytimer;
+public:
+    // @needs_grab tells whether commit() should grab or ungrab.
+    // After commit() these state variables should be equal.
+    bool needs_grab, has_grab;
+};
 
 /*!
  * MCompositeManager is responsible for managing window events.
@@ -163,13 +201,13 @@ public:
     const QList<Window> &stackingList() const;
     Window getLastVisibleParent(MWindowPropertyCache *pc) const;
     Time getServerTime() const;
+    MSGrabber servergrab;
 
     // called with the answer to mdecorator's dialog
     void queryDialogAnswer(unsigned int window, bool yes_answer);
 
     Window desktopWindow() const;
     bool debugMode() const;
-    bool runningInTestImage() const;
     int configInt(const char *key) const;
     int configInt(const char *key, int defaultValue) const;
     QVariant config(const char *key) const;
