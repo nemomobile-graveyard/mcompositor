@@ -4638,3 +4638,30 @@ void MCompositeManager::ensureSettingsFile()
     config("chained-anim-duration",             500);
     config("callui-anim-duration",              400);
 }
+
+#ifdef WINDOW_DEBUG
+void MCompositeManager::ut_prepare()
+{
+    d->prepare();
+    d->xserver_stacking.init();
+}
+
+void MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
+{
+    Window w = pc->winId();
+    d->prop_caches[w] = pc;
+    d->xserver_stacking.windowCreated(w);
+
+    XMapRequestEvent mre;
+    memset(&mre, 0, sizeof(mre));
+    mre.window = w;
+    mre.parent = QX11Info::appRootWindow();
+    d->mapRequestEvent(&mre);
+
+    XMapEvent e;
+    memset(&e, 0, sizeof(e));
+    e.window = w;
+    e.event = QX11Info::appRootWindow();
+    d->mapEvent(&e);
+}
+#endif
