@@ -54,17 +54,20 @@ public:
     // The grab is automatically released after a while unless reinforce()d.
     void grab();
     void reinforce();
+    bool hasGrab() const { return has_grab; }
 
 public slots:
     // It is OK to ungrab() an ungrabbed server.
     void ungrab();
+
 signals:
     // Emitted when the server server grab is actually released.
     void ungrabbed();
 
 protected:
     QTimer mercytimer;
-public:
+
+private:
     // @needs_grab tells whether commit() should grab or ungrab.
     // After commit() these state variables should be equal.
     bool needs_grab, has_grab;

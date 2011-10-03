@@ -4723,6 +4723,8 @@ void MSGrabber::commit()
     if (needs_grab) {
         Q_ASSERT(!has_grab && !mercytimer.isActive());
         XGrabServer(QX11Info::display());
+        // reset global alpha
+        ((MCompositeManager*)qApp)->recheckVisibility();
         mercytimer.start();
     } else {
         Q_ASSERT(has_grab && mercytimer.isActive());

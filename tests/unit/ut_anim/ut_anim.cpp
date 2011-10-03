@@ -172,7 +172,7 @@ void ut_Anim::testDamageTimeout()
     QCOMPARE(cw->isVisible(), false);
     QTest::qWait(1000); // wait for the timeout
     QCOMPARE(cw->isVisible(), true);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
 void ut_Anim::fakeDamageEvent(MCompositeWindow *cw)
@@ -201,7 +201,7 @@ void ut_Anim::testStartupAnimForFirstTimeMapped()
     fakeDamageEvent(cw);
     QCOMPARE(pc->pendingDamage(), false);
 
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QVERIFY(cmgr->d->compositing);
 
@@ -214,7 +214,7 @@ void ut_Anim::testStartupAnimForFirstTimeMapped()
     int w_i = cmgr->d->stacking_list.indexOf(1);
     QCOMPARE(d_i >= 0 && w_i >= 0, true);
     QCOMPARE(d_i < w_i, true);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
 void ut_Anim::testOpenChainingAnimation()
@@ -252,7 +252,7 @@ void ut_Anim::testOpenChainingAnimation()
     QRectF screen = QApplication::desktop()->availableGeometry();
     QCOMPARE(cw2->pos() == screen.translated(0,-screen.height()).topLeft(),
              true);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QVERIFY(cmgr->d->compositing);
 
     while (cw2->windowAnimator()->isActive())
@@ -262,7 +262,7 @@ void ut_Anim::testOpenChainingAnimation()
     // window position check
     QCOMPARE(cw2->pos() == QPointF(0,0), true);
     QCOMPARE(cw1->pos() == screen.bottomLeft(), true);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
 void ut_Anim::testCloseChainingAnimation()
@@ -286,7 +286,7 @@ void ut_Anim::testCloseChainingAnimation()
     QRectF screen = QApplication::desktop()->availableGeometry();
     QCOMPARE(cw2->pos() == QPointF(0,0), true);
     QCOMPARE(cw1->pos() == screen.bottomLeft(), true);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QVERIFY(cmgr->d->compositing);
     
     while (cw2->windowAnimator()->isActive())
@@ -295,7 +295,7 @@ void ut_Anim::testCloseChainingAnimation()
     QCOMPARE(cw2->pos() == screen.translated(0,-screen.height()).topLeft(), 
              true);
     QCOMPARE(cw1->pos() == QPointF(0,0), true);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
 void ut_Anim::testIconifyingAnimation()
@@ -316,7 +316,7 @@ void ut_Anim::testIconifyingAnimation()
     QCOMPARE(cw->windowAnimator() != 0, true);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QVERIFY(cmgr->d->compositing);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     // damage to desktop window is now handled
     QCOMPARE(d_pc->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
@@ -328,7 +328,7 @@ void ut_Anim::testIconifyingAnimation()
     int w_i = cmgr->d->stacking_list.indexOf(1);
     QCOMPARE(d_i >= 0 && w_i >= 0, true);
     QCOMPARE(d_i > w_i, true);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 
     // check that damage is not subtracted for iconic window
     fakeDamageEvent(cw);
@@ -405,7 +405,7 @@ void ut_Anim::testRestoreAnimation()
     cmgr->d->rootMessageEvent(&cme);
     SET_PAINTED(cw, 0);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
@@ -416,7 +416,7 @@ void ut_Anim::testRestoreAnimation()
     int w_i = cmgr->d->stacking_list.indexOf(1);
     QCOMPARE(d_i >= 0 && w_i >= 0, true);
     QCOMPARE(d_i < w_i, true);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
 void ut_Anim::testCloseAnimation()
@@ -438,14 +438,14 @@ void ut_Anim::testCloseAnimation()
     
     SET_PAINTED(cw, 0);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     // damage to desktop window is now handled
     QCOMPARE(d_pc->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
     VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), WithdrawnState);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
 void ut_Anim::testStartupAnimForSecondTimeMapped()
@@ -470,12 +470,12 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     ue.window = 2;
     ue.event = QX11Info::appRootWindow();
     cmgr->d->unmapEvent(&ue);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QVERIFY(cmgr->d->compositing);
 
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QVERIFY(!cmgr->d->compositing);
 
     // map it again and check that there is an animation
@@ -488,7 +488,7 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     QCOMPARE(pc->pendingDamage(), false);
 
     QCOMPARE(cw->windowAnimator()->isActive(), true);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QVERIFY(cmgr->d->compositing);
 
     while (cw->windowAnimator()->isActive())
@@ -500,7 +500,7 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
     int w_i = cmgr->d->stacking_list.indexOf(1);
     QCOMPARE(d_i >= 0 && w_i >= 0, true);
     QCOMPARE(d_i < w_i, true);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QVERIFY(!cmgr->d->compositing);
 
     MCompositeWindow *d = cmgr->d->windows.value(cmgr->d->desktop_window, 0);
@@ -530,7 +530,7 @@ void ut_Anim::testNoAnimations()
 
     // check that there is no animation
     QCOMPARE(cw->windowAnimator()->isActive(), false);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QCOMPARE(cw->isMapped(), true);
     QCOMPARE(cw->isVisible(), false);
     QCOMPARE(cw->propertyCache()->windowState(), NormalState);
@@ -543,7 +543,7 @@ void ut_Anim::testNoAnimations()
     // check that iconifying does not have animation
     cmgr->d->exposeSwitcher();
     QCOMPARE(cw->windowAnimator()->isActive(), false);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QCOMPARE(cw->propertyCache()->windowState(), IconicState);
     d_i = cmgr->d->stacking_list.indexOf(1000);
     w_i = cmgr->d->stacking_list.indexOf(3);
@@ -559,7 +559,7 @@ void ut_Anim::testNoAnimations()
     cme.message_type = ATOM(_NET_ACTIVE_WINDOW);
     cmgr->d->rootMessageEvent(&cme);
     QCOMPARE(cw->windowAnimator()->isActive(), false);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QVERIFY(!cmgr->d->compositing);
 
     // create a fake UnmapNotify event
@@ -573,7 +573,7 @@ void ut_Anim::testNoAnimations()
 
     // check that there is no animation
     QCOMPARE(cw->windowAnimator()->isActive(), false);
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QVERIFY(!cmgr->d->compositing);
     VERIFY_NOT_PAINTED(cw, 0);
 }
@@ -906,25 +906,25 @@ void ut_Anim::testDerivedAnimHandler()
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
 
     QCOMPARE(cw->windowAnimator()->isActive(), true);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QVERIFY(cmgr->d->compositing);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Showing, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); 
 
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     // iconify
     cmgr->d->exposeSwitcher();
     QCOMPARE(cw->windowAnimator()->isActive(), true);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QVERIFY(cmgr->d->compositing);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Iconify, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); 
 
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 
     // simulate damage while the window is iconic
     fakeDamageEvent(cw);
@@ -939,12 +939,12 @@ void ut_Anim::testDerivedAnimHandler()
     cmgr->d->rootMessageEvent(&cme);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Restore, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;    
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); 
 
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     // close 
     XUnmapEvent ue;
     memset(&ue, 0, sizeof(ue));
@@ -953,11 +953,11 @@ void ut_Anim::testDerivedAnimHandler()
     cmgr->d->unmapEvent(&ue);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Closing, true); 
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QVERIFY(cmgr->d->compositing);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); 
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
 void ut_Anim::testExternalAnimHandler()
@@ -980,7 +980,7 @@ void ut_Anim::testExternalAnimHandler()
     fakeDamageEvent(cw);
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
 
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Showing, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;
@@ -988,13 +988,13 @@ void ut_Anim::testExternalAnimHandler()
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); 
 
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     // iconify
     cmgr->d->exposeSwitcher();
     QCOMPARE(cw->windowAnimator()->isActive(), true);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Iconify, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QVERIFY(cmgr->d->compositing);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); 
@@ -1003,7 +1003,7 @@ void ut_Anim::testExternalAnimHandler()
     fakeDamageEvent(cw);
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), true);
 
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     // restore
     XClientMessageEvent cme;
     memset(&cme, 0, sizeof(cme));
@@ -1013,12 +1013,12 @@ void ut_Anim::testExternalAnimHandler()
     cmgr->d->rootMessageEvent(&cme);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Restore, true);
     an->triggered = MCompositeWindowAnimation::NoAnimation;    
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); 
 
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
     // close 
     XUnmapEvent ue;
     memset(&ue, 0, sizeof(ue));
@@ -1026,13 +1026,13 @@ void ut_Anim::testExternalAnimHandler()
     ue.event = QX11Info::appRootWindow();
     cmgr->d->unmapEvent(&ue);
     QCOMPARE(cw->windowAnimator()->isActive(), true);
-    QCOMPARE(cmgr->servergrab.has_grab, true);
+    QCOMPARE(cmgr->servergrab.hasGrab(), true);
     QVERIFY(cmgr->d->compositing);
     QCOMPARE(an->triggered == MCompositeWindowAnimation::Closing, true); 
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100);
 
-    QCOMPARE(cmgr->servergrab.has_grab, false);
+    QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
 int main(int argc, char* argv[])

@@ -672,8 +672,8 @@ void MCompositeWindow::beginAnimation()
     if (!isMapped() && window_status != Closing)
         return;
 
-    if (!is_transitioning)
-        if (!window_transitioning) {
+    if (!is_transitioning) {
+        if (!window_transitioning)
             emit firstAnimationStarted();
         ++window_transitioning;
         is_transitioning = true;
