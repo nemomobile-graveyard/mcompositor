@@ -90,7 +90,7 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
     }
 
     MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
-    if (mc->servergrab.has_grab)
+    if (mc->servergrab.hasGrab())
         mc->servergrab.reinforce();
 
     QRegion visible(sceneRect().toRect());
