@@ -465,6 +465,7 @@ void MCompositeWindow::closeWindowAnimation()
         d->updateWindowPixmap();
         animator->windowClosed();
         window_status = Normal;
+        p->servergrab.grabLater(animator->grabAllowed());
         p->servergrab.commit();
     }
 }

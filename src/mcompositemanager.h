@@ -43,9 +43,9 @@ public:
     MSGrabber();
 
     // grab() later when someone calls commit()
-    void grabLater()
+    void grabLater(bool setting = true)
     {
-        needs_grab = true;
+        needs_grab = setting;
     }
     void commit();
 
@@ -59,10 +59,6 @@ public:
 public slots:
     // It is OK to ungrab() an ungrabbed server.
     void ungrab();
-
-signals:
-    // Emitted when the server server grab is actually released.
-    void ungrabbed();
 
 protected:
     QTimer mercytimer;
@@ -175,7 +171,7 @@ public:
      * Try to direct-render the topmost window
      */
     bool possiblyUnredirectTopmostWindow();
-    
+
     /*!
      * Returns if the display is off
      */

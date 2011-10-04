@@ -76,6 +76,7 @@ class MCompositeWindowAnimation: public QObject
     virtual void windowClosed();
     virtual void windowIconified();
     virtual void windowRestored();    
+    virtual bool grabAllowed() { return true; }
 
     void setAnimationHandler(AnimationType type, 
                              MAbstractAnimationHandler* handler);

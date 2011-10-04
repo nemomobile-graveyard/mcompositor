@@ -230,7 +230,8 @@ void MSheetAnimation::initializePositionAnimation()
 }
 
 MChainedAnimation::MChainedAnimation(QObject* parent)
-    :MDynamicAnimation(parent)
+    :MDynamicAnimation(parent),
+     grab_allowed(true)
 {    
     // only use the position animation
     disableAnimation(scaleAnimation());
@@ -306,14 +307,35 @@ void MChainedAnimation::windowClosed()
     
     MStatusBarTexture::instance()->updatePixmap();
     cropper->setAppWindow(targetWindow());
-    
+
+    invokerWindow()->setZValue(
+              ((MCompositeManager*)qApp)->stackingList().size() + 1);
+    targetWindow()->setZValue(
+              ((MCompositeManager*)qApp)->stackingList().size() + 2);
+
     if (!targetWindow()->propertyCache()->statusbarGeometry().isEmpty()) {
         cropper->installEffect(targetWindow());
         cropper->installEffect(invokerWindow());
     }
     invokerWindow()->setVisible(true);
     invoker_pos->setTargetObject(invokerWindow());
-    
+    invokerWindow()->beginAnimation();
+
+    // in case we have a VKB, disable the server grab, otherwise VKB can't
+    // unmap during the animation and flashes in the end of it
+    for (QList<Window>::const_iterator it =
+              targetWindow()->propertyCache()->transientWindows().begin();
+         it != targetWindow()->propertyCache()->transientWindows().end();
+         ++it) {
+         MCompositeWindow *w = MCompositeWindow::compositeWindow(*it);
+         if (w && w->propertyCache()->isMapped() &&
+             w->propertyCache()->windowTypeAtom() ==
+                                       ATOM(_NET_WM_WINDOW_TYPE_INPUT)) {
+             grab_allowed = false;
+             break;
+         }
+    }
+
     animationGroup()->setDirection(QAbstractAnimation::Backward);
     animationGroup()->start();    
 }
@@ -328,9 +350,12 @@ MCompositeWindow* MChainedAnimation::invokerWindow()
 
 void MChainedAnimation::endAnimation()
 {
+    if (invokerWindow())
+        invokerWindow()->endAnimation();
     cropper->removeEffect(targetWindow());
     cropper->removeEffect(invokerWindow());
     MStatusBarTexture::instance()->untrackDamages();
+    grab_allowed = true;
 }
 
 MCallUiAnimation::MCallUiAnimation(QObject* parent)

@@ -37,6 +37,7 @@ class MDynamicAnimation: public MCompositeWindowAnimation
     ~MDynamicAnimation();
     void setEnabled(bool enabled);
     void disableAnimation( QAbstractAnimation * animation );
+    virtual bool grabAllowed() { return true; }
     
     AnimVector& activeAnimations();
  private:
@@ -73,6 +74,7 @@ class MChainedAnimation: public MDynamicAnimation
 
     void windowShown(); 
     void windowClosed();
+    bool grabAllowed() { return grab_allowed; }
 
  private slots:
     void endAnimation();
@@ -81,6 +83,7 @@ class MChainedAnimation: public MDynamicAnimation
     MCompositeWindow* invokerWindow();
     QPropertyAnimation* invoker_pos;
     MStatusBarCrop* cropper;
+    bool grab_allowed;
 };
 
 class MCallUiAnimation: public MDynamicAnimation
