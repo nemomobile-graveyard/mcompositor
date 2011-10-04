@@ -4432,8 +4432,6 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
 
     d = new MCompositeManagerPrivate(this);
     connect(d, SIGNAL(windowBound(MCompositeWindow*)), SIGNAL(windowBound(MCompositeWindow*)));
-    connect(&servergrab, SIGNAL(ungrabbed()),
-            d, SLOT(sendSyntheticVisibilityEventsForOurBabies()));
     connect(d->device_state, SIGNAL(incomingCall()),
             &servergrab, SLOT(ungrab()));
 
@@ -4735,7 +4733,6 @@ void MSGrabber::commit()
         Q_ASSERT(has_grab && mercytimer.isActive());
         XUngrabServer(QX11Info::display());
         mercytimer.stop();
-        emit ungrabbed();
     }
 
     has_grab = needs_grab;
