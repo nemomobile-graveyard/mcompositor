@@ -217,6 +217,8 @@ public:
     void config(const char *key, const QVariant &val) const;
     void reloadConfig();
     void recheckVisibility() const;
+    void checkStacking(bool force_visibility_check,
+                       Time timestamp = CurrentTime);
 
 #ifdef WINDOW_DEBUG
     // initialize MCompositeManager with an empty window stack

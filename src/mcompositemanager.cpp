@@ -4644,6 +4644,11 @@ void MCompositeManager::recheckVisibility() const
     d->sendSyntheticVisibilityEventsForOurBabies();
 }
 
+void MCompositeManager::checkStacking(bool force_visibility_check, Time timestamp)
+{
+    d->checkStacking(force_visibility_check, timestamp);
+}
+
 void MCompositeManager::ensureSettingsFile()
 {
     // $HOME/.config/mcompositor/new-mcompositor.conf
