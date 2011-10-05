@@ -318,7 +318,7 @@ static RROutput find_primary_output()
 
 /* Set GraphicsAlpha and/or VideoAlpha of the primary output
  * and enable/disable alpha blending if necessary. */
-static void set_global_alpha(int new_gralpha, int new_vidalpha)
+void MCompositeManager::setGlobalAlpha(int new_gralpha, int new_vidalpha)
 {
     static int blending = -1, gralpha = -1, vidalpha = -1;
     RROutput output;
@@ -375,9 +375,9 @@ static void set_global_alpha(int new_gralpha, int new_vidalpha)
 }
 
 /* Turn off global alpha blending on both planes. */
-static void reset_global_alpha()
+void MCompositeManager::resetGlobalAlpha()
 {
-    set_global_alpha(255, 255);
+    setGlobalAlpha(255, 255);
 }
 
 static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
@@ -1925,9 +1925,10 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
             setWindowState(cw->window(), NormalState);
     }
     if (ga_pc)
-        set_global_alpha(ga_pc->globalAlpha(), ga_pc->videoGlobalAlpha());
+        MCompositeManager::setGlobalAlpha(ga_pc->globalAlpha(),
+                                          ga_pc->videoGlobalAlpha());
     else
-        reset_global_alpha();
+        MCompositeManager::resetGlobalAlpha();
 
     // when there are transitioning windows statusbar visibility
     //is already true and we do not want to change this

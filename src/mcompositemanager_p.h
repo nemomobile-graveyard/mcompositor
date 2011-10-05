@@ -132,6 +132,7 @@ public:
     bool raiseWithTransients(MWindowPropertyCache *pc,
                            int parent_idx, QList<int> *anewpos = NULL);
     MWindowPropertyCache *findLockScreen() const;
+
     MCompositeScene *watch;
     Window localwin, localwin_parent, wm_window;
     Window xoverlay;
