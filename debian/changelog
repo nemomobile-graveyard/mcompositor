@@ -1,3 +1,14 @@
+mcompositor (1.1.18-1) unstable; urgency=low
+
+  * add MCompositeWindowAnimation::animationStarted() signal for the plugin
+  * Fixes: NB#281286 - Compositor listens damage events for iconic windows
+  * fix crash in MCompositeManagerPrivate::rootMessageEvent()
+  * fix status menu flashing garbage sometimes when you open it
+  * Add some unit testing for painting code
+  * Add some API for the plugin.
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 05 Oct 2011 16:30:58 +0300
+
 mcompositor (1.1.17-1) unstable; urgency=low
 
   * Fixes: NB#278344 - A white vertical bar flickers in the left of the screen
