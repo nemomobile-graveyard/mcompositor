@@ -119,6 +119,9 @@ public:
         _MEEGOTOUCH_STATUSBAR_VISIBLE,
         _MEEGOTOUCH_NO_ANIMATIONS,
 
+        // set to 1 if there is a video overlay
+        _OMAP_VIDEO_OVERLAY,
+
 #ifdef WINDOW_DEBUG
         _M_WM_INFO,
         _M_WM_WINDOW_ZVALUE,

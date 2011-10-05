@@ -230,6 +230,8 @@ public slots:
     // for cases when restore/iconifying/closing animation is not wanted.
     unsigned int noAnimations();
 
+    int videoOverlay();
+
 public:
     /*!
      * Called on PropertyNotify for this window.
@@ -370,6 +372,7 @@ protected:
     Damage damage_object;
     QString wm_name;
     unsigned wm_pid, no_animations;
+    int video_overlay;
     bool pending_damage;
 };
 

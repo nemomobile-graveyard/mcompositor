@@ -150,6 +150,7 @@ void MWindowPropertyCache::init()
     damage_object = 0;
     collect_timer = 0;
     no_animations = 0;
+    video_overlay = 0;
     pending_damage = false;
 }
 
@@ -278,6 +279,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     addRequest(SLOT(noAnimations()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_NO_ANIMATIONS,
                                XCB_ATOM_CARDINAL));
+    addRequest(SLOT(videoOverlay()),
+               requestProperty(MCompAtoms::_OMAP_VIDEO_OVERLAY,
+                               XCB_ATOM_INTEGER));
 
     // add any transients to the transients list
     MCompositeManager *m = (MCompositeManager*)qApp;
@@ -535,6 +539,26 @@ unsigned int MWindowPropertyCache::noAnimations()
     }
     return no_animations;
 }
+
+int MWindowPropertyCache::videoOverlay()
+{
+    QLatin1String me(SLOT(videoOverlay()));
+    if (is_valid && requests[me]) {
+        xcb_get_property_cookie_t c = { requests[me] };
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        replyCollected(me);
+        video_overlay = 0;
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(INT8))
+                video_overlay = *((INT8*)xcb_get_property_value(r));
+            free(r);
+        }
+    }
+    return video_overlay;
+}
+
+
 
 int MWindowPropertyCache::alwaysMapped()
 {
@@ -849,6 +873,10 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         addRequest(SLOT(noAnimations()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_NO_ANIMATIONS,
                                XCB_ATOM_CARDINAL));
+    } else if (e->atom == ATOM(_OMAP_VIDEO_OVERLAY)) {
+        addRequest(SLOT(videoOverlay()),
+                   requestProperty(MCompAtoms::_OMAP_VIDEO_OVERLAY,
+                                   XCB_ATOM_INTEGER));
     } else if (e->atom == ATOM(_NET_WM_PID)) {
         wm_pid = 0;
         if (e->state == PropertyNewValue)
