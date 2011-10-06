@@ -58,6 +58,7 @@
 
 #define TRANSLUCENT 0xe0000000
 #define OPAQUE      0xffffffff
+const int MAXIMUM_GLOBAL_ALPHA = 255;
 
 /*
   The reason why we have to look at the entire redirected buffers is that we
@@ -319,15 +320,15 @@ static RROutput find_primary_output()
 
 /* Set GraphicsAlpha and/or VideoAlpha of the primary output
  * and enable/disable alpha blending if necessary. */
-void MCompositeManager::setGlobalAlpha(int new_gralpha, int new_vidalpha)
+void set_global_alpha(int new_gralpha, int new_vidalpha)
 {
     static int blending = -1, gralpha = -1, vidalpha = -1;
     RROutput output;
     Display *dpy;
     int blend;
 
-    Q_ASSERT(-1 <= new_gralpha  && new_gralpha  <= 255);
-    Q_ASSERT(-1 <= new_vidalpha && new_vidalpha <= 255);
+    Q_ASSERT(-1 <= new_gralpha  && new_gralpha  <= MAXIMUM_GLOBAL_ALPHA);
+    Q_ASSERT(-1 <= new_vidalpha && new_vidalpha <= MAXIMUM_GLOBAL_ALPHA);
     if ((output = find_primary_output()) == None)
         return;
     dpy = QX11Info::display();
@@ -341,7 +342,7 @@ void MCompositeManager::setGlobalAlpha(int new_gralpha, int new_vidalpha)
         /* There must have been an error getting the properties. */
         return;
 
-    blend = new_gralpha < 255 || new_vidalpha < 255;
+    blend = new_gralpha < MAXIMUM_GLOBAL_ALPHA || new_vidalpha < MAXIMUM_GLOBAL_ALPHA;
     if (blend != blending && !blend)
         /* Disable blending first. */
         XRRChangeOutputProperty(dpy, output,
@@ -373,12 +374,6 @@ void MCompositeManager::setGlobalAlpha(int new_gralpha, int new_vidalpha)
                                 XA_INTEGER, 32, PropModeReplace,
                                 (unsigned char *)&blend, 1);
     blending = blend;
-}
-
-/* Turn off global alpha blending on both planes. */
-void MCompositeManager::resetGlobalAlpha()
-{
-    setGlobalAlpha(255, 255);
 }
 
 static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
@@ -428,7 +423,10 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime),
       splash(0),
-      lastDestroyedSplash(0, 0)
+      lastDestroyedSplash(0, 0),
+      defaultGraphicsAlpha(MAXIMUM_GLOBAL_ALPHA),
+      defaultVideoAlpha(MAXIMUM_GLOBAL_ALPHA),
+      globalAlphaOverridden(false)
 {
     xcb_conn = XGetXCBConnection(QX11Info::display());
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
@@ -1900,8 +1898,8 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
             if (!cw->hasTransitioningWindow() && cw->paintedAfterMapping())
                 cw->setVisible(true);
             if (!ga_pc && !cw->isWindowTransitioning() &&
-                (cw->propertyCache()->globalAlpha() < 255 ||
-                 cw->propertyCache()->videoGlobalAlpha() < 255))
+                (cw->propertyCache()->globalAlpha() < MAXIMUM_GLOBAL_ALPHA ||
+                 cw->propertyCache()->videoGlobalAlpha() < MAXIMUM_GLOBAL_ALPHA))
                 // select topmost window with global alpha properties
                 ga_pc = cw->propertyCache();
             if (!statusbar_visible &&
@@ -1927,11 +1925,11 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
         if (duihome && i >= home_i)
             setWindowState(cw->window(), NormalState);
     }
-    if (ga_pc)
-        MCompositeManager::setGlobalAlpha(ga_pc->globalAlpha(),
-                                          ga_pc->videoGlobalAlpha());
+    if (ga_pc && !globalAlphaOverridden)
+        set_global_alpha(ga_pc->globalAlpha(),
+                         ga_pc->videoGlobalAlpha());
     else
-        MCompositeManager::resetGlobalAlpha();
+        set_global_alpha(defaultGraphicsAlpha, defaultVideoAlpha);
 
     // when there are transitioning windows statusbar visibility
     //is already true and we do not want to change this
@@ -4640,6 +4638,22 @@ void MCompositeManager::recheckVisibility() const
 void MCompositeManager::checkStacking(bool force_visibility_check, Time timestamp)
 {
     d->checkStacking(force_visibility_check, timestamp);
+}
+
+void MCompositeManager::overrideGlobalAlpha(int new_gralpha, int new_vidalpha)
+{
+    d->defaultGraphicsAlpha = new_gralpha;
+    d->defaultVideoAlpha = new_vidalpha;
+    d->globalAlphaOverridden = true;
+    set_global_alpha(new_gralpha, new_vidalpha);
+}
+
+void MCompositeManager::resetGlobalAlpha()
+{
+    d->defaultGraphicsAlpha = MAXIMUM_GLOBAL_ALPHA;
+    d->defaultVideoAlpha = MAXIMUM_GLOBAL_ALPHA;
+    d->globalAlphaOverridden = false;
+    set_global_alpha(d->defaultGraphicsAlpha, d->defaultGraphicsAlpha);
 }
 
 void MCompositeManager::ensureSettingsFile()
