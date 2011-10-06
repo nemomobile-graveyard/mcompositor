@@ -218,8 +218,8 @@ public:
 
     /* Set GraphicsAlpha and/or VideoAlpha of the primary output
      * and enable/disable alpha blending if necessary. */
-    static void setGlobalAlpha(int new_gralpha, int new_vidalpha);
-    static void resetGlobalAlpha();
+    void overrideGlobalAlpha(int new_gralpha, int new_vidalpha);
+    void resetGlobalAlpha();
 
 #ifdef WINDOW_DEBUG
     // initialize MCompositeManager with an empty window stack

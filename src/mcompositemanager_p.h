@@ -240,6 +240,10 @@ public:
         unsigned int pid;
     } lastDestroyedSplash;
 
+    int defaultGraphicsAlpha;
+    int defaultVideoAlpha;
+    bool globalAlphaOverridden;
+
 signals:
     void currentAppChanged(Window w);
     void windowBound(MCompositeWindow* window);
