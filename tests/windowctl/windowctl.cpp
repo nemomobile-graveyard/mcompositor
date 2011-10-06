@@ -16,7 +16,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <X11/extensions/Xrender.h>
 #include <X11/extensions/Xdamage.h>
 #include <X11/extensions/shape.h>
@@ -675,6 +678,40 @@ static pid_t rotate_screen(char *o, QString& stdOut)
 	return -1;
 }
 
+static void button_event(Display *dpy, Window w, long *coords, bool press)
+{
+        if (press) {
+                Atom a = XInternAtom(dpy, "_MEEGO_BUTTON_PRESS", False);
+                XChangeProperty(dpy, w, a, XA_CARDINAL, 32, PropModeReplace,
+                                (unsigned char*)coords, 2);
+        } else {
+                Atom a = XInternAtom(dpy, "_MEEGO_BUTTON_RELEASE", False);
+                XChangeProperty(dpy, w, a, XA_CARDINAL, 32, PropModeReplace,
+                                (unsigned char*)coords, 2);
+        }
+}
+
+#if 0
+static void log(char *s)
+{
+        int logfile = open("/tmp/windowctl.log", O_WRONLY | O_APPEND | O_CREAT);
+        if (logfile >= 0) {
+                char pidbuf[10];
+                snprintf(pidbuf, 10, "[%d] ", getpid());
+                time_t tt = time(NULL);
+                char *t = ctime(&tt);
+                write(logfile, pidbuf, strlen(pidbuf));
+                write(logfile, t, strlen(t) - 1);
+                write(logfile, " ", 1);
+                write(logfile, s, strlen(s));
+                write(logfile, "\n", strlen("\n"));
+                close(logfile);
+        }
+}
+#else
+#define log(X)
+#endif
+
 static bool old_main(Display **dpyp, QStringList& args, QString& stdOut)
 {
         Display *dpy;
@@ -1216,19 +1253,19 @@ mainloop:
                 }
                 else if (xev.type == touch_dev_press) {
                   XDeviceButtonEvent *dbe = (XDeviceButtonEvent*)&xev;
-                  printf("XInput press %d %d\n", dbe->x_root, dbe->y_root);
+                  char s[50];
+                  snprintf(s, 50, "XInput press %d %d", dbe->x_root, dbe->y_root);
+                  log(s);
                   long coords[2] = { dbe->x_root, dbe->y_root };
-                  Atom a = XInternAtom(dpy, "_MEEGO_BUTTON_PRESS", False);
-                  XChangeProperty(dpy, w, a, XA_CARDINAL, 32, PropModeReplace,
-                                  (unsigned char*)coords, 2);
+                  button_event(dpy, w, coords, true);
                 }
                 else if (xev.type == touch_dev_release) {
                   XDeviceButtonEvent *dbe = (XDeviceButtonEvent*)&xev;
-                  printf("XInput release %d %d\n", dbe->x_root, dbe->y_root);
+                  char s[50];
+                  snprintf(s, 50, "XInput release %d %d", dbe->x_root, dbe->y_root);
+                  log(s);
                   long coords[2] = { dbe->x_root, dbe->y_root };
-                  Atom a = XInternAtom(dpy, "_MEEGO_BUTTON_RELEASE", False);
-                  XChangeProperty(dpy, w, a, XA_CARDINAL, 32, PropModeReplace,
-                                  (unsigned char*)coords, 2);
+                  button_event(dpy, w, coords, false);
                 }
                 else if (xev.type == ButtonRelease) {
                   if (argb && send_mtt) {
@@ -1238,6 +1275,12 @@ mainloop:
                           send_mtt_message(dpy, w, 0);
                   }
                   XButtonEvent *e = (XButtonEvent*)&xev;
+                  long coords[2] = { e->x_root, e->y_root };
+                  button_event(dpy, w, coords, false);
+                  char s[50];
+                  snprintf(s, 50, "ButtonRelease %d %d (abs %d %d)",
+                           e->x, e->y, e->x_root, e->y_root);
+                  log(s);
                   int x = e->x - 10;
                   int y = e->y - 10;
                   int width = 20;
@@ -1250,6 +1293,12 @@ mainloop:
                 }
                 else if (xev.type == ButtonPress) {
                   XButtonEvent *e = (XButtonEvent*)&xev;
+                  long coords[2] = { e->x_root, e->y_root };
+                  button_event(dpy, w, coords, true);
+                  char s[50];
+                  snprintf(s, 50, "ButtonPress %d %d (abs %d %d)",
+                           e->x, e->y, e->x_root, e->y_root);
+                  log(s);
                   int x = e->x - 10;
                   int y = e->y - 10;
                   int width = 20;
