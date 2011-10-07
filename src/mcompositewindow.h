@@ -254,7 +254,7 @@ public:
     /*!
      * Returns whatever window is directly behind this window. 0 if there is none.
      */
-    MCompositeWindow* behind() const { return behind_window; }
+    MCompositeWindow* behind() const;
 
     /*!
      *  Returns a pointer to this window's group if it belongs to a group and 0
@@ -359,7 +359,6 @@ private:
     bool isInanimate(bool check_pixmap = true);
 
     QPointer<MWindowPropertyCache> pc;
-    QPointer<MCompositeWindow> behind_window;
     QPointer<MCompositeWindowAnimation> animator, orig_animator;
     ulong sent_ping_timestamp;
     ulong received_ping_timestamp;

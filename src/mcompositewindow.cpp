@@ -270,7 +270,6 @@ void MCompositeWindow::waitForPainting()
 bool MCompositeWindow::showWindow()
 {
     if (type() == MSplashScreen::Type) {
-        findBehindWindow();
         beginAnimation();
         q_fadeIn();
         return true;
@@ -285,7 +284,6 @@ bool MCompositeWindow::showWindow()
         return false;
     }
 
-    findBehindWindow();
     beginAnimation();
     if (!painted_after_mapping && (!animator || !animator->isActive())) {
         waitForPainting();
@@ -705,7 +703,6 @@ QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant 
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
     if (change == ItemZValueHasChanged) {
-        findBehindWindow();
         p->d->setWindowDebugProperties(window());
     }
 
@@ -732,27 +729,6 @@ QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant 
     }
 
     return QGraphicsItem::itemChange(change, value);
-}
-
-void MCompositeWindow::findBehindWindow()
-{
-    MCompositeManager *p = (MCompositeManager *) qApp;
-    for (int behind_i = indexInStack() - 1; behind_i >= 0; --behind_i) {
-        Window behind_w = p->d->stacking_list.at(behind_i);
-        MCompositeWindow* w = MCompositeWindow::compositeWindow(behind_w);
-        if (!w) continue;
-        if (w->propertyCache()->windowState() == NormalState 
-            && w->propertyCache()->isMapped()
-            && !w->propertyCache()->isDecorator()) {
-            behind_window = w;
-            return;
-        } else if (w->propertyCache()->isDecorator() &&
-                   MDecoratorFrame::instance()->managedClient()) {
-            behind_window = MDecoratorFrame::instance()->managedClient();
-            return;
-        } else
-            continue;
-    }
 }
 
 void MCompositeWindow::update()
@@ -793,6 +769,32 @@ int MCompositeWindow::indexInStack() const
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
     return p->d->stacking_list.indexOf(window());
+}
+
+MCompositeWindow * MCompositeWindow::behind() const
+{
+    MCompositeWindow *behindWindow = 0;
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    for (int behind_i = indexInStack() - 1; behind_i >= 0; --behind_i) {
+        Window behind_w = p->d->stacking_list.at(behind_i);
+        MCompositeWindow* w = MCompositeWindow::compositeWindow(behind_w);
+        if (!w) continue;
+        if (w->propertyCache()->windowState() == NormalState
+            && w->propertyCache()->isMapped()
+            && !w->propertyCache()->isDecorator()) {
+            behindWindow = w;
+            break;
+        }
+        else if (w->propertyCache()->isDecorator() &&
+                   MDecoratorFrame::instance()->managedClient()) {
+            behindWindow = MDecoratorFrame::instance()->managedClient();
+            break;
+        }
+        else
+            continue;
+    }
+
+    return behindWindow;
 }
 
 void MCompositeWindow::setIsMapped(bool mapped) 
