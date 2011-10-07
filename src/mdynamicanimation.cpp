@@ -211,8 +211,8 @@ void MSheetAnimation::windowClosed()
     
     animationGroup()->setDirection(QAbstractAnimation::Backward);
     targetWindow()->setVisible(true);
-    if (targetWindow()->behind())
-       targetWindow()->behind()->setVisible(true);
+    if (MCompositeWindow *behind = targetWindow()->behind())
+       behind->setVisible(true);
     animationGroup()->start();    
 }
 
@@ -502,9 +502,9 @@ void MCallUiAnimation::windowClosed()
     else if (call_mode == MCallUiAnimation::OutgoingCall)
         animationGroup()->setDirection(QAbstractAnimation::Forward);
     
-    if (targetWindow()->behind()) {
-        tempHideDesktop(targetWindow()->behind());
-        targetWindow()->behind()->setVisible(true);
+    if (behindTarget) {
+        tempHideDesktop(behindTarget);
+        behindTarget->setVisible(true);
     }
     connect(this, SIGNAL(animationStopped(MCompositeWindowAnimation*)),
             this, SLOT(resetAnimatedItems()));
