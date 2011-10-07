@@ -4667,6 +4667,7 @@ void MCompositeManager::ensureSettingsFile()
 #ifdef WINDOW_DEBUG
 void MCompositeManager::ut_prepare()
 {
+    d->watch->prepareRoot();
     d->prepare();
     d->xserver_stacking.init();
 }
