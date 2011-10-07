@@ -1575,6 +1575,8 @@ static Bool timestamp_predicate(Display *display, XEvent *xevent, XPointer arg)
 
 Time MCompositeManager::getServerTime() const
 {
+    if (!d->localwin)
+        return CurrentTime;
     XEvent xevent;
     long data = 0;
     /* zero-length append to get timestamp in the PropertyNotify */
