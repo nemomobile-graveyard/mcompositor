@@ -225,7 +225,9 @@ public:
     // initialize MCompositeManager with an empty window stack
     void ut_prepare();
     // for adding and mapping a window from a unit test
-    void ut_addWindow(MWindowPropertyCache *pc);
+    bool ut_addWindow(MWindowPropertyCache *pc);
+    // for replacing MDeviceState object from a unit test
+    void ut_replaceDeviceState(MDeviceState *d);
 
     // Dump the current state of MCompositeManager and MCompositeWindow:s
     // to qDebug().  Only available if compiled with TESTABILITY=on

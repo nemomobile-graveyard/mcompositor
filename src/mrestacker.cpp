@@ -684,7 +684,9 @@ StackOps MRestacker::plan(WindowStack &newOrder,
     WindowStack::iterator it = newOrder.begin();
     while (it != newOrder.end())
         if (!state.contains(*it)) {
+#ifndef WINDOW_DEBUG
             qWarning("MRestacker: ignoring unknown window 0x%lx", *it);
+#endif
             it = newOrder.erase(it);
         } else
             ++it;

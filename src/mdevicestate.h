@@ -42,8 +42,8 @@ public:
     virtual bool displayOff() const { return display_off; }
     bool ongoingCall() const { return ongoing_call; }
     bool incomingCall() const { return incoming_call; }
-    const QString &screenTopEdge() const { return screen_topedge; }
-    bool isFlat() const { return is_flat; }
+    virtual const QString &screenTopEdge() const { return screen_topedge; }
+    virtual bool isFlat() const { return is_flat; }
     virtual const QString &touchScreenLock() const
     { return touchScreenLockMode; }
 

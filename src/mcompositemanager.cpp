@@ -4692,9 +4692,14 @@ void MCompositeManager::ut_prepare()
     d->xserver_stacking.init();
 }
 
-void MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
+bool MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
 {
     Window w = pc->winId();
+    if (w == d->localwin || w == d->localwin_parent || w == d->wm_window
+        || w == d->xoverlay || w == d->close_button_win ||
+        w == QX11Info::appRootWindow() ||
+        w == d->home_button_win || d->windows.contains(w))
+        return false;
     d->prop_caches[w] = pc;
     d->xserver_stacking.windowCreated(w);
 
@@ -4709,6 +4714,13 @@ void MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
     e.window = w;
     e.event = QX11Info::appRootWindow();
     d->mapEvent(&e);
+    return true;
+}
+
+void MCompositeManager::ut_replaceDeviceState(MDeviceState *ds)
+{
+    delete d->device_state;
+    d->device_state = ds;
 }
 #endif
 
