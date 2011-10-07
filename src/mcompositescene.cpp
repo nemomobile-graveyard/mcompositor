@@ -63,7 +63,7 @@ MCompositeScene::MCompositeScene(QObject *p)
     installEventFilter(this);
 }
 
-void MCompositeScene::prepareRoot()
+void MCompositeScene::prepareRoot(bool skip_wm_check)
 {
     Display *dpy = QX11Info::display();
     Window root =  QX11Info::appRootWindow();
@@ -74,7 +74,8 @@ void MCompositeScene::prepareRoot()
     XSelectInput(dpy, root, SubstructureNotifyMask | SubstructureRedirectMask
                             | StructureNotifyMask | PropertyChangeMask
                             | FocusChangeMask);
-    XSetErrorHandler(error_handler);
+    if (!skip_wm_check)
+        XSetErrorHandler(error_handler);
 }
 
 void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *items[], const QStyleOptionGraphicsItem options[], QWidget *widget)

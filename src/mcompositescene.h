@@ -50,7 +50,7 @@ public:
      * Prepares the root window by hooking up to its event delivery system and
      * ensuring future created children redirect themselves to offscreen pixmaps
      */
-    void prepareRoot();
+    void prepareRoot(bool skip_wm_check = false);
 
     bool keep_black;
 
