@@ -116,8 +116,10 @@ MCompositeWindow::~MCompositeWindow()
     endAnimation();    
     if (pc) {
         pc->damageTracking(false);
-        if (p->d->prop_caches.value(window()) == pc)
-            p->d->prop_caches.remove(window());
+        if (p->d->prop_caches.value(win_id) == pc) {
+            p->d->prop_caches.remove(win_id);
+            p->d->removeWindow(win_id);
+        }
         pc->deleteLater();
     }
     if (animator)
