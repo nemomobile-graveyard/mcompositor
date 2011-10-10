@@ -89,7 +89,6 @@ int main(int argc, char *argv[])
     app.setGLWidget(w);
     view.setViewport(w);
     w->makeCurrent();
-    view.show();
 
     int testPlugin;
     const QStringList &args = app.arguments();
@@ -101,5 +100,6 @@ int main(int argc, char *argv[])
 
     app.prepareEvents();
     app.redirectWindows();
+    view.show();
     return app.exec();
 }
