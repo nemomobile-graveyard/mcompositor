@@ -4683,6 +4683,7 @@ void MCompositeManager::ensureSettingsFile()
     config("sheet-anim-duration",               350);
     config("chained-anim-duration",             500);
     config("callui-anim-duration",              400);
+    config("ungrab-grab-delay",                 150);
 }
 
 #ifdef WINDOW_DEBUG
@@ -4730,6 +4731,9 @@ MSGrabber::MSGrabber()
 {
     mercytimer.setInterval(50);
     connect(&mercytimer, SIGNAL(timeout()), this, SLOT(ungrab()));
+    connect(&delayedGrabTimer, SIGNAL(timeout()), this, SLOT(commit()));
+    delayedGrabTimer.setSingleShot(true);
+    timeSinceLastUngrab.invalidate();
     has_grab = needs_grab = false;
 }
 
@@ -4751,6 +4755,19 @@ void MSGrabber::commit()
     if (has_grab == needs_grab)
         return;
 
+    MCompositeManager *cm = (MCompositeManager*)qApp;
+    static const int ungrabGrabDelay = cm ? cm->configInt("ungrab-grab-delay") : 0;
+    const qint64 msSinceLastUngrab = timeSinceLastUngrab.elapsed();
+    if (needs_grab
+            && timeSinceLastUngrab.isValid()
+            && msSinceLastUngrab < ungrabGrabDelay) {
+        if (!delayedGrabTimer.isActive()) {
+            delayedGrabTimer.setInterval(ungrabGrabDelay - timeSinceLastUngrab.elapsed());
+            delayedGrabTimer.start();
+        }
+        return;
+    }
+
     if (needs_grab) {
         Q_ASSERT(!has_grab && !mercytimer.isActive());
         XGrabServer(QX11Info::display());
@@ -4761,6 +4778,7 @@ void MSGrabber::commit()
         Q_ASSERT(has_grab && mercytimer.isActive());
         XUngrabServer(QX11Info::display());
         mercytimer.stop();
+        timeSinceLastUngrab.start();
     }
 
     has_grab = needs_grab;

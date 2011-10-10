@@ -26,6 +26,7 @@
 #include <QSettings>
 #include <QTimer>
 #include <mwindowpropertycache.h>
+#include <QElapsedTimer>
 
 class QGraphicsScene;
 class MCompositeManagerPrivate;
@@ -47,7 +48,6 @@ public:
     {
         needs_grab = setting;
     }
-    void commit();
 
     // grab() calls xlib immediately, but does not explicitly flush
     // the output queue.  Does nothing if the grab is already effective.
@@ -57,6 +57,8 @@ public:
     bool hasGrab() const { return has_grab; }
 
 public slots:
+    void commit();
+
     // It is OK to ungrab() an ungrabbed server.
     void ungrab();
 
@@ -64,6 +66,8 @@ protected:
     QTimer mercytimer;
 
 private:
+    QElapsedTimer timeSinceLastUngrab;
+    QTimer delayedGrabTimer;
     // @needs_grab tells whether commit() should grab or ungrab.
     // After commit() these state variables should be equal.
     bool needs_grab, has_grab;
