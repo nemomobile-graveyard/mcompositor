@@ -721,6 +721,10 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
                     return;
                 splashTimeout();
             }
+            // check if the splash animation should be visible at all
+            MSplashPropertyCache *splash_pc = MSplashPropertyCache::get();
+            if (skipStartupAnim(splash_pc))
+                return;
             splash = new MSplashScreen(pid, portrait, lscape, pixmap);
             lastDestroyedSplash = DestroyedSplash(0, 0);
             if (!splash->windowPixmap()) {
