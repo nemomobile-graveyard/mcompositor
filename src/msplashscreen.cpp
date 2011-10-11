@@ -26,21 +26,6 @@
 
 #include <X11/Xatom.h>
 
-// Non-deletable, static MWindowPropertyCache.
-class MSplashPropertyCache: public MWindowPropertyCache
-{
-public:
-    MSplashPropertyCache();
-    static MSplashPropertyCache *get();
-    void setOrientationAngle(int angle);
-    void setPid(unsigned pid);
-
-private:
-    bool event(QEvent *e);
-
-    xcb_get_window_attributes_reply_t attrs;
-};
-
 MSplashPropertyCache::MSplashPropertyCache()
     : MWindowPropertyCache(0, &attrs)
 {

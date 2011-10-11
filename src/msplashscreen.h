@@ -23,6 +23,21 @@
 #include <mtexturepixmapitem.h>
 #include <mwindowpropertycache.h>
 
+// Non-deletable, static MWindowPropertyCache.
+class MSplashPropertyCache: public MWindowPropertyCache
+{
+public:
+    MSplashPropertyCache();
+    static MSplashPropertyCache *get();
+    void setOrientationAngle(int angle);
+    void setPid(unsigned pid);
+
+private:
+    bool event(QEvent *e);
+
+    xcb_get_window_attributes_reply_t attrs;
+};
+
 /*!
  * Class for splash screens, which look like normal window objects but don't
  * refresh their pixmap and don't have a window.
