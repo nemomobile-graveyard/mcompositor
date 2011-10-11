@@ -458,7 +458,7 @@ void MCompositeWindowAnimation::finish()
   // Let the timeline's finish() run.
   ag->setDirection(QAbstractAnimation::Backward);
   ag->start();
-  ag->setCurrentTime(ag->duration());
+  ag->setCurrentTime(0);
 }
 
 bool MCompositeWindowAnimation::isActive()
