@@ -457,12 +457,12 @@ void MCompositeWindow::closeWindowAnimation()
     setVisible(true);
     
     // fade-out handler
-    if (animator) {
+    MCompositeWindow *d = compositeWindow(p->desktopWindow());
+    if (animator && d) {
         if (!p->isCompositing()) {
             p->d->enableCompositing();
             updateWindowPixmap();
         }
-        MCompositeWindow *d = compositeWindow(p->desktopWindow());
         d->updateWindowPixmap();
         animator->windowClosed();
         window_status = Normal;
