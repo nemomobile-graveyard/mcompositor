@@ -216,9 +216,18 @@ public:
     QSocketNotifier *sighupNotifier;
 
     struct DismissedSplash {
+        // time in ms to block activation of a window after we have seen it for
+        // the first time
+        static const int BLOCK_DURATION = 1000;
+
         DismissedSplash() {
             blockTimer.invalidate();
             lifetimeTimer.start();
+        }
+
+        // Is the window supposed to be/stay iconified?
+        bool isBlocking() {
+            return (!blockTimer.isValid()) || blockTimer.elapsed() < BLOCK_DURATION;
         }
 
         QElapsedTimer blockTimer;

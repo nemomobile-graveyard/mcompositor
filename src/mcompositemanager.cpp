@@ -751,8 +751,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
             while (it != dismissedSplashScreens.end()) {
                 DismissedSplash &ds = it.value();
                 if (ds.lifetimeTimer.elapsed() > 60 * 1000
-                        || (ds.blockTimer.isValid()
-                        && ds.blockTimer.elapsed() > 1000))
+                        || !ds.isBlocking())
                     it = dismissedSplashScreens.erase(it);
                 else
                     ++it;
@@ -1251,11 +1250,11 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
                 bool iconifiedOnPurpose = false;
                 if (cw) {
                     QHash<unsigned int, DismissedSplash>::iterator it =
-                        dismissedSplashScreens.find(cw->propertyCache()->pid());
-                    if (it != dismissedSplashScreens.end()) {
+                            dismissedSplashScreens.find(cw->propertyCache()->pid());
+                    if (it != dismissedSplashScreens.end() && it->isBlocking()) {
+                        if (!it->blockTimer.isValid())
+                            it->blockTimer.start();
                         iconifiedOnPurpose = true;
-                        if (!it.value().blockTimer.isValid())
-                            it.value().blockTimer.start();
                     }
                 }
                 if (!restoring && !iconifiedOnPurpose) {
@@ -1359,8 +1358,11 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
 
     configureWindow(pc, e);
     MCompositeWindow *i = COMPOSITE_WINDOW(e->window);
-    if (!i || !pc->isMapped() || dismissedSplashScreens.contains(pc->pid()))
+    QHash<unsigned int, DismissedSplash>::iterator splashIt = dismissedSplashScreens.find(pc->pid());
+    if (!i || !pc->isMapped()
+            || (splashIt != dismissedSplashScreens.end() && splashIt->isBlocking())) {
         return;
+    }
 
     MCompAtoms::Type wtype = i->propertyCache()->windowType();
     if (e->detail == Above && e->above == None && wtype != MCompAtoms::DESKTOP
@@ -1568,13 +1570,14 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     }
 
     QHash<unsigned int, DismissedSplash>::iterator it = dismissedSplashScreens.find(pc->pid());
-    if (it != dismissedSplashScreens.end()) {
+    if (it != dismissedSplashScreens.end() && it->isBlocking()) {
         pc->setStackedUnmapped(true);
         setWindowState(e->window, IconicState);
         STACKING("positionWindow 0x%lx -> bottom", e->window);
         positionWindow(e->window, false);
         DismissedSplash &ds = it.value();
-        ds.blockTimer.start();
+        if (!ds.blockTimer.isValid())
+            ds.blockTimer.start();
     }
 }
 
@@ -2405,7 +2408,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                 ds.blockTimer.start();
                 // no XMapRequestEvent received yet - ignore event
                 return;
-            } else if (ds.blockTimer.elapsed() < 1000)
+            } else if (ds.blockTimer.elapsed() < DismissedSplash::BLOCK_DURATION)
                 return;
             else
                 dismissedSplashScreens.erase(it);
