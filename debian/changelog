@@ -1,3 +1,9 @@
+mcompositor (1.1.20-1) unstable; urgency=low
+
+  * Fixes: NB#286469 - not able to boot the device properly in a particular scenario
+
+ -- Armin Berres <armin.berres@basyskom.de>  Fri, 14 Oct 2011 15:47:02 +0200
+
 mcompositor (1.1.19-1) unstable; urgency=low
 
   * Added APIs for plugin's unit tests.
