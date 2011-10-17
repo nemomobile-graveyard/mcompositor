@@ -4608,8 +4608,10 @@ void MCompositeManager::exposeSwitcher()
 void MCompositeManager::config(char const *ckey, QVariant const &val) const
 {
     QLatin1String key(ckey);
-    if (!default_settings.contains(key))
-        default_settings[key] = val;
+    if (default_settings.contains(key))
+        qWarning() << "MCompositeManager::config: overwriting "
+                      "default value for key" << ckey;
+    default_settings[key] = val;
 }
 
 QVariant MCompositeManager::config(char const *ckey) const
@@ -4766,7 +4768,7 @@ void MSGrabber::commit()
         return;
 
     MCompositeManager *cm = (MCompositeManager*)qApp;
-    static const int ungrabGrabDelay = cm ? cm->configInt("ungrab-grab-delay") : 0;
+    const int ungrabGrabDelay = cm->configInt("ungrab-grab-delay");
     const qint64 msSinceLastUngrab = timeSinceLastUngrab.elapsed();
     if (needs_grab
             && timeSinceLastUngrab.isValid()
@@ -4782,7 +4784,7 @@ void MSGrabber::commit()
         Q_ASSERT(!has_grab && !mercytimer.isActive());
         XGrabServer(QX11Info::display());
         // reset global alpha
-        ((MCompositeManager*)qApp)->recheckVisibility();
+        cm->recheckVisibility();
         mercytimer.start();
     } else {
         Q_ASSERT(has_grab && mercytimer.isActive());
