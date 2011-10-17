@@ -142,6 +142,9 @@ void ut_Anim::initTestCase()
     cmgr->d->prepare();
     cmgr->d->xserver_stacking.init();
 
+    // effectively disable ungrab-grab delay for testing the grab logic
+    cmgr->config("ungrab-grab-delay", 0);
+
     // create a fake desktop window
     fake_desktop_window *pc = new fake_desktop_window(1000);
     addWindow(pc);
