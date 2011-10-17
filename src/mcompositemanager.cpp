@@ -678,17 +678,20 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 
 void MCompositeManagerPrivate::splashTimeout()
 {
+    MSplashScreen *s_copy = splash; 
     if (!splash)
         goto check_compositing_and_stacking;
 
-    lastDestroyedSplash = DestroyedSplash(splash->window(),
-                                          splash->propertyCache()->pid());
+    splash = 0; // prevent re-entry
+    lastDestroyedSplash = DestroyedSplash(s_copy->window(),
+                                          s_copy->propertyCache()->pid());
 
-    splash->hide();
-    prop_caches.remove(splash->window());
-    removeWindow(splash->window());
-    splash->deleteLater();
-    splash = 0;
+    s_copy->hide();
+    if (s_copy->windowAnimator()->isActive())
+        s_copy->windowAnimator()->finish();
+    prop_caches.remove(s_copy->window());
+    removeWindow(s_copy->window());
+    s_copy->deleteLater();
     waiting_damage = 0;
 check_compositing_and_stacking:
     glwidget->update();
