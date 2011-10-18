@@ -4605,9 +4605,6 @@ void MCompositeManager::exposeSwitcher()
 void MCompositeManager::config(char const *ckey, QVariant const &val) const
 {
     QLatin1String key(ckey);
-    if (default_settings.contains(key))
-        qWarning() << "MCompositeManager::config: overwriting "
-                      "default value for key" << ckey;
     default_settings[key] = val;
 }
 
