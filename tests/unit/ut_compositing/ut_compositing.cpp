@@ -363,6 +363,8 @@ void ut_Compositing::testVkbMapping()
     QCOMPARE(v != 0, true);
     QCOMPARE(v->propertyCache()->windowTypeAtom()
                  == ATOM(_NET_WM_WINDOW_TYPE_INPUT), true);
+    v->damageReceived();
+    v->damageReceived();
     QCOMPARE(v->isVisible(), true);
     QCOMPARE(v->windowObscured(), false);
     QCOMPARE(v->paintedAfterMapping(), true);
