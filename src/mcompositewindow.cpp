@@ -451,7 +451,11 @@ void MCompositeWindow::closeWindowRequest()
 
 void MCompositeWindow::closeWindowAnimation()
 {
-    if (window_status == Closing || window_obscured || isInanimate())
+    if (window_status == Closing || window_obscured || isInanimate()
+            // We do not want to influence currently ongoing animations.
+            // After they are finished this window will be automatically
+            // either invisible or instantly disappeares without animation.
+            || is_transitioning)
         return;
     window_status = Closing; // animating, do not disturb
 
