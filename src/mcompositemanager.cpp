@@ -1846,6 +1846,7 @@ int MCompositeManagerPrivate::indexOfLastVisibleWindow() const
              || cw->opacity() < 1.0
              || pc->hasAlphaAndIsNotOpaque() || pc->isInputOnly()
              || cw->isWindowTransitioning()
+             || !cw->paintedAfterMapping()
              // don't subtract hidden items during transition (example:
              // a hidden window between the desktop and swiped window)
              || (cw->hasTransitioningWindow() && !cw->isVisible()))
@@ -2277,12 +2278,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
         } else {
             item->setNewlyMapped(false);
             if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG) ||
-                pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU)) {
-                item->setVisible(false);
-                item->waitForPainting();
-            } else if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)
-                       && item->hasTransitioningWindow()) {
-                // there is an animation, don't show it unpainted on top
+                pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU) ||
+                pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)) {
                 item->setVisible(false);
                 item->waitForPainting();
             } else
