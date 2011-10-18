@@ -251,7 +251,8 @@ void ut_splashscreen::showSplashScreen()
     QCOMPARE(cmgr->d->lastDestroyedSplash.pid, pid);
     QCOMPARE(cmgr->d->lastDestroyedSplash.window, splash->window());
 
-    verifyDisabledComposition(splash);
+    QTest::qWait(10); // run idle handlers
+    QVERIFY(!cmgr->d->compositing);
 }
 
 // After the fade animation the splash screen must be gone.

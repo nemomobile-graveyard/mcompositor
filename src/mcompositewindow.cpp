@@ -361,6 +361,7 @@ void MCompositeWindow::damageReceived()
         newly_mapped = false;
         setVisible(true);
         endAnimation();
+        m->recheckVisibility();
         m->possiblyUnredirectTopmostWindow();
     } else
         q_fadeIn();
