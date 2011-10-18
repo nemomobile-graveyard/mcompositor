@@ -263,7 +263,13 @@ void MCompositeWindow::waitForPainting()
     waiting_for_damage = mc->configInt("damages-for-starting-anim");
     resize_expected = false;
     painted_after_mapping = false;
-    damage_timer->setInterval(mc->configInt("damage-timeout-ms"));
+    // Give splashed apps a bit more time to draw the actual content
+    if (mc->d->splash
+            && mc->d->splash->propertyCache()->pid() == propertyCache()->pid()) {
+        damage_timer->setInterval(mc->configInt("splashed-damage-timeout-ms"));
+    } else {
+        damage_timer->setInterval(mc->configInt("damage-timeout-ms"));
+    }
     damage_timer->start();
 }
 
