@@ -211,9 +211,20 @@ void MSheetAnimation::windowClosed()
     
     animationGroup()->setDirection(QAbstractAnimation::Backward);
     targetWindow()->setVisible(true);
-    if (MCompositeWindow *behind = targetWindow()->behind())
-       behind->setVisible(true);
+    MCompositeWindow *behind = targetWindow()->behind();
+    if (behind)
+        behind->setVisible(true);
     animationGroup()->start();    
+
+    // set up the behind window properly, too
+    if (behind) {
+        behind->beginAnimation();
+        behind->updateWindowPixmap();
+        behind->setZValue(
+              ((MCompositeManager*)qApp)->stackingList().size() + 1);
+    }
+    targetWindow()->setZValue(
+              ((MCompositeManager*)qApp)->stackingList().size() + 2);
 }
 
 void MSheetAnimation::endAnimation()
