@@ -55,7 +55,7 @@ public:
     void grab();
     void reinforce();
     bool hasGrab() const { return has_grab; }
-    bool delayedTimerIsActive() const { return delayedGrabTimer.isActive(); }
+    bool grabDelayIsActive() const;
 
 public slots:
     void commit();

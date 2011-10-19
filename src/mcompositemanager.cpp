@@ -4756,6 +4756,18 @@ void MSGrabber::ungrab()
     commit();
 }
 
+bool MSGrabber::grabDelayIsActive() const
+{
+    if (!timeSinceLastUngrab.isValid())
+        return false;
+    MCompositeManager *cm = (MCompositeManager*)qApp;
+    const int ungrabGrabDelay = cm->configInt("ungrab-grab-delay");
+    const qint64 msSinceLastUngrab = timeSinceLastUngrab.elapsed();
+    if (msSinceLastUngrab < ungrabGrabDelay)
+        return true;
+    return false;
+}
+
 // Make the @needs_grab setting effective.
 void MSGrabber::commit()
 {
@@ -4763,14 +4775,10 @@ void MSGrabber::commit()
         return;
 
     MCompositeManager *cm = (MCompositeManager*)qApp;
-    const int ungrabGrabDelay = cm->configInt("ungrab-grab-delay");
-    const qint64 msSinceLastUngrab = timeSinceLastUngrab.elapsed();
-    if (needs_grab
-            && timeSinceLastUngrab.isValid()
-            && msSinceLastUngrab < ungrabGrabDelay) {
+    if (needs_grab && grabDelayIsActive()) {
         if (!delayedGrabTimer.isActive()) {
-            delayedGrabTimer.setInterval(ungrabGrabDelay - timeSinceLastUngrab.elapsed());
-            delayedGrabTimer.start();
+            delayedGrabTimer.start(cm->configInt("ungrab-grab-delay")
+                                   - timeSinceLastUngrab.elapsed());
         }
         return;
     }
