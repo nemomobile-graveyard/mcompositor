@@ -4805,3 +4805,8 @@ void MSGrabber::reinforce()
     Q_ASSERT(has_grab && mercytimer.isActive());
     mercytimer.start();
 }
+
+void MSGrabber::grabLater(bool setting)
+{
+    needs_grab = setting;
+}

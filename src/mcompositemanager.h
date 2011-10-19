@@ -44,10 +44,7 @@ public:
     MSGrabber();
 
     // grab() later when someone calls commit()
-    void grabLater(bool setting = true)
-    {
-        needs_grab = setting;
-    }
+    void grabLater(bool setting = true);
 
     // grab() calls xlib immediately, but does not explicitly flush
     // the output queue.  Does nothing if the grab is already effective.
