@@ -272,7 +272,7 @@ bool MCompositeWindow::showWindow()
     if (type() == MSplashScreen::Type) {
         beginAnimation();
         MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
-        mc->servergrab.ungrab();
+        mc->servergrab.grabLater(false);
         q_fadeIn();
         return true;
     }
