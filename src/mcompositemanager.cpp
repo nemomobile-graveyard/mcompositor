@@ -4747,9 +4747,7 @@ bool MSGrabber::grabDelayIsActive() const
     MCompositeManager *cm = (MCompositeManager*)qApp;
     const int ungrabGrabDelay = cm->configInt("ungrab-grab-delay");
     const qint64 msSinceLastUngrab = timeSinceLastUngrab.elapsed();
-    if (msSinceLastUngrab < ungrabGrabDelay)
-        return true;
-    return false;
+    return msSinceLastUngrab < ungrabGrabDelay;
 }
 
 // Make the @needs_grab setting effective.
@@ -4764,6 +4762,9 @@ void MSGrabber::commit()
             delayedGrabTimer.start(cm->configInt("ungrab-grab-delay")
                                    - timeSinceLastUngrab.elapsed());
         }
+        // start mercytimer to change needs_grab to false in case there
+        // are no frames painted during delayedGrabTimer
+        mercytimer.start();
         return;
     }
 
