@@ -37,7 +37,6 @@ class MDynamicAnimation: public MCompositeWindowAnimation
     ~MDynamicAnimation();
     void setEnabled(bool enabled);
     void disableAnimation( QAbstractAnimation * animation );
-    virtual bool grabAllowed() { return true; }
     
     AnimVector& activeAnimations();
  private:
