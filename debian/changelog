@@ -1,3 +1,9 @@
+mcompositor (1.1.21-2) unstable; urgency=low
+
+  * Fix test20b.py
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 21 Oct 2011 17:50:11 +0300
+
 mcompositor (1.1.21-1) unstable; urgency=low
 
   * Adam's "mercy patch", improving testability with xresponse and not
