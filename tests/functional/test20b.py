@@ -58,9 +58,10 @@ for l in s.splitlines():
 
 # create a fullscreen application window that paints its statusbar
 app2 = os.popen('windowctl fn').readline().strip()
-os.popen("xprop -id %s -f _MEEGOTOUCH_MSTATUSBAR_GEOMETRY 32cccc "
-         "-set _MEEGOTOUCH_MSTATUSBAR_GEOMETRY 0,0,854,36" % app2)
-time.sleep(2)
+subprocess.call(["xprop", "-id", str(app2), "-f",
+                 "_MEEGOTOUCH_MSTATUSBAR_GEOMETRY", "32cccc",
+                 "-set", "_MEEGOTOUCH_MSTATUSBAR_GEOMETRY", "0,0,854,36"])
+time.sleep(1)
 
 fd = os.popen('windowstack m')
 s = fd.read(5000)
