@@ -1,3 +1,17 @@
+mcompositor (1.1.21-1) unstable; urgency=low
+
+  * Adam's "mercy patch", improving testability with xresponse and not
+    requiring /etc/init/test/ci-testing.conf file anymore.
+  * Fix some animation glitches.
+  * Fixes: NB#285256 - During splash screen transition, application startup is
+    stalled, which slows down startup time
+  * Fixes: NB#272112 - swipe plugin gets confused when incoming call is
+    terminated while lockscreen is swiped away
+  * Fix to make NB#285253 less probable (150ms delay between ungrab and grab).
+  * Fix a case of call-ui failing to restore from switcher.
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 21 Oct 2011 15:36:19 +0300
+
 mcompositor (1.1.20-1) unstable; urgency=low
 
   * Fixes: NB#286469 - not able to boot the device properly in a particular scenario
