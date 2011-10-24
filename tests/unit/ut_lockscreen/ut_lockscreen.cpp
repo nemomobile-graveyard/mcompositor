@@ -197,8 +197,8 @@ void ut_Lockscreen::testScreenOnAfterLockscreenPaint()
     fakeDamageEvent(cw);
     fakeDamageEvent(cw);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
-    QCOMPARE(cmgr->d->compositing, true);
+    QCOMPARE(cmgr->d->watch->keep_black, false);
+    QCOMPARE(cmgr->d->compositing, false);
 
     // display on
     device_state->fake_display_off = false;
