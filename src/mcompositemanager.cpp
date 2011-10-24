@@ -2796,6 +2796,7 @@ void MCompositeManager::lockScreenPainted()
     lockscreen_painted = true;
     if (!d->device_state->displayOff())
         d->displayOff(false);
+    d->watch->keep_black = false;
 }
 
 MWindowPropertyCache *MCompositeManagerPrivate::findLockScreen() const
