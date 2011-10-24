@@ -13,6 +13,12 @@ else
 	qmake_options += TESTABILITY=on
 endif
 
+ifeq ($(filter mcompositor_mrc,$(build_options)),)
+	qmake_options += REMOTE_CONTROL=off
+else
+	qmake_options += REMOTE_CONTROL=on
+endif
+
 ifneq (,$(findstring nodoc,$(DEB_BUILD_OPTIONS)))
      qmake_options += CONFIG+=NODOCS
      EXCLUSIONS += --no-package=mcompositor-doc

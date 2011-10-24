@@ -3989,7 +3989,9 @@ static void sigusr1_handler(int signo)
     Q_UNUSED(signo)
     debug_mode = !debug_mode;
 }
+#endif // WINDOW_DEBUG
 
+#ifdef REMOTE_CONTROL
 template<class T>
 static QString dumpWindows(const T &wins, bool leftToRight,
                            const char *sep, bool prefix)
@@ -4429,7 +4431,7 @@ void MCompositeManager::xtracef(const char *fun, const char *fmt, ...)
     va_end(printf_args);
     xtrace(fun, msg, lmsg);
 }
-#endif // WINDOW_DEBUG
+#endif //REMOTE_CONTROL
 
 MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
@@ -4455,7 +4457,8 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
 
 #ifdef WINDOW_DEBUG
     signal(SIGUSR1, sigusr1_handler);
-
+#endif
+#ifdef REMOTE_CONTROL
     // Open the remote control interface.
     mknod("/tmp/mrc", S_IFIFO | 0666, 0);
     connect(new QSocketNotifier(open("/tmp/mrc", O_RDWR), QSocketNotifier::Read),

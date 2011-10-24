@@ -230,7 +230,9 @@ public:
     bool ut_addWindow(MWindowPropertyCache *pc);
     // for replacing MDeviceState object from a unit test
     void ut_replaceDeviceState(MDeviceState *d);
+#endif
 
+#ifdef REMOTE_CONTROL
     // Dump the current state of MCompositeManager and MCompositeWindow:s
     // to qDebug().  Only available if compiled with TESTABILITY=on
     // (-DWINDOW_DEBUG).
@@ -274,7 +276,7 @@ public slots:
      */
     void playFeedback(const QString &name) const;
 
-#ifdef WINDOW_DEBUG
+#ifdef REMOTE_CONTROL
     void remoteControl(int fd);
 #endif
 
