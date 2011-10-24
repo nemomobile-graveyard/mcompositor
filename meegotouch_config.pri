@@ -9,5 +9,10 @@ INCLUDEPATH += $$M_INSTALL_HEADERS
     DEFINES += WINDOW_DEBUG
 }
 
+# Check for remote control interface
+isEqual(REMOTE_CONTROL,"on") {
+    DEFINES += REMOTE_CONTROL
+}
+
 # Compositor components only
 VERSION = 1.1.3
