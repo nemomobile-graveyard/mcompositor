@@ -88,6 +88,7 @@ private:
     void setSceneSize();
     void setMDecoratorWindowProperty();
     void setMeegotouchOpaqueProperty(bool enable);
+    M::OrientationAngle desktopOrientationAngle() const;
 
     MHomeButtonPanel *homeButtonPanel;
     MEscapeButtonPanel *escapeButtonPanel;
