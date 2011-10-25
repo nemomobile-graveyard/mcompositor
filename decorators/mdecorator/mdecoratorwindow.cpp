@@ -286,10 +286,10 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     setFocusPolicy(Qt::NoFocus);
     setSceneSize();
     setMDecoratorWindowProperty();
-    setMeegotouchOpaqueProperty(true);
+    setMeegotouchOpaqueProperty(false);
 
     setProperty("animatedOrientationChange", false);
-    setOrientationAngle(M::Angle0);
+    setOrientationAngle(desktopOrientationAngle());
     setOrientationAngleLocked(true);
 }
 
@@ -309,7 +309,7 @@ void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w,
     if (!managed_window) {
         hideEverything();
         setProperty("animatedOrientationChange", false);
-        setOrientationAngle(M::Angle0);
+        setOrientationAngle(desktopOrientationAngle());
         return;
     }
 
@@ -587,6 +587,12 @@ void MDecoratorWindow::setMeegotouchOpaqueProperty(bool enable)
                         (unsigned char *) &new_value, 1);
         prev = new_value;
     }
+}
+
+M::OrientationAngle MDecoratorWindow::desktopOrientationAngle() const
+{
+    const M::Orientation orientation = MDeviceProfile::instance()->orientationFromAngle(M::Angle270);
+    return (orientation == M::Portrait) ? M::Angle270 : M::Angle0;
 }
 
 const QRect MDecoratorWindow::availableClientRect() const
