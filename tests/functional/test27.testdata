@@ -1,6 +1,7 @@
 CaseName="restarting_mc"
 CaseRequirement="NONE"
 CaseTimeout="30"
+CaseInsignificant=true
 CaseDescription="Verify that restarting mcompositor does not change window states.
 
 - Test steps
