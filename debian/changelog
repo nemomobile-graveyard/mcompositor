@@ -1,3 +1,9 @@
+mcompositor (1.1.22-2) unstable; urgency=low
+
+  * test27: marked insignificant -- passes when manually running
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 26 Oct 2011 15:32:32 +0300
+
 mcompositor (1.1.22-1) unstable; urgency=low
 
   * set keep_black=false when lockscreen is painted (NB#287831)
