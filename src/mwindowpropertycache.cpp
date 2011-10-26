@@ -152,6 +152,7 @@ void MWindowPropertyCache::init()
     no_animations = 0;
     video_overlay = 0;
     pending_damage = false;
+    skipping_taskbar_marker = false;
 }
 
 void MWindowPropertyCache::init_invalid()
@@ -282,6 +283,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     addRequest(SLOT(videoOverlay()),
                requestProperty(MCompAtoms::_OMAP_VIDEO_OVERLAY,
                                XCB_ATOM_INTEGER));
+    addRequest(SLOT(skippingTaskbarMarker()),
+               requestProperty(MCompAtoms::_MCOMPOSITOR_SKIP_TASKBAR,
+                               XCB_ATOM_CARDINAL));
 
     // add any transients to the transients list
     MCompositeManager *m = (MCompositeManager*)qApp;
@@ -1126,17 +1130,59 @@ void MWindowPropertyCache::forceSkippingTaskbar(bool force)
 {
     Atom skipata = ATOM(_NET_WM_STATE_SKIP_TASKBAR);
     if (force) {
-        if (!force_skipping_taskbar)
+        if (!force_skipping_taskbar) {
             // !force => force, remember whether it @was_skipping_taskbar
             was_skipping_taskbar = !addToNetWmState(skipata);
-        else // just reinforce the state
+            if (!was_skipping_taskbar) {
+                // we added _NET_WM_STATE_SKIP_TASKBAR there, add a marker
+                // so that we can clean it up if we restart
+                setSkippingTaskbarMarker(true);
+            }
+        } else // just reinforce the state
             addToNetWmState(skipata);
     } else {
-        if (force_skipping_taskbar && !was_skipping_taskbar)
+        if (force_skipping_taskbar && !was_skipping_taskbar) {
             // force => !force, restore the state
             removeFromNetWmState(skipata);
+            setSkippingTaskbarMarker(false);
+        }
     }
     force_skipping_taskbar = force;
+}
+
+bool MWindowPropertyCache::skippingTaskbarMarker()
+{
+    QLatin1String me(SLOT(skippingTaskbarMarker()));
+    if (is_valid && requests[me]) {
+        xcb_get_property_cookie_t c = { requests[me] };
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        replyCollected(me);
+        skipping_taskbar_marker = false;
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                skipping_taskbar_marker = true;
+            free(r);
+        }
+    }
+    return skipping_taskbar_marker;
+}
+
+void MWindowPropertyCache::setSkippingTaskbarMarker(bool setting)
+{
+    if (skippingTaskbarMarker() == setting)
+        return;
+    if (setting) {
+        const long value = 1;
+        XChangeProperty(QX11Info::display(), window,
+                        ATOM(_MCOMPOSITOR_SKIP_TASKBAR),
+                        XA_CARDINAL, 32, PropModeReplace,
+                        (unsigned char *)&value, 1);
+    } else {
+        XDeleteProperty(QX11Info::display(), window,
+                        ATOM(_MCOMPOSITOR_SKIP_TASKBAR));
+    }
+    skipping_taskbar_marker = setting;
 }
 
 const QRectF &MWindowPropertyCache::iconGeometry()

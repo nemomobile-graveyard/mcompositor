@@ -3584,6 +3584,12 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     if (needDecoration(pc))
         item->setDecorated(true);
 
+    // if we restarted, remove SKIP_TASKBAR set by us
+    if (pc->skippingTaskbarMarker()) {
+        pc->removeFromNetWmState(ATOM(_NET_WM_STATE_SKIP_TASKBAR));
+        pc->setSkippingTaskbarMarker(false);
+    }
+
     item->updateWindowPixmap();
 
     int i = stacking_list.indexOf(window);
