@@ -1,3 +1,11 @@
+mcompositor (1.1.22-1) unstable; urgency=low
+
+  * set keep_black=false when lockscreen is painted (NB#287831)
+  * test27.sh: give some time to set the current app property
+  * have remote control only if mcompositor_mrc is given in DEB_BUILD_OPTIONS
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 26 Oct 2011 15:04:27 +0300
+
 mcompositor (1.1.21-2) unstable; urgency=low
 
   * Fix test20b.py
