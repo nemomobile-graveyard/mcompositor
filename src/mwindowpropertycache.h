@@ -158,6 +158,7 @@ public:
 
     const QRect &homeButtonGeometry();
     const QRect &closeButtonGeometry();
+    void setSkippingTaskbarMarker(bool);
 
 public slots:
     bool isDecorator();
@@ -231,6 +232,8 @@ public slots:
     unsigned int noAnimations();
 
     int videoOverlay();
+
+    bool skippingTaskbarMarker();
 
 public:
     /*!
@@ -374,6 +377,7 @@ protected:
     unsigned wm_pid, no_animations;
     int video_overlay;
     bool pending_damage;
+    bool skipping_taskbar_marker;
 };
 
 // Non-deletable dummy MWindowPropertyCache.
