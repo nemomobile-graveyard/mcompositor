@@ -90,8 +90,17 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid,
             landscape_file = splash_p;
         // TODO: default path for relative file names
         // TODO 2: mirrored textures for bottom/right
-        if (m->d->device_state->screenTopEdge() == "top"
-            || m->d->device_state->screenTopEdge() == "bottom") {
+        bool landscape = false;
+        if (m->d->device_state->isFlat()) {
+            MWindowPropertyCache *pc = m->d->prop_caches.value(
+                                                  m->d->current_app, 0);
+            if (pc && (pc->orientationAngle() == 0
+                       || pc->orientationAngle() == 180))
+                landscape = true;
+        } else if (m->d->device_state->screenTopEdge() == "top"
+                   || m->d->device_state->screenTopEdge() == "bottom")
+            landscape = true;
+        if (landscape) {
             q_pixmap = new QPixmap(landscape_file);
             if (q_pixmap->isNull())
                 qWarning() << __func__ << "couldn't load" << landscape_file;
