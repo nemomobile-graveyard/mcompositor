@@ -1953,15 +1953,15 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
 
 }
 
-void MCompositeManagerPrivate::setStatusbarVisibleProperty(bool visiblity)
+void MCompositeManagerPrivate::setStatusbarVisibleProperty(bool visible)
 {
-    static bool statusbar_currently_visible = false;
-    if (statusbar_currently_visible != visiblity) {
-        long v = visiblity ? 1 : 0;
+    static int statusbar_currently_visible = -1;
+    if (statusbar_currently_visible != visible) {
+        long v = visible ? 1 : 0;
         XChangeProperty(QX11Info::display(), wm_window,
                         ATOM(_MEEGOTOUCH_STATUSBAR_VISIBLE), XA_CARDINAL,
                         32, PropModeReplace, (unsigned char *)&v, 1);
-        statusbar_currently_visible = visiblity;
+        statusbar_currently_visible = visible;
     }
 }
 
