@@ -98,7 +98,9 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid,
                        || pc->orientationAngle() == 180))
                 landscape = true;
         } else if (m->d->device_state->screenTopEdge() == "top"
-                   || m->d->device_state->screenTopEdge() == "bottom")
+                   || m->d->device_state->screenTopEdge() == "right")
+            // "bottom" edge is forbidden -> use portrait
+            // "right" edge is forbidden also -> landscape
             landscape = true;
         if (landscape) {
             q_pixmap = new QPixmap(landscape_file);
