@@ -74,8 +74,6 @@ public:
     }
 
 protected:
-    void activateEvent() {
-    }
 
     void hideQueryDialog() {
         decorwindow->hideQueryDialog();

@@ -62,47 +62,6 @@ Qt::HANDLE MAbstractDecorator::managedWinId()
     return d->client;
 }
 
-void MAbstractDecorator::minimize()
-{
-    /* TODO */
-    XEvent e;
-    memset(&e, 0, sizeof(e));
-
-    e.xclient.type = ClientMessage;
-    e.xclient.message_type = XInternAtom(QX11Info::display(), "WM_CHANGE_STATE",
-                                         False);
-    e.xclient.display = QX11Info::display();
-    e.xclient.window = managedWinId();
-    e.xclient.format = 32;
-    e.xclient.data.l[0] = IconicState;
-    e.xclient.data.l[1] = 0;
-    e.xclient.data.l[2] = 0;
-    e.xclient.data.l[3] = 0;
-    e.xclient.data.l[4] = 0;
-    XSendEvent(QX11Info::display(), QX11Info::appRootWindow(),
-               False, (SubstructureNotifyMask | SubstructureRedirectMask), &e);
-
-    XSync(QX11Info::display(), FALSE);
-}
-
-void MAbstractDecorator::close()
-{
-    XEvent e;
-    memset(&e, 0, sizeof(e));
-
-    e.xclient.type         = ClientMessage;
-    e.xclient.window       = managedWinId();
-    e.xclient.message_type = XInternAtom(QX11Info::display(),
-                                         "_NET_CLOSE_WINDOW", False);
-    e.xclient.format       = 32;
-    e.xclient.data.l[0]    = CurrentTime;
-    e.xclient.data.l[1]    = QX11Info::appRootWindow();
-    XSendEvent(QX11Info::display(), QX11Info::appRootWindow(),
-               False, SubstructureRedirectMask | SubstructureNotifyMask, &e);
-
-    XSync(QX11Info::display(), FALSE);
-}
-
 void MAbstractDecorator::RemoteSetManagedWinId(unsigned window,
                                                const QRect &geo,
                                                const QString &wmname,
@@ -128,11 +87,6 @@ void MAbstractDecorator::RemoteSetManagedWinId(unsigned window,
         orient = M::Angle0;
 
     manageEvent(window, wmname, orient, only_statusbar, show_dialog);
-}
-
-void MAbstractDecorator::RemoteActivateWindow()
-{
-    activateEvent();
 }
 
 void MAbstractDecorator::setAvailableGeometry(const QRect& rect)

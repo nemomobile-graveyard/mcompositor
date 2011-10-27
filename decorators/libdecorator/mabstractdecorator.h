@@ -64,34 +64,16 @@ public:
 public slots:
 
     /*!
-    * Minimizes the managed window
-    */
-    void minimize();
-
-    /*!
-    * Closes the managed window
-    */
-    void close();
-
-    /*!
      * Interface to MRMI sockets
      */
     void RemoteSetManagedWinId(unsigned, const QRect&, const QString&,
                                unsigned, bool, bool);
-    void RemoteActivateWindow();
     void RemoteSetOnlyStatusbar(bool mode);
     void RemoteHideQueryDialog();
     void RemotePlayFeedback(const QString &name);
 
 protected:
 
-    /*!
-     * Pure virtual function that gets called when the user activates the
-     * managed window by tapping on its client area.
-     * Re-implement to obtain activate events from the managed window
-     */
-    virtual void activateEvent() = 0;
-    
      /*!
       * Pure virtual function that gets called this decorator manages a window.
       * @wmname and @orient are the title and current orientation of @window.

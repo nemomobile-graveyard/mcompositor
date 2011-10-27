@@ -189,6 +189,9 @@ void MRmiPrivate::invokeRemote(const char* objectName,
         }
     } else if (!_server) {
         // We're an unconnected client.  Connect to _key.
+        if (!QFile::exists(_key))
+            // socket does not exist yet, probably mdecorator starts later
+            return;
         socket = new QLocalSocket(this);
         socket->connectToServer(_key);
         if (!socket->waitForConnected()) {
