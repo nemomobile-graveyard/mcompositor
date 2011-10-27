@@ -1937,10 +1937,12 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
                 setWindowDebugProperties(cw->window());
             }
             if (!cw->propertyCache()->transientWindows().isEmpty()
-                && hasTransientVKB(cw->propertyCache()))
+                && hasTransientVKB(cw->propertyCache())) {
                 // keep it unobscured for self-compositing VKB
                 cw->setWindowObscured(false);
-            else
+                // statusbar is visible on the VKB window
+                statusbar_visible = true;
+            } else
                 cw->setWindowObscured(true);
             if (cw->window() != duihome)
                 cw->setVisible(false);
