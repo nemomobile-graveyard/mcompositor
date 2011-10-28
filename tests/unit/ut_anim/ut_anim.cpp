@@ -74,6 +74,11 @@ public:
         orientation_angle = a;
     }
     bool pendingDamage() { return pending_damage; }
+    void appendType(Atom a) { type_atoms.append(a);
+                              // set invalid to recalculate windowType()
+                              window_type = MCompAtoms::INVALID; }
+    void setTransientFor(Window w) { transient_for = w; }
+    void addToTransients(Window w) { transients.append(w); }
 
     xcb_get_window_attributes_reply_t fake_attrs;
     friend class ut_Anim;
@@ -220,15 +225,24 @@ void ut_Anim::testStartupAnimForFirstTimeMapped()
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
+#define INVOKER 1111
+
 void ut_Anim::testOpenChainingAnimation()
 {
-    fake_LMT_window *pc1 = (fake_LMT_window*)cmgr->d->prop_caches.value(1, 0);
-    QCOMPARE(pc1 != 0, true);
+    fake_LMT_window *pc1 = new fake_LMT_window(INVOKER);
+    QVERIFY(cmgr->ut_addWindow(pc1));
+    MCompositeWindow *cw = cmgr->d->windows.value(INVOKER, 0);
+    fakeDamageEvent(cw);
+    fakeDamageEvent(cw);
+    QCOMPARE(cw->windowAnimator()->isActive(), true);
+    while (cw->windowAnimator()->isActive())
+        QTest::qWait(100); // wait the animation to finish
+
     // need to set portrait too for NB#279547 workaround
     pc1->setOrientationAngle(270);
 
     fake_LMT_window *pc2 = new fake_LMT_window(2000);
-    pc2->setInvokedBy(1);
+    pc2->setInvokedBy(INVOKER);
     // portrait
     pc2->setOrientationAngle(270);
 
@@ -242,8 +256,7 @@ void ut_Anim::testOpenChainingAnimation()
     QCOMPARE(cw2->windowAnimator() != 0, true);
     
     // invoked should use chained
-    QCOMPARE(qobject_cast<MChainedAnimation*> (cw2->windowAnimator()) != 0, 
-             true);
+    QVERIFY(qobject_cast<MChainedAnimation*> (cw2->windowAnimator()));
     
     fakeDamageEvent(cw2);
     QCOMPARE(pc2->pendingDamage(), false);
@@ -260,17 +273,17 @@ void ut_Anim::testOpenChainingAnimation()
 
     while (cw2->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
         
-    MCompositeWindow *cw1 = cmgr->d->windows.value(1, 0);
     // window position check
     QCOMPARE(cw2->pos() == QPointF(0,0), true);
-    QCOMPARE(cw1->pos() == screen.bottomLeft(), true);
+    QCOMPARE(cw->pos() == screen.bottomLeft(), true);
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
 void ut_Anim::testCloseChainingAnimation()
 {
-    MCompositeWindow *cw1 = cmgr->d->windows.value(1, 0);
+    MCompositeWindow *cw1 = cmgr->d->windows.value(INVOKER, 0);
     MCompositeWindow *cw2 = cmgr->d->windows.value(2000, false);
 
     XUnmapEvent ue;
@@ -281,8 +294,7 @@ void ut_Anim::testCloseChainingAnimation()
     cmgr->d->unmapEvent(&ue);
     
     // should use chained
-    QCOMPARE(qobject_cast<MChainedAnimation*> (cw2->windowAnimator()) != 0, 
-             true);
+    QVERIFY(qobject_cast<MChainedAnimation*> (cw2->windowAnimator()));
     
     // window position check
     QCOMPARE(cw2->windowAnimator()->isActive(), true);
@@ -294,11 +306,101 @@ void ut_Anim::testCloseChainingAnimation()
     
     while (cw2->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
     // window position check
     QCOMPARE(cw2->pos() == screen.translated(0,-screen.height()).topLeft(), 
              true);
     QCOMPARE(cw1->pos() == QPointF(0,0), true);
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
+}
+
+void ut_Anim::testOpenSheetAnimation()
+{
+    fake_LMT_window *pc1 = (fake_LMT_window*)
+                            cmgr->d->prop_caches.value(INVOKER, 0);
+    QVERIFY(pc1);
+    QVERIFY(pc1->isMapped());
+    QVERIFY(pc1->windowState() == NormalState);
+    // portrait
+    pc1->setOrientationAngle(270);
+
+    // sheet
+    fake_LMT_window *pc2 = new fake_LMT_window(3000);
+    pc2->appendType(ATOM(_MEEGOTOUCH_NET_WM_WINDOW_TYPE_SHEET));
+    pc2->setTransientFor(INVOKER);
+    pc2->setInvokedBy(INVOKER); // why is transiency AND this needed?
+    pc2->setOrientationAngle(270);
+    pc1->addToTransients(3000);
+    QVERIFY(cmgr->ut_addWindow(pc2));
+
+    MCompositeWindow *cw2 = cmgr->d->windows.value(3000, 0);
+    QVERIFY(cw2);
+    QVERIFY(cw2->isValid());
+    QVERIFY(cw2->windowAnimator());
+    QVERIFY(qobject_cast<MSheetAnimation*>(cw2->windowAnimator()));
+
+    fakeDamageEvent(cw2);
+    QVERIFY(!pc2->pendingDamage());
+    fakeDamageEvent(cw2);
+    QVERIFY(!pc2->pendingDamage());
+
+    // window position check
+    QRectF screen = QApplication::desktop()->availableGeometry();
+    QVERIFY(cw2->pos() == screen.topRight());
+    MCompositeWindow *cw1 = cmgr->d->windows.value(INVOKER, 0);
+    QVERIFY(cw1->pos() == QPointF(0, 0));
+
+    QVERIFY(cw2->windowAnimator()->isActive());
+    QVERIFY(cmgr->servergrab.hasGrab());
+    QVERIFY(cmgr->d->compositing);
+
+    while (cw2->windowAnimator()->isActive())
+        QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
+
+    // window position check
+    QVERIFY(cw2->pos() == QPointF(0, 0));
+    QVERIFY(cw1->pos() == QPointF(0, 0));
+    QVERIFY(!cmgr->servergrab.hasGrab());
+}
+
+void ut_Anim::testCloseSheetAnimation()
+{
+    MCompositeWindow *cw2 = cmgr->d->windows.value(3000, 0);
+    QVERIFY(cw2);
+    QVERIFY(cw2->isValid());
+    QVERIFY(cw2->windowAnimator());
+    QVERIFY(cw2->propertyCache()->transientFor() == INVOKER);
+    MSheetAnimation *sheetanim;
+    QVERIFY(sheetanim = qobject_cast<MSheetAnimation*>(cw2->windowAnimator()));
+
+    XUnmapEvent ue;
+    memset(&ue, 0, sizeof(ue));
+    ue.window = 3000;
+    ue.event = QX11Info::appRootWindow();
+    ((MTexturePixmapItem*)cw2)->d->TFP.drawable = request_testpixmap();
+    cmgr->d->unmapEvent(&ue);
+
+    const MCompositeWindow *behind = sheetanim->behindWindow();
+    QVERIFY(cw2->behind() == behind);
+    QVERIFY(behind->isWindowTransitioning());
+    QVERIFY(cw2->pos() == QPointF(0, 0));
+    MCompositeWindow *cw1 = cmgr->d->windows.value(INVOKER, 0);
+    QVERIFY(cw1->pos() == QPointF(0, 0));
+
+    QVERIFY(cw2->windowAnimator()->isActive());
+    QVERIFY(cmgr->servergrab.hasGrab());
+    QVERIFY(cmgr->d->compositing);
+
+    while (cw2->windowAnimator()->isActive())
+        QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!behind->isWindowTransitioning());
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
+    QVERIFY(!cmgr->d->compositing);
+    QRectF screen = QApplication::desktop()->availableGeometry();
+    QVERIFY(cw2->pos() == screen.topRight());
+    QVERIFY(cw1->pos() == QPointF(0, 0));
+    QVERIFY(!cmgr->servergrab.hasGrab());
 }
 
 void ut_Anim::testIconifyingAnimation()
@@ -324,6 +426,7 @@ void ut_Anim::testIconifyingAnimation()
     QCOMPARE(d_pc->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
 
     VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), IconicState);
@@ -378,6 +481,7 @@ void ut_Anim::testIconifyingAnimationBelowLockscreen()
     cmgr->d->clientMessageEvent(&cme);
     QVERIFY(!app_cw->windowAnimator()->isActive());
     QVERIFY(!cmgr->d->compositing);
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
 
     // unmap both windows
     XUnmapEvent ue;
@@ -391,6 +495,7 @@ void ut_Anim::testIconifyingAnimationBelowLockscreen()
     cmgr->d->unmapEvent(&ue);
     while (lock_cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
     QVERIFY(!cmgr->d->compositing);
     VERIFY_NOT_PAINTED(app_cw, 0);
 }
@@ -412,9 +517,11 @@ void ut_Anim::testRestoreAnimation()
     QCOMPARE(((fake_LMT_window*)cw->propertyCache())->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
 
     VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), NormalState);
+    QVERIFY(cw->propertyCache()->isMapped());
     int d_i = cmgr->d->stacking_list.indexOf(1000);
     int w_i = cmgr->d->stacking_list.indexOf(1);
     QCOMPARE(d_i >= 0 && w_i >= 0, true);
@@ -446,6 +553,7 @@ void ut_Anim::testCloseAnimation()
     QCOMPARE(d_pc->pendingDamage(), false);
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
     VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), WithdrawnState);
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
@@ -478,6 +586,7 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
 
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QVERIFY(!cmgr->d->compositing);
 
@@ -496,6 +605,7 @@ void ut_Anim::testStartupAnimForSecondTimeMapped()
 
     while (cw->windowAnimator()->isActive())
         QTest::qWait(100); // wait the animation to finish
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
 
     VERIFY_PAINTED(cw, 10);
     QCOMPARE(cw->propertyCache()->windowState(), NormalState);
@@ -533,6 +643,7 @@ void ut_Anim::testNoAnimations()
 
     // check that there is no animation
     QCOMPARE(cw->windowAnimator()->isActive(), false);
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QCOMPARE(cw->isMapped(), true);
     QCOMPARE(cw->isVisible(), false);
@@ -546,6 +657,7 @@ void ut_Anim::testNoAnimations()
     // check that iconifying does not have animation
     cmgr->d->exposeSwitcher();
     QCOMPARE(cw->windowAnimator()->isActive(), false);
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QCOMPARE(cw->propertyCache()->windowState(), IconicState);
     d_i = cmgr->d->stacking_list.indexOf(1000);
@@ -562,6 +674,7 @@ void ut_Anim::testNoAnimations()
     cme.message_type = ATOM(_NET_ACTIVE_WINDOW);
     cmgr->d->rootMessageEvent(&cme);
     QCOMPARE(cw->windowAnimator()->isActive(), false);
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QVERIFY(!cmgr->d->compositing);
 
@@ -576,6 +689,7 @@ void ut_Anim::testNoAnimations()
 
     // check that there is no animation
     QCOMPARE(cw->windowAnimator()->isActive(), false);
+    QVERIFY(!MCompositeWindow::hasTransitioningWindow());
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
     QVERIFY(!cmgr->d->compositing);
     VERIFY_NOT_PAINTED(cw, 0);

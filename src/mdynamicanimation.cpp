@@ -156,7 +156,8 @@ void MDynamicAnimation::setEnabled(bool enabled)
 }
 
 MSheetAnimation::MSheetAnimation(QObject* parent)
-    :MDynamicAnimation(parent)
+    :MDynamicAnimation(parent),
+     behind(0)
 {
     // only use the position animation
     disableAnimation(scaleAnimation());
@@ -211,7 +212,7 @@ void MSheetAnimation::windowClosed()
     
     animationGroup()->setDirection(QAbstractAnimation::Backward);
     targetWindow()->setVisible(true);
-    MCompositeWindow *behind = targetWindow()->behind();
+    behind = targetWindow()->behind();
     if (behind)
         behind->setVisible(true);
     animationGroup()->start();    
@@ -231,12 +232,17 @@ void MSheetAnimation::endAnimation()
 {
     cropper->removeEffect(targetWindow());
     MStatusBarTexture::instance()->untrackDamages();
+    if (behind) {
+        behind->endAnimation();
+        behind = 0;
+    }
 }
 
 void MSheetAnimation::initializePositionAnimation()
 {
     const bool portrait = targetWindow()->propertyCache()->orientationAngle() % 180;
-    positionAnimation()->setStartValue(portrait ? screen.topRight() : screen.bottomLeft());
+    positionAnimation()->setStartValue(portrait ? screen.topRight()
+                                                : screen.bottomLeft());
     positionAnimation()->setEndValue(QPointF(0,0));
 }
 
