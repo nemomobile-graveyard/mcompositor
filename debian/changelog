@@ -1,3 +1,9 @@
+mcompositor (1.1.23-1) unstable; urgency=low
+
+  * fix the hang bug NB#288426 - Device Hang after changing wallpaper or date
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 28 Oct 2011 18:06:18 +0300
+
 mcompositor (1.1.22-2) unstable; urgency=low
 
   * test27: marked insignificant -- passes when manually running
