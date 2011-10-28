@@ -13,10 +13,34 @@
 #include <mtexturepixmapitem.h>
 #include <mdynamicanimation.h>
 #include <msplashscreen.h>
+#include <mdevicestate.h>
 
 #include <signal.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
+
+// white one-pixel jpeg
+static const unsigned jpeg_data[] = {
+0xe0ffd8ff, 0x464a1000, 0x01004649, 0x48000101, 0x00004800,
+0x1300feff, 0x61657243, 0x20646574, 0x68746977, 0x4d494720,
+0x00dbff50, 0x27390043, 0x242b322b, 0x322e3239, 0x44393d40,
+0x565d8f56, 0xaf564f4f, 0x8f68847d, 0xd6dab6cf, 0xc4c8b6cb,
+0xffffffe4, 0xf6fff3e4, 0xffffc8c4, 0xffffffff, 0xddffffff,
+0xffffffff, 0xffffffff, 0xdbffffff, 0x3d014300, 0x4b564040,
+0x5d5da856, 0xc8ecffa8, 0xffffffec, 0xffffffff, 0xffffffff,
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+0x081100c0, 0x01000100, 0x00220103, 0x03011102, 0xc4ff0111,
+0x01001500, 0x00000001, 0x00000000, 0x00000000, 0x00000000,
+0x00c4ff05, 0x00011014, 0x00000000, 0x00000000, 0x00000000,
+0xff000000, 0x011400c4, 0x00000001, 0x00000000, 0x00000000,
+0x00000000, 0x00c4ff00, 0x00011114, 0x00000000, 0x00000000,
+0x00000000, 0xff000000, 0x030c00da, 0x11020001, 0x3f001103,
+0x3f00a400, 0x0000d9ff
+};
+
+#define P_SPLASH_FILE "/tmp/mc-test-splash-p.jpg"
+#define L_SPLASH_FILE "/tmp/mc-test-splash-l.jpg"
 
 static int dheight, dwidth;
 
@@ -26,15 +50,18 @@ static int error_handler(Display * , XErrorEvent *)
     return 0;
 }
 
+// initialized attrs for MWindowPropertyCache's constructor
+static xcb_get_window_attributes_reply_t static_attrs;
+
 class fake_LMT_window : public MWindowPropertyCache
 {
 public:
     fake_LMT_window(Window w, bool is_mapped = true)
-        : MWindowPropertyCache(None, &attrs)
+        : MWindowPropertyCache(w, &static_attrs)
     {
         cancelAllRequests();
-        window = w;
-        memset(&attrs, 0, sizeof(attrs));
+        memset(&fake_attrs, 0, sizeof(fake_attrs));
+        attrs = &fake_attrs;
         setIsMapped(is_mapped);
         setRealGeometry(QRect(0, 0, dwidth, dheight));
         // icon geometry can be required for iconifying animation
@@ -65,7 +92,7 @@ public:
         no_animations = no_a;
     }
 
-    xcb_get_window_attributes_reply_t attrs;
+    xcb_get_window_attributes_reply_t fake_attrs;
     friend class ut_splashscreen;
 };
 
@@ -73,11 +100,11 @@ class fake_desktop_window : public MWindowPropertyCache
 {
 public:
     fake_desktop_window(Window w)
-        : MWindowPropertyCache(None, &attrs)
+        : MWindowPropertyCache(w, &static_attrs)
     {
         cancelAllRequests();
-        window = w;
-        memset(&attrs, 0, sizeof(attrs));
+        memset(&fake_attrs, 0, sizeof(fake_attrs));
+        attrs = &fake_attrs;
         setIsMapped(true);
         setRealGeometry(QRect(0, 0, dwidth, dheight));
         type_atoms.append(ATOM(_NET_WM_WINDOW_TYPE_DESKTOP));
@@ -86,11 +113,33 @@ public:
         has_alpha = 0;
         is_valid = true;
     }
+    void setOrientationAngle(unsigned a)
+    {
+        orientation_angle = a;
+    }
 
-    xcb_get_window_attributes_reply_t attrs;
+    xcb_get_window_attributes_reply_t fake_attrs;
+};
+
+class fake_device_state : public MDeviceState
+{
+public:
+    fake_device_state()
+        : fake_display_off(false), fake_is_flat(false),
+          fake_touchScreenLockMode("unlocked"), fake_topedge("top")
+          {}
+
+    bool displayOff() const { return fake_display_off; }
+    bool isFlat() const { return fake_is_flat; }
+    const QString &touchScreenLock() const { return fake_touchScreenLockMode; }
+    const QString &screenTopEdge() const { return fake_topedge; }
+
+    bool fake_display_off, fake_is_flat;
+    QString fake_touchScreenLockMode, fake_topedge;
 };
 
 QList<QPair<pid_t, int> > kill_calls;
+static fake_device_state *device_state;
 
 extern "C" int kill(pid_t pid, int sig)
 {
@@ -146,14 +195,28 @@ void ut_splashscreen::verifyDisabledComposition(MCompositeWindow *cw)
 
 void ut_splashscreen::initTestCase()
 {
+    // create two jpeg files
+    QFile splashp(P_SPLASH_FILE);
+    QVERIFY(splashp.open(QIODevice::WriteOnly));
+    splashp.write((const char*)jpeg_data, sizeof(jpeg_data));
+    splashp.close();
+    QFile splashl(L_SPLASH_FILE);
+    QVERIFY(splashl.open(QIODevice::WriteOnly));
+    splashl.write((const char*)jpeg_data, sizeof(jpeg_data));
+    splashl.close();
+    
     cmgr = (MCompositeManager*)qApp;
     // initialize MCompositeManager
     cmgr->setSurfaceWindow(0);
     cmgr->d->prepare();
     cmgr->d->xserver_stacking.init();
 
+    device_state = new fake_device_state();
+    cmgr->ut_replaceDeviceState(device_state);
+
     // create a fake desktop window
     fake_desktop_window *pc = new fake_desktop_window(1000);
+    pc->setOrientationAngle(270);
     addWindow(pc);
     mapWindow(pc);
     MCompositeWindow *cw = cmgr->d->windows.value(1000, 0);
@@ -576,7 +639,7 @@ void ut_splashscreen::testConfigureWindow()
     QCOMPARE(cmgr->d->stacking_list.first(), w);
 
     XConfigureRequestEvent e;
-    memset(&e, sizeof(e), 0);
+    memset(&e, 0, sizeof(e));
 
     e.window = w;
     e.parent = RootWindow(QX11Info::display(), 0);
@@ -724,11 +787,80 @@ void ut_splashscreen::testDestroyedSplash()
     QCOMPARE(ds.pid, pid);
 }
 
+void ut_splashscreen::testOrientation(const char *topedge, bool is_flat,
+                                      unsigned expected_angle)
+{
+    QVERIFY(!cmgr->d->splash);
+    device_state->fake_is_flat = is_flat;
+    device_state->fake_topedge = topedge;
+    qDebug("topedge: %s, %s, expected angle: %d", topedge,
+           (is_flat ? "flat" : "not flat"), expected_angle);
+
+    unsigned int pid = 123;
+    QString portrait(P_SPLASH_FILE);
+    QString landscape(L_SPLASH_FILE);
+    requestSplash(QString::number(pid), "", portrait, landscape, 0);
+
+    while (qApp->hasPendingEvents()) {
+        qApp->processEvents();
+        QTest::qWait(100);
+    }
+
+    MCompositeWindow *s = cmgr->d->splash;
+    QVERIFY(s);
+    QVERIFY(s->propertyCache()->orientationAngle() == expected_angle);
+
+    cmgr->d->splashTimeout();
+    QVERIFY(!cmgr->d->splash);
+
+    QTest::qWait(10); // run idle handlers
+    QVERIFY(!cmgr->d->compositing);
+}
+
+void ut_splashscreen::testSplashOrientation()
+{
+    // !isFlat: splash orientation taken from device orientation,
+    // and unsupported orientations are translated to nearest supported one
+    testOrientation("top", false, 0);
+    testOrientation("left", false, 270);
+    testOrientation("right", false, 0);
+    testOrientation("bottom", false, 270);
+
+    // isFlat: splash orientation taken from the desktop window
+    testOrientation("top", true, 270);
+    testOrientation("left", true, 270);
+    testOrientation("right", true, 270);
+    testOrientation("bottom", true, 270);
+
+    // map a window in landscape orientation
+    fake_LMT_window *pc = new fake_LMT_window(2000);
+    pc->setOrientationAngle(0);
+    addWindow(pc);
+    mapWindow(pc);
+    QTest::qWait(1000);
+    QVERIFY(pc->isMapped());
+    QVERIFY(cmgr->stackingList().indexOf(cmgr->desktopWindow())
+            < cmgr->stackingList().indexOf(pc->winId()));
+    QVERIFY(cmgr->d->current_app == pc->winId());
+
+    // isFlat: splash orientation taken from the new app window
+    testOrientation("top", true, 0);
+    testOrientation("left", true, 0);
+    testOrientation("right", true, 0);
+    testOrientation("bottom", true, 0);
+}
+
+void ut_splashscreen::cleanupTestCase()
+{
+    QFile::remove(P_SPLASH_FILE);
+    QFile::remove(L_SPLASH_FILE);
+}
+
 int main(int argc, char* argv[])
 {
     // init fake but basic compositor environment
     QApplication::setGraphicsSystem("native");
-    QCoreApplication::setLibraryPaths(QStringList());
+    QCoreApplication::setLibraryPaths(QStringList("/usr/lib/mcompositor"));
     MCompositeManager app(argc, argv);
 
     XSetErrorHandler(error_handler);

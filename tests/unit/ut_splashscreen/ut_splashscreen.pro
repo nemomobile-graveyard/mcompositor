@@ -27,6 +27,9 @@ DEFINES += TESTS
 
 LIBS += ../../../decorators/libdecorator/libdecorator.so ../../../src/libmcompositor.so
 
+CONFIG += link_pkgconfig
+PKGCONFIG += contextsubscriber-1.0
+
 # Input
 HEADERS += ut_splashscreen.h
 SOURCES += ut_splashscreen.cpp

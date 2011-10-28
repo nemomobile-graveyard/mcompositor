@@ -31,6 +31,8 @@ private slots:
     void testCloseHandler();
     void testDismissedSplash();
     void testDestroyedSplash();
+    void testSplashOrientation();
+    void cleanupTestCase();
 
 private:
     void requestSplash(const QString& pid, const QString& wmClass,
@@ -40,6 +42,8 @@ private:
     void addWindow(MWindowPropertyCache *pc);
     void mapWindow(MWindowPropertyCache *pc);
     void verifyDisabledComposition(MCompositeWindow *cw);
+    void testOrientation(const char *topedge, bool is_flat, unsigned expected);
+
     MCompositeManager *cmgr;
     QPixmap splashPixmap;
     fake_LMT_window *pc;
