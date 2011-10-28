@@ -51,6 +51,7 @@ class MSheetAnimation: public MDynamicAnimation
 
     void windowShown(); 
     void windowClosed();
+    const MCompositeWindow *behindWindow() const { return behind; }
 
 private slots:
     void endAnimation();
@@ -63,6 +64,7 @@ private:
      */
     void initializePositionAnimation();
     MStatusBarCrop* cropper;
+    MCompositeWindow *behind;
 };
 
 class MChainedAnimation: public MDynamicAnimation

@@ -26,6 +26,9 @@ private slots:
     void testOpenChainingAnimation();
     void testCloseChainingAnimation();
 
+    void testOpenSheetAnimation();
+    void testCloseSheetAnimation();
+
     void testDerivedAnimHandler();
     void testExternalAnimHandler();
 
