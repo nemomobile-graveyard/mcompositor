@@ -4,12 +4,12 @@
 <context>
     <name></name>
     <message id="qtn_reco_app_not_responding">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="368"/>
+        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="369"/>
         <source></source>
         <translation>%1 sucks</translation>
     </message>
     <message id="qtn_reco_close_app_question">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="375"/>
+        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="376"/>
         <source></source>
         <translation>Do you want to close it?</translation>
     </message>

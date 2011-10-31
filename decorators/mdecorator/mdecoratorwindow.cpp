@@ -284,7 +284,8 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     setFocusPolicy(Qt::NoFocus);
     setSceneSize();
     setMDecoratorWindowProperty();
-    setMeegotouchOpaqueProperty(false);
+    setMeegotouchOpaqueProperty(true);
+    setInputRegion();
 
     setProperty("animatedOrientationChange", false);
     setOrientationAngle(desktopOrientationAngle());
