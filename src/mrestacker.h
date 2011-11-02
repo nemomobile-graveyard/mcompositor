@@ -89,9 +89,7 @@ public:
     void windowDestroyed(Window win);
 
     bool event(const XEvent *xev);
-    void processPendingEvents(WindowStack *stack=NULL);
 
-    bool tidyUpAndRestack(WindowStack &newOrder);
     bool restack(WindowStack newOrder);
 
 public:
@@ -99,6 +97,7 @@ public:
     PlannerStatistics conStats, altStats;
 
 private:
+    void processDestroyNotifys(WindowStack *stack=NULL);
     StackOps plan(WindowStack &newOrder,
                   WindowOrder &newBounds, OrderedWindowStack &newState);
     bool execute(const StackOps &ops);

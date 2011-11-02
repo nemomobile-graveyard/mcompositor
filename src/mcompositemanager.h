@@ -223,6 +223,9 @@ public:
     void overrideGlobalAlpha(int new_gralpha, int new_vidalpha);
     void resetGlobalAlpha();
 
+    // for MRestacker to ignore certain special windows
+    bool ignoreThisWindow(Window) const;
+
 #ifdef WINDOW_DEBUG
     // initialize MCompositeManager with an empty window stack
     void ut_prepare();

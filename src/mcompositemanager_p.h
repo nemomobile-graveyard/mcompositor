@@ -85,6 +85,7 @@ public:
     void positionWindow(Window w, bool on_top);
     void addItem(MCompositeWindow *item);
     void damageEvent(XDamageNotifyEvent *);
+    void createEvent(XCreateWindowEvent *);
     void destroyEvent(XDestroyWindowEvent *);
     void propertyEvent(XPropertyEvent *);
     void unmapEvent(XUnmapEvent *);

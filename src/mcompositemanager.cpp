@@ -17,6 +17,25 @@
 **
 ****************************************************************************/
 
+// Enable to see the decisions of the stacker.
+#if 0
+# ifndef REMOTE_CONTROL
+#  define REMOTE_CONTROL // We use dumpWindows() in STACKING().
+# endif
+# define STACKING_DEBUGGING
+# define STACKING(fmt, args...)                     \
+    qDebug("line:%u: " fmt, __LINE__ ,##args)
+# define STACKING_MOVE(from, to)                    \
+    STACKING("moving %d (0x%lx) -> %d in stack",    \
+           from,                                    \
+           0 <= from && from < stacking_list.size() \
+              ? stacking_list[from] : 0,            \
+           to)
+#else
+# define STACKING(...)                              /* NOP */
+# define STACKING_MOVE(...)                         /* NOP */
+#endif
+
 #include "mtexturepixmapitem.h"
 #include "mtexturepixmapitem_p.h"
 #include "mcompositemanager.h"
@@ -102,25 +121,6 @@ static bool debug_mode = false; // this can be toggled with SIGUSR1
 template<class T>
 static QString dumpWindows(const T &wins, bool leftToRight=true,
                            const char *sep=", ", bool prefix=false);
-#endif
-
-// Enable to see the decisions of the stacker.
-#if 0
-# ifndef WINDOW_DEBUG
-#  define WINDOW_DEBUG // We use dumpWindows() in STACKING().
-# endif
-# define STACKING_DEBUGGING
-# define STACKING(fmt, args...)                     \
-    qDebug("line:%u: " fmt, __LINE__ ,##args)
-# define STACKING_MOVE(from, to)                    \
-    STACKING("moving %d (0x%lx) -> %d in stack",    \
-           from,                                    \
-           0 <= from && from < stacking_list.size() \
-              ? stacking_list[from] : 0,            \
-           to)
-#else
-# define STACKING(...)                              /* NOP */
-# define STACKING_MOVE(...)                         /* NOP */
 #endif
 
 // Enable to see the decisions of compareWindows().
@@ -647,6 +647,14 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
             item->updateWindowPixmap(0, 0, e->timestamp);
         item->damageReceived();
     }
+}
+
+void MCompositeManagerPrivate::createEvent(XCreateWindowEvent *e)
+{
+    if (localwin == e->window || xoverlay == e->window)
+        return;
+    // add to stacking_list so it has the same windows as MRestacker's state
+    getPropertyCache(e->window);
 }
 
 void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
@@ -2419,7 +2427,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         if (!pc->isMapped() && pc->beingMapped()) {
             // _NET_ACTIVE_WINDOW came between MapRequest and MapNotify,
             // mark it as "stacked unmapped" to ignore initial_state==Iconic
-            STACKING("positionWindow 0x%lx -> botton", event->window);
+            STACKING("positionWindow 0x%lx -> top", event->window);
             positionWindow(event->window, true);
             pc->setStackedUnmapped(true);
         } else if (pc->isMapped()) {
@@ -3015,6 +3023,8 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event, bool startup)
         }
         break;
     }
+    case CreateNotify:
+        createEvent(&event->xcreatewindow); break;
     case DestroyNotify:
         destroyEvent(&event->xdestroywindow); break;
     case PropertyNotify:
@@ -3148,10 +3158,8 @@ void MCompositeManagerPrivate::redirectWindows()
         xcb_get_window_attributes_reply_t *attr;
         attr = xcb_get_window_attributes_reply(xcb_conn,
                      xcb_get_window_attributes(xcb_conn, win), 0);
-        if (!attr || attr->_class == XCB_WINDOW_CLASS_INPUT_ONLY) {
-            free(attr);
+        if (!attr)
             continue;
-        }
 
         xcb_get_geometry_reply_t *geom;
         geom = xcb_get_geometry_reply(xcb_conn,
@@ -3161,11 +3169,9 @@ void MCompositeManagerPrivate::redirectWindows()
             continue;
         }
 
-        // Pre-create MWindowPropertyCache for likely application windows
-        MWindowPropertyCache *p = NULL;
-        if (attr->map_state == XCB_MAP_STATE_VIEWABLE
-            || (geom->width == res.width() && geom->height == res.height()))
-            p = getPropertyCache(win, attr, geom);
+        // Pre-create MWindowPropertyCache for all windows so that 
+        // MRestacker's state has the same windows
+        MWindowPropertyCache *p = getPropertyCache(win, attr, geom);
         if (!p) {
             free(geom);
             free(attr);
@@ -4704,6 +4710,13 @@ void MCompositeManager::ensureSettingsFile()
     config("chained-anim-duration",             500);
     config("callui-anim-duration",              400);
     config("ungrab-grab-delay",                 150);
+}
+
+bool MCompositeManager::ignoreThisWindow(Window w) const
+{
+    if (w == d->xoverlay || w == d->localwin)
+        return true;
+    return false;
 }
 
 #ifdef WINDOW_DEBUG

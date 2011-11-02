@@ -17,6 +17,7 @@
 **
 ****************************************************************************/
 
+#include "mcompositemanager.h"
 #include <QSet>
 #include "mrestacker.h"
 #include <X11/Xproto.h> // X_ConfigureWindow
@@ -239,6 +240,8 @@ bool MRestacker::verifyState(const Window *wins, unsigned nwins,
 // to @state.
 void MRestacker::windowCreated(Window between, Window above)
 {
+    if (((MCompositeManager*)qApp)->ignoreThisWindow(between))
+        return;
     if (!between || between == above) {
         qCritical("MRestacker: attempt to add window 0x%lx below 0x%lx",
                    between, above);
@@ -422,7 +425,7 @@ typedef struct {
     WindowStack *stack;
 } ProcessPendingEventsArgs;
 
-static Bool processPendingEvent(Display *, XEvent *xev, XPointer xargs)
+static Bool processDestroyNotify(Display *, XEvent *xev, XPointer xargs)
 {
     const ProcessPendingEventsArgs *args;
 
@@ -436,10 +439,10 @@ static Bool processPendingEvent(Display *, XEvent *xev, XPointer xargs)
 // Update the internal @state according to the events pending
 // in the input queue.  If @stack is not NULL, remove destroyed
 // windows from it to prevent stacking errors.
-void MRestacker::processPendingEvents(WindowStack *stack)
+void MRestacker::processDestroyNotifys(WindowStack *stack)
 {
     ProcessPendingEventsArgs ppeargs = { this, stack };
-    XCheckIfEvent(dpy, NULL, processPendingEvent, (XPointer)&ppeargs);
+    XCheckIfEvent(dpy, NULL, processDestroyNotify, (XPointer)&ppeargs);
     dirtyState = false;
 }
 
@@ -462,7 +465,8 @@ static void insertWindow(Window between, Window above,
     OrderedWindowStack::iterator aboveOrder = oldWindows.find(above);
 
     Window below = (*aboveOrder).below;
-    RESTACKER_LOG_IF(false, "  insert: %lx.below = %lx\n", aboveOrder.key(), between);
+    RESTACKER_LOG_IF(false, "  insert: %lx.below = %lx\n", aboveOrder.key(),
+                     between);
     (*aboveOrder).below = between;
     if (below != None) {
         RESTACKER_LOG_IF(false, "  insert: %lx.above = %lx\n", below, between);
@@ -470,7 +474,8 @@ static void insertWindow(Window between, Window above,
     }
 
     WindowOrder order = { above, below };
-    RESTACKER_LOG_IF(false, "  insert: %lx = { above:%lx, below:%lx }\n", between, above, below);
+    RESTACKER_LOG_IF(false, "  insert: %lx = { above:%lx, below:%lx }\n",
+                     between, above, below);
     oldWindows[between] = order;
 
     // Update @bounds if @between is a top or bottom window now.
@@ -509,7 +514,8 @@ static void removeWindow(Window below, Window between, Window above,
     }
 
     WindowOrder order = { None, None };
-    RESTACKER_LOG_IF(false, "  remove: %lx = { above:%lx, below:%lx }\n", between, order.above, order.below );
+    RESTACKER_LOG_IF(false, "  remove: %lx = { above:%lx, below:%lx }\n",
+                     between, order.above, order.below);
     oldWindows[between] = order;
 
     // Update @bounds if @between was the top or bottom window.
@@ -517,6 +523,72 @@ static void removeWindow(Window below, Window between, Window above,
         bounds.below = above;
     if (bounds.above == between)
         bounds.above = below;
+}
+
+#if 0
+// print window stack, topmost last
+static void dumpStack(const OrderedWindowStack &stack,
+                      const WindowStack &compare)
+{
+    QString line;
+
+    if (stack.empty())
+        qDebug() << __func__ << "(empty stack)";
+
+    Window i = stack.begin().key();
+
+    while (stack[i].below != None)
+        i = stack[i].below;
+
+    int items = 0;
+    while (i != None) {
+        if (stack[i].below != None)
+            line += ", ";
+        if (compare.contains(i))
+            line += QString().sprintf("%lx*", i);
+        else
+            line += QString().sprintf("%lx", i);
+        ++items;
+        i = stack[i].above;
+    }
+
+    qDebug() << __func__ << line << items;
+}
+#endif
+
+static void naiveOpsFinder(const WindowStack &newStack,
+                           const OrderedWindowStack &oldStack,
+                           StackOps &stackOps)
+{
+    QList<Window> oldList;
+    Window key = oldStack.begin().key();
+    while (oldStack[key].below != None)
+        key = oldStack[key].below;
+    for (; key != None; key = oldStack[key].above)
+        oldList.append(key);
+
+    QSet<Window> movedSet; // used to avoid an infinite loop
+    for (int i = 0; i < oldList.size();) {
+        Window w = newStack.at(i);
+        Window oldw = oldList.at(i);
+        if (w != oldw && !movedSet.contains(oldw)) {
+            int new_i = newStack.indexOf(oldw, i);
+            oldList.move(i, new_i);
+            movedSet.insert(oldw);
+            WindowOrder order = { new_i < oldList.size() - 1 ?
+                                  oldList.at(new_i + 1) : None, oldw };
+            stackOps.push_back(order);
+            continue;
+        } else if (w != oldw) {
+            int old_i = oldList.indexOf(w, i);
+            oldList.move(old_i, i);
+            WindowOrder order = { i < oldList.size() - 1 ?
+                                  oldList.at(i + 1) : None, w };
+            stackOps.push_back(order);
+        }
+        movedSet.clear();
+        ++i;
+    }
 }
 
 /**
@@ -539,7 +611,7 @@ static void removeWindow(Window below, Window between, Window above,
  *                      stacking order to preferred stacking order.
  */
 static void generateStackOps(
-                     const WindowStack &newWindows, bool checkRemovals,
+                     const WindowStack &newWindows, const bool checkRemovals,
                      OrderedWindowStack &oldWindows, WindowOrder &bounds,
                      StackOps& stackOps)
 {
@@ -548,7 +620,7 @@ static void generateStackOps(
 
     // Verify validity of parameters.
     Q_ASSERT(newWindows.count() > 1);
-    Q_ASSERT(stackOps.empty());
+    Q_ASSERT(stackOps.isEmpty());
 
     // We collect windows in @oldWindows that aren't present in
     // @newWindows here. The windows in @bottomWindows are moved below
@@ -567,8 +639,19 @@ static void generateStackOps(
     // exact contents of @newWindows. This set could be generated
     // outside of the function as a minor optimization.
     WindowSet newWindowSet;
-    for (; iterator != newWindows.end(); ++iterator)
-        newWindowSet.insert((*iterator));
+    StackOps naiveOps;
+    if (checkRemovals) {
+        int same = 0;
+        for (; iterator != newWindows.end(); ++iterator) {
+            newWindowSet.insert(*iterator);
+            if (oldWindows.contains(*iterator))
+                ++same;
+        }
+        // check if few moves is all we need
+        if (same == oldWindows.count() && same == newWindows.count())
+            naiveOpsFinder(newWindows, oldWindows, naiveOps);
+    } else
+        iterator = newWindows.end();
 
     // Setup looping. We will loop through all consecutive pairs in
     // @newWindows from top to bottom.
@@ -599,7 +682,8 @@ static void generateStackOps(
         if (oldAbove != newAbove) {
             // Check if more aggressive approach should be used.
             Window oldBetween = (*aboveOrder).below;
-            if (checkRemovals && (oldBetween != None) && !pendingWindowSet.contains(newBetween)) {
+            if (checkRemovals && (oldBetween != None)
+                && !pendingWindowSet.contains(newBetween)) {
                 // The window is moved out of the way temporarily. The
                 // stacking operations reflecting this change are
                 // generated later or as the last step of the
@@ -607,6 +691,7 @@ static void generateStackOps(
                 Window oldBelow = oldWindows[oldBetween].below;
                 // Next we'll check if @oldWindows contains some extra
                 // windows that aren't present in @newWindows.
+                Q_ASSERT(!newWindowSet.isEmpty());
                 if (!newWindowSet.contains(oldBetween)) {
                     // Move x directly to the bottom of @newWindows.
                     // @oldWindows = [ a b x c d e ]
@@ -659,13 +744,16 @@ static void generateStackOps(
     // operations by moving removed windows at the bottom of the
     // stack.
     Q_ASSERT(bottomWindows.isEmpty() || newWindows != oldWindows.keys());
-    for (iterator = bottomWindows.begin(); iterator != bottomWindows.end(); ++iterator) {
-        Window window = (*iterator);
+    for (WindowStack::const_iterator it = bottomWindows.begin();
+         it != bottomWindows.end(); ++it) {
+        Window window = *it;
         WindowOrder order = { bottomWindow, window };
         stackOps.push_back(order);
         insertWindow(window, bottomWindow, oldWindows, bounds);
         bottomWindow = window;
     }
+    if (!naiveOps.isEmpty() && naiveOps.count() < stackOps.count())
+        stackOps = naiveOps;
 }
 
 // Get the %StackOps to achieve @newOrder from the current @state,
@@ -766,12 +854,18 @@ bool MRestacker::execute(const StackOps &ops)
 
     // Send the requests.
     XWindowChanges changes;
-    changes.stack_mode = Below;
     foreach (WindowOrder const &op, ops) {
         Q_ASSERT(op.above && op.below);
-        changes.sibling = op.above;
+        int mask = CWStackMode;
+        if (op.above == None) {
+            changes.stack_mode = Above;
+        } else {
+            changes.stack_mode = Below;
+            changes.sibling = op.above;
+            mask |= CWSibling;
+        }
         pendingRequests.append(NextRequest(dpy));
-        XConfigureWindow(dpy, op.below, CWStackMode|CWSibling, &changes);
+        XConfigureWindow(dpy, op.below, mask, &changes);
     }
 
     // Catch the errors.
@@ -782,9 +876,19 @@ bool MRestacker::execute(const StackOps &ops)
     return !restackError;
 }
 
-// Like restack(), but windows known to have been destroyed are removed
-// from @newOrder.
-bool MRestacker::tidyUpAndRestack(WindowStack &newOrder)
+/**
+ * Restack the windows to match the given order. The preferred window stack
+ * in @newOrder is reversed and an algorithm equivalent to XRestackWindows
+ * is run on it.
+ *
+ * @param[in] newOrder Preferred window stack, topmost last.
+ *                       Unknown windows, which are not in @state,
+ *                       are grumpily ignored.
+ *
+ * @return True on success, false if restacking was not completely succesful.
+ *         Errors may happen when @newOrder contains bad windows.
+ */
+bool MRestacker::restack(WindowStack newOrder)
 {
     WindowOrder oldBounds, newBounds;
     OrderedWindowStack oldState, newState;
@@ -797,12 +901,12 @@ bool MRestacker::tidyUpAndRestack(WindowStack &newOrder)
         bool okay;
         unsigned long oldSkip;
 
-        // @newState <- @state + processPendingEvents()
+        // @newState <- @state + processDestroyNotifys()
         oldBounds   = sentinel;
         oldState    = state;
         oldSkip     = skipToEvent;
         XSync(dpy, False);
-        processPendingEvents(&newOrder);
+        processDestroyNotifys(&newOrder);
 
         // Feed plan() with @newState but keep @oldState,
         // and let the caller update us explicitly with event()s.
@@ -827,21 +931,4 @@ bool MRestacker::tidyUpAndRestack(WindowStack &newOrder)
 
         return true;
     }
-}
-
-/**
- * Restack the windows to match the given order. The preferred window stack
- * in @newWindows is reversed and an algorithm equivalent to XRestackWindows
- * is run on it.
- *
- * @param[in] newWindows Preferred window stack, topmost last.
- *                       Unknown windows, which are not in @state,
- *                       are grumpily ignored.
- *
- * @return True on success, false if restacking was not completely succesful.
- *         Errors may happen when @newWindows contains bad windows.
- */
-bool MRestacker::restack(WindowStack newOrder)
-{   // Don't let tidyUpAndRestack() mutate @newOrder.
-    return tidyUpAndRestack(newOrder);
 }
