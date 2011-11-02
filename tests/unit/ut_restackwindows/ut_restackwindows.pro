@@ -9,8 +9,8 @@ HEADERS += ut_restackwindows.cpp stats.h
 SOURCES += ut_restackwindows.cpp
 POST_TARGETDEPS += ../../../src/mrestacker.o
 
-LIBS += -lX11 ../../../src/mrestacker.o
-QT += testlib core
+LIBS += -lX11 ../../../src/mrestacker.o ../../../src/libmcompositor.so
+QT += testlib core opengl
 
 target.path = /usr/lib/mcompositor-unit-tests
 INSTALLS += target
