@@ -1,3 +1,18 @@
+mcompositor (1.1.24-1) unstable; urgency=low
+
+  * Fixes: NB#283251 - Windows opened in flat state should follow orientation
+    of the previous top most window
+  * fix bug NB#287468 - when VKB is on top statusbar is not updated anymore
+  * fix bug NB#288414 - Splash screen appears upside down when app is started
+    while device is in "unsupported" landscape orientation
+  * fix bug NB#288184 - compositor can hide windows in the switcher
+  * fix bug NB#280834 - Status bar flicks with black maximizing the drive
+    application in recents view (during voice call)
+  * fix bug NB#287606 - Compositor does not set _MEEGOTOUCH_STATUSBAR_VISIBLE
+    to the WM window when starting
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Thu, 03 Nov 2011 13:48:24 +0200
+
 mcompositor (1.1.23-1) unstable; urgency=low
 
   * fix the hang bug NB#288426 - Device Hang after changing wallpaper or date
