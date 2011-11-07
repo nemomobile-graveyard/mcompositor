@@ -357,6 +357,7 @@ private:
     virtual MTexturePixmapPrivate* renderer() const = 0;
     void findBehindWindow();
     bool isInanimate(bool check_pixmap = true);
+    void setAllowDelete(bool setting) { allow_delete = setting; }
 
     QPointer<MWindowPropertyCache> pc;
     QPointer<MCompositeWindowAnimation> animator, orig_animator;
@@ -373,6 +374,7 @@ private:
     char waiting_for_damage;
     bool resize_expected;
     bool painted_after_mapping;
+    bool allow_delete;
 
     static int window_transitioning;
 
@@ -385,6 +387,7 @@ private:
     friend class MTexturePixmapPrivate;
     friend class MCompositeWindowShaderEffect;
     friend class MCompositeWindowAnimation;
+    friend class MChainedAnimation;
     friend class McParallelAnimation;
     friend class ut_Anim;
     friend class ut_Compositing;
