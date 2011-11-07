@@ -55,6 +55,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       waiting_for_damage(0),
       resize_expected(false),
       painted_after_mapping(false),
+      allow_delete(false),
       win_id(window)
 {
     const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
@@ -478,7 +479,8 @@ void MCompositeWindow::closeWindowAnimation()
 
 bool MCompositeWindow::event(QEvent *e)
 {
-    if (e->type() == QEvent::DeferredDelete && is_transitioning) {
+    if (e->type() == QEvent::DeferredDelete && is_transitioning
+        && !allow_delete) {
         // Can't delete the object yet, try again in the next iteration.
         deleteLater();
         return true;

@@ -343,6 +343,10 @@ void MChainedAnimation::windowClosed()
     invokerWindow()->setVisible(true);
     invoker_pos->setTargetObject(invokerWindow());
     invokerWindow()->beginAnimation();
+    // if both targetWindow and invokerWindow get destroyed during the
+    // animation (and thus MChainedAnimation::endAnimation() is not called),
+    // allow invokerWindow to destruct even though it's transitioning
+    invokerWindow()->setAllowDelete(true);
 
     // in case we have a VKB, disable the server grab, otherwise VKB can't
     // unmap during the animation and flashes in the end of it
@@ -373,8 +377,10 @@ MCompositeWindow* MChainedAnimation::invokerWindow()
 
 void MChainedAnimation::endAnimation()
 {
-    if (invokerWindow())
+    if (invokerWindow()) {
         invokerWindow()->endAnimation();
+        invokerWindow()->setAllowDelete(false);
+    }
     cropper->removeEffect(targetWindow());
     cropper->removeEffect(invokerWindow());
     MStatusBarTexture::instance()->untrackDamages();
