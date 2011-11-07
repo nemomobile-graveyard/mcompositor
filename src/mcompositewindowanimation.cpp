@@ -53,8 +53,14 @@ public:
 
     ~McParallelAnimation()
     {
+        if (crossfadeTarget)
+            crossfadeTarget->setOpacity(1);
         if (state() != QAbstractAnimation::Stopped)
             animrefcount.deref();
+    }
+    void setCrossfadeTarget(MCompositeWindow *cw)
+    {
+        crossfadeTarget = cw;
     }
         
 protected:
@@ -97,6 +103,7 @@ protected:
     }
 private:
     MCompositeWindowAnimation* parent;
+    QPointer<MCompositeWindow> crossfadeTarget;
 };
 
 class MCompositeWindowAnimationPrivate: public QObject
@@ -374,6 +381,7 @@ void MCompositeWindowAnimation::crossFadeTo(MCompositeWindow *cw)
     op->setStartValue(0);
     op->setEndValue(1);
     d->crossfade->addAnimation(op);
+    d->crossfade->setCrossfadeTarget(cw);
 
     d->target_window2 = cw;
     d->target_window2->show();
