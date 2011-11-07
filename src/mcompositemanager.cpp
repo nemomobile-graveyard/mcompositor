@@ -1129,6 +1129,10 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     if (e->window == desktop_window)
         desktop_window = 0;
 
+    // the window below this can be hidden, so make it visible before next
+    // time we draw the scene
+    sendSyntheticVisibilityEventsForOurBabies();
+
     // Force visibility check because the unmapped window may not have been
     // in the prev_stacked_mapped list of checkStacking(), causing skipping
     // the visibility calculation when this window is unmapped.
