@@ -615,6 +615,9 @@ void MCallUiAnimation::resetAnimatedItems()
 
     MStatusBarTexture::instance()->untrackDamages();
     if (targetWindow()) {
+        // removeEffect() fails if behind window had cropper also but this
+        // works because the renderer is still connected to enabledChanged
+        cropper->setEnabled(false);
         cropper->removeEffect(targetWindow());    
         // reset default values
         targetWindow()->setUntransformed();
