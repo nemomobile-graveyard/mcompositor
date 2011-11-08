@@ -386,7 +386,6 @@ void MCompositeWindow::q_fadeIn()
 {
     newly_mapped = false;
     setVisible(true);
-    setOpacity(0.0);
     updateWindowPixmap();
     newly_mapped = true;
     
