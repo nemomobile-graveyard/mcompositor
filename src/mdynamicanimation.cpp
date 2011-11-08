@@ -275,11 +275,9 @@ MChainedAnimation::MChainedAnimation(QObject* parent)
 
 void MChainedAnimation::windowShown()
 {
-    if (!targetWindow() || !invokerWindow()) {
+    if (!targetWindow()) {
         if (invokerWindow())
             invokerWindow()->setVisible(true);
-        if (targetWindow())
-            targetWindow()->setVisible(true);
         return;
     }
     setEnabled(true);
@@ -291,12 +289,17 @@ void MChainedAnimation::windowShown()
         cropper->installEffect(targetWindow());
         cropper->installEffect(invokerWindow());
     }
-    targetWindow()->setOpacity(1.0);
-    invokerWindow()->setVisible(true);
-    invoker_pos->setTargetObject(invokerWindow());
+    targetWindow()->setOpacity(1.0f);
+    if (invokerWindow()) {
+        invokerWindow()->setVisible(true);
+        invoker_pos->setTargetObject(invokerWindow());
+    }
     
     // use invokerWindow() orientation to work around NB#279547's cause
-    bool portrait = invokerWindow()->propertyCache()->orientationAngle() % 180;
+    // it could be false in theory - default to portrait in this case
+    bool portrait = true;
+    if (invokerWindow())
+        portrait = invokerWindow()->propertyCache()->orientationAngle() % 180;
     cropper->setPortrait(portrait);
     if (portrait) {
         positionAnimation()->setStartValue(screen.translated(0,-screen.height())
@@ -318,8 +321,11 @@ void MChainedAnimation::windowShown()
 
 void MChainedAnimation::windowClosed()
 {
-    if (!targetWindow() || !invokerWindow())
+    if (!targetWindow() || !invokerWindow()) {
+        if (targetWindow())
+            targetWindow()->endAnimation();
         return;
+    }
     setEnabled(true);
     
     MStatusBarTexture::instance()->updatePixmap();
