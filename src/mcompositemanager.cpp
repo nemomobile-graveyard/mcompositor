@@ -413,7 +413,6 @@ static void safe_move(QList<Window>& winlist, int from, int to)
 MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
     : QObject(p),
       prev_focus(0),
-      buttoned_win(0),
       glwidget(0),
       desktop_window(0),
       compositing(true),
@@ -448,8 +447,6 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
                                      configInt("lockscreen-map-timeout-ms"));
     connect(&lockscreen_map_timer, SIGNAL(timeout()), p,
             SLOT(lockScreenPainted()));
-    connect(this, SIGNAL(currentAppChanged(Window)), this,
-            SLOT(setupButtonWindows(Window)));
 }
 
 MCompositeManagerPrivate::~MCompositeManagerPrivate()
@@ -560,24 +557,6 @@ void MCompositeManagerPrivate::prepare()
     localwin_parent = xoverlay;
 
     XDamageQueryExtension(QX11Info::display(), &damage_event, &damage_error);
-
-    // create InputOnly windows for close and Home button handling
-    close_button_win = XCreateWindow(QX11Info::display(),
-                                     RootWindow(QX11Info::display(), 0),
-                                     -1, -1, 1, 1, 0, CopyFromParent,
-                                     InputOnly, CopyFromParent, 0, 0);
-    XStoreName(QX11Info::display(), close_button_win, "MCompositor close button");
-    XSelectInput(QX11Info::display(), close_button_win,
-                 ButtonReleaseMask | ButtonPressMask);
-    XMapWindow(QX11Info::display(), close_button_win);
-    home_button_win = XCreateWindow(QX11Info::display(),
-                                    RootWindow(QX11Info::display(), 0),
-                                    -1, -1, 1, 1, 0, CopyFromParent,
-                                    InputOnly, CopyFromParent, 0, 0);
-    XStoreName(QX11Info::display(), home_button_win, "MCompositor home button");
-    XSelectInput(QX11Info::display(), home_button_win,
-                 ButtonReleaseMask | ButtonPressMask);
-    XMapWindow(QX11Info::display(), home_button_win);
 
     prepared = true;
 }
@@ -1142,8 +1121,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e,
                                               bool nostacking)
 {
-    if (e->window == xoverlay || e->window == localwin
-        || e->window == close_button_win || e->window == home_button_win)
+    if (e->window == xoverlay || e->window == localwin)
         return;
 
     MWindowPropertyCache *pc = prop_caches.value(e->window, 0);
@@ -1699,70 +1677,6 @@ void MCompositeManagerPrivate::pingTopmost()
     }
 }
 
-void MCompositeManagerPrivate::setupButtonWindows(Window curr_app)
-{
-    Q_UNUSED(curr_app);
-    MCompositeWindow *topmost = 0;
-    // find out highest application window
-    for (int i = stacking_list.size() - 1; i >= 0; --i) {
-         MCompositeWindow *cw;
-         Window w = stacking_list.at(i);
-         if (w == desktop_window)
-             break;
-         if (!(cw = COMPOSITE_WINDOW(w)))
-             continue;
-         if (cw->isMapped() && cw->isAppWindow(true)) {
-             topmost = cw;
-             break;
-         }
-    }
-    bool home_set = false, close_set = false;
-    static bool home_lowered = true, close_lowered = true;
-    if (topmost) {
-        XWindowChanges wc = {0, 0, 0, 0, 0, topmost->window(), Above};
-        int mask = CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode;
-        const QRect &h = topmost->propertyCache()->homeButtonGeometry();
-        if (h.width() > 1 && h.height() > 1) {
-            wc.x = h.x(); wc.y = h.y();
-            wc.width = h.width(); wc.height = h.height();
-            XConfigureWindow(QX11Info::display(), home_button_win, mask, &wc);
-            home_button_geom = h;
-            home_set = true;
-            home_lowered = false;
-        }
-        const QRect &c = topmost->propertyCache()->closeButtonGeometry();
-        if (c.width() > 1 && c.height() > 1) {
-            wc.x = c.x(); wc.y = c.y();
-            wc.width = c.width(); wc.height = c.height();
-            XConfigureWindow(QX11Info::display(), close_button_win, mask, &wc);
-            close_button_geom = c;
-            close_set = true;
-            close_lowered = false;
-        }
-    }
-    if ((home_set || close_set) && topmost) {
-        buttoned_win = topmost->window();
-        if (!home_set && !home_lowered) {
-            XLowerWindow(QX11Info::display(), home_button_win);
-            home_lowered = true;
-        }
-        if (!close_set && !close_lowered) {
-            XLowerWindow(QX11Info::display(), close_button_win);
-            close_lowered = true;
-        }
-    } else if (buttoned_win) {
-        buttoned_win = 0;
-        if (!close_lowered) {
-            XLowerWindow(QX11Info::display(), close_button_win);
-            close_lowered = true;
-        }
-        if (!home_lowered) {
-            XLowerWindow(QX11Info::display(), home_button_win);
-            home_lowered = true;
-        }
-    }
-}
-
 void MCompositeManagerPrivate::setCurrentApp(MCompositeWindow *cw,
                                              bool restacked)
 {
@@ -1814,10 +1728,8 @@ void MCompositeManagerPrivate::fixZValues()
             if (witem->propertyCache()->windowType()
                 == MCompAtoms::NOTIFICATION)
                 notifs.prepend(witem);
-            else if (witem->window() != home_button_win
-                     && witem->window() != close_button_win) {
+            else
                 sg_above_notifs = true;
-            }
         }
         if (witem->hasTransitioningWindow())
             // don't change Z values until animation is over
@@ -2194,10 +2106,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
         return;
     }
     // NOTE: we send synthetic MapNotifys from redirectWindows()
-    if (win == localwin || win == localwin_parent || win == close_button_win
+    if (win == localwin || win == localwin_parent
         || e->send_event == True
         || (splash && win == splash->window())
-        || win == home_button_win || e->event != QX11Info::appRootWindow())
+        || e->event != QX11Info::appRootWindow())
         return;
 
     MWindowPropertyCache *pc = getPropertyCache(win);
@@ -3024,12 +2936,6 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event, bool startup)
         mapRequestEvent(&event->xmaprequest); break;
     case ClientMessage:
         clientMessageEvent(&event->xclient); break;
-    case ButtonRelease:
-    case ButtonPress:
-        buttonEvent(&event->xbutton);
-        // TODO: enable this code when MSimpleWindowFrame raises from death.
-        // ret = false;
-        break;
     case MotionNotify: // in case a plugin subscribes these
         break;
     case KeyPress:
@@ -3090,38 +2996,6 @@ void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
 {
     if (e->state & Mod5Mask && e->keycode == switcher_key)
         exposeSwitcher();
-}
-
-void MCompositeManagerPrivate::buttonEvent(XButtonEvent* e)
-{
-    if (e->type == ButtonRelease && e->window == home_button_win
-        && e->x >= 0 && e->y >= 0 && e->x <= home_button_geom.width()
-        && e->y <= home_button_geom.height())
-        exposeSwitcher();
-    else if (e->type == ButtonRelease && buttoned_win
-             && e->window == close_button_win && e->x >= 0 && e->y >= 0
-             && e->x <= close_button_geom.width()
-             && e->y <= close_button_geom.height()) {
-        XClientMessageEvent ev;
-        memset(&ev, 0, sizeof(ev));
-        ev.type = ClientMessage;
-        ev.window = buttoned_win;
-        ev.message_type = ATOM(WM_PROTOCOLS);
-        ev.format = 32;
-        ev.data.l[0] = ATOM(WM_DELETE_WINDOW);
-        ev.data.l[1] = CurrentTime;
-        XSendEvent(QX11Info::display(), buttoned_win, False, NoEventMask,
-                   (XEvent*)&ev);
-        return;
-    }
-    if (buttoned_win) {
-        XButtonEvent ev = *e;
-        // synthetise the event to the application below
-        ev.window = buttoned_win;
-        XSendEvent(QX11Info::display(), buttoned_win, False,
-                   e->type == ButtonPress ? ButtonPressMask
-                                          : ButtonReleaseMask, (XEvent*)&ev);
-    }
 }
 
 QGraphicsScene *MCompositeManagerPrivate::scene()
@@ -4042,19 +3916,9 @@ void MCompositeManager::dumpState(const char *heading)
                d->localwin, d->localwin_parent);
 
     qDebug(    "prev_focus:       0x%lx", d->prev_focus);
-    qDebug(    "buttoned_win:     0x%lx", d->buttoned_win);
 
-    // Decoration button geometries.
     qDebug(    "decorated window: 0x%lx",
                MDecoratorFrame::instance()->managedWindow());
-    r = &d->home_button_geom;
-    qDebug(    "home button:      0x%lx (%dx%d%+d%+d)",
-               d->home_button_win,
-               r->width(), r->height(), r->x(), r->y());
-    r = &d->close_button_geom;
-    qDebug(    "close button:     0x%lx (%dx%d%+d%+d)",
-               d->close_button_win,
-               r->width(), r->height(), r->x(), r->y());
 
     // Stacking
     qDebug(    "stacking_timer:   %s",
@@ -4711,9 +4575,8 @@ bool MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
 {
     Window w = pc->winId();
     if (w == d->localwin || w == d->localwin_parent || w == d->wm_window
-        || w == d->xoverlay || w == d->close_button_win ||
-        w == QX11Info::appRootWindow() ||
-        w == d->home_button_win || d->windows.contains(w))
+        || w == d->xoverlay || w == QX11Info::appRootWindow()
+        || d->windows.contains(w))
         return false;
     d->prop_caches[w] = pc;
     d->xserver_stacking.windowCreated(w);

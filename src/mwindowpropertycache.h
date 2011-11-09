@@ -156,8 +156,6 @@ public:
     const xcb_get_window_attributes_reply_t* windowAttributes() const {
             return attrs; };
 
-    const QRect &homeButtonGeometry();
-    const QRect &closeButtonGeometry();
     void setSkippingTaskbarMarker(bool);
 
 public slots:
@@ -275,13 +273,11 @@ public:
 
 signals:
     void iconGeometryUpdated();
-    void meegoDecoratorButtonsChanged(Window w);
     void desktopViewChanged(MWindowPropertyCache *pc);
     void alwaysMappedChanged(MWindowPropertyCache *pc);
     void customRegionChanged(MWindowPropertyCache *pc);
 
 private slots:
-    void buttonGeometryHelper();
     bool prestartedApp();
 
 private:
@@ -306,7 +302,6 @@ protected:
     // geometry is requested only once in the beginning, after that, we
     // use ConfigureNotifys to update the size through setRealGeometry()
     QRect req_geom, real_geom, expected_geom, statusbar_geom;
-    QRect home_button_geom, close_button_geom;
     XWMHints *wmhints;
     xcb_get_window_attributes_reply_t *attrs;
     unsigned meego_layer, low_power_mode, opaque_window;
