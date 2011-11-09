@@ -96,7 +96,6 @@ public:
     void rootMessageEvent(XClientMessageEvent *);
     void clientMessageEvent(XClientMessageEvent *);
     void keyEvent(XKeyEvent*);
-    void buttonEvent(XButtonEvent*);
     void installX11EventFilter(long xevent, MCompositeManagerExtension* extension);
     
     void redirectWindows();
@@ -138,9 +137,7 @@ public:
     Window localwin, localwin_parent, wm_window;
     Window xoverlay;
     Window prev_focus;
-    Window close_button_win, home_button_win, buttoned_win;
     Window current_app;
-    QRect home_button_geom, close_button_geom;
 
     QGLWidget *glwidget;
 
@@ -275,7 +272,6 @@ public slots:
     void displayOff(bool display_off);
     void callOngoing(bool call_ongoing);
     void stackingTimeout();
-    void setupButtonWindows(Window topmost);
     void splashTimeout();
 };
 

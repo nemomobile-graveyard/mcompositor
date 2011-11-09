@@ -235,9 +235,6 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                                XCB_ATOM_ATOM, MAX_TYPES));
     if (!pict_formats_reply && !pict_formats_cookie.sequence)
         pict_formats_cookie = xcb_render_query_pict_formats(xcb_conn);
-    addRequest(SLOT(buttonGeometryHelper()),
-               requestProperty(MCompAtoms::_MEEGOTOUCH_DECORATOR_BUTTONS,
-                               XCB_ATOM_CARDINAL, 8));
     addRequest(SLOT(orientationAngle()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_ORIENTATION_ANGLE,
                                XCB_ATOM_CARDINAL));
@@ -295,8 +292,6 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
         if (p && p != this && p->transientFor() == window)
             transients.append(*it);
     }
-    connect(this, SIGNAL(meegoDecoratorButtonsChanged(Window)),
-            m->d, SLOT(setupButtonWindows(Window)));
 }
 
 MWindowPropertyCache::MWindowPropertyCache()
@@ -823,10 +818,6 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     } else if (e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA)) {
         addRequest(SLOT(videoGlobalAlpha()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
-    } else if (e->atom == ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS)) {
-        addRequest(SLOT(buttonGeometryHelper()),
-                   requestProperty(e->atom, XCB_ATOM_CARDINAL, 8));
-        emit meegoDecoratorButtonsChanged(window);
     } else if (e->atom == ATOM(_MEEGOTOUCH_DECORATOR_WINDOW)) {
         addRequest(SLOT(isDecorator()), 
                    requestProperty(MCompAtoms::_MEEGOTOUCH_DECORATOR_WINDOW,
@@ -950,40 +941,6 @@ void MWindowPropertyCache::setWindowState(int state)
     // non-blocking.
     cancelRequest(SLOT(windowState()));
     window_state = state;
-}
-
-void MWindowPropertyCache::buttonGeometryHelper()
-{
-    QLatin1String me(SLOT(buttonGeometryHelper()));
-    if (!is_valid || !requests[me])
-        return;
-
-    xcb_get_property_cookie_t c = { requests[me] };
-    xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
-    if (!r)
-        return;
-    int len = xcb_get_property_value_length(r);
-    if (len == 8 * sizeof(CARD32)) {
-        CARD32* coords = (CARD32*)xcb_get_property_value(r);
-        home_button_geom.setRect(coords[0], coords[1], coords[2], coords[3]);
-        close_button_geom.setRect(coords[4], coords[5], coords[6], coords[7]);
-    } else if (len != 0)
-        qWarning("%s: _MEEGOTOUCH_DECORATOR_BUTTONS size is %d", __func__, len);
-    free(r);
-}
-
-const QRect &MWindowPropertyCache::homeButtonGeometry()
-{
-    buttonGeometryHelper();
-    return home_button_geom;
-}
-
-const QRect &MWindowPropertyCache::closeButtonGeometry()
-{
-    buttonGeometryHelper();
-    return close_button_geom;
 }
 
 unsigned MWindowPropertyCache::orientationAngle()
