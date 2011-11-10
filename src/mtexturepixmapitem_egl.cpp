@@ -162,8 +162,9 @@ MTexturePixmapItem::~MTexturePixmapItem()
 
 void MTexturePixmapItem::cleanup()
 {
-   d->TFP.unbind();
-   d->texman->closeTexture(d->TFP.textureId);
+    d->TFP.unbind();
+    if (d->TFP.textureId)
+        d->texman->closeTexture(d->TFP.textureId);
 }
 
 void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,

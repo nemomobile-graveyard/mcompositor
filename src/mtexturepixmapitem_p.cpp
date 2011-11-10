@@ -43,7 +43,6 @@
 #include "mtexturepixmapitem_p.h"
 
 QGLWidget *MTexturePixmapPrivate::glwidget = 0;
-QGLContext *MTexturePixmapPrivate::ctx = 0;
 MGLResourceManager *MTexturePixmapPrivate::glresource = 0;
 
 static const GLuint D_VERTEX_COORDS = 0;
@@ -543,8 +542,6 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
         MCompositeManager *m = (MCompositeManager*)qApp;
         glwidget = m->glWidget();
     }
-    if (!ctx)
-        ctx = const_cast<QGLContext *>(glwidget->context());
     if (item->propertyCache())
         item->propertyCache()->damageTracking(true);
     init();
