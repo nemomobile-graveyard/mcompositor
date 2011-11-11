@@ -10,6 +10,7 @@ SOURCES += ut_restackwindows.cpp
 POST_TARGETDEPS += ../../../src/mrestacker.o
 
 LIBS += -lX11 ../../../src/mrestacker.o ../../../src/libmcompositor.so
+LIBS += ../../../decorators/libdecorator/libdecorator.so
 QT += testlib core opengl
 
 target.path = /usr/lib/mcompositor-unit-tests
