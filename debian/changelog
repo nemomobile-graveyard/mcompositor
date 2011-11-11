@@ -1,3 +1,9 @@
+mcompositor (1.1.26-2) unstable; urgency=low
+
+  * fix building
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 11 Nov 2011 11:44:44 +0200
+
 mcompositor (1.1.26-1) unstable; urgency=low
 
   * Fixes: NB#289743 - Killing window when transition occures freezes device.
