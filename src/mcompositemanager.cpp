@@ -1071,6 +1071,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     MWindowPropertyCache *wpc = 0;
     if (prop_caches.contains(e->window)) {
         wpc = prop_caches.value(e->window);
+        addMapInformation(false, wpc);
         wpc->setBeingMapped(false);
         wpc->setIsMapped(false);
         wpc->setStackedUnmapped(false);
@@ -2135,6 +2136,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
     if (!pc || !pc->is_valid)
         return;
 
+    addMapInformation(true, pc);
+
     pc->setBeingMapped(false);
     pc->setIsMapped(true);
     if (pc->isLockScreen()) {
@@ -2726,6 +2729,18 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
     /* do this after possibly reordering the window stack */
     if (disableCompositing)
         dirtyStacking(false);
+}
+
+void MCompositeManagerPrivate::addMapInformation(bool map, MWindowPropertyCache *pc)
+{
+    const QString m = map ? QLatin1String("Mapping") : QLatin1String("Unmapping");
+    QString s = QString("%1: WinId 0x%2 with WM_NAME \"%3\" and window type %4")
+            .arg(m).arg(QString::number(pc->winId(), 16)).arg(pc->wmName()).arg(pc->windowType());
+    const int max_queue_size = 20;
+    if (mapUnmapTracker.size() > max_queue_size) {
+        mapUnmapTracker.dequeue();
+    }
+    mapUnmapTracker.enqueue(s);
 }
 
 void MCompositeManager::lockScreenPainted()

@@ -30,6 +30,7 @@
 #include <QPointer>
 #include <QSocketNotifier>
 #include <QElapsedTimer>
+#include <QQueue>
 
 #include <X11/Xutil.h>
 #include <X11/Xlib.h>
@@ -132,6 +133,8 @@ public:
     bool raiseWithTransients(MWindowPropertyCache *pc,
                            int parent_idx, QList<int> *anewpos = NULL);
     MWindowPropertyCache *findLockScreen() const;
+
+    void addMapInformation(bool map, MWindowPropertyCache *pc);
 
     MCompositeScene *watch;
     Window localwin, localwin_parent, wm_window;
@@ -250,6 +253,8 @@ public:
     int defaultGraphicsAlpha;
     int defaultVideoAlpha;
     bool globalAlphaOverridden;
+
+    QQueue<QString> mapUnmapTracker;
 
 signals:
     void currentAppChanged(Window w);

@@ -29,6 +29,7 @@
 #include "mdynamicanimation.h"
 #include "mdevicestate.h"
 
+#include <syslog.h>
 #include <QX11Info>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
@@ -105,6 +106,8 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         a = new MCompositeWindowAnimation(this);
     a->setTargetWindow(this);
     orig_animator = a;
+
+    deferred_delete_later_timer.invalidate();
 }
 
 MCompositeWindow::~MCompositeWindow()
@@ -479,13 +482,35 @@ void MCompositeWindow::closeWindowAnimation()
 
 bool MCompositeWindow::event(QEvent *e)
 {
+    const int max_allowed_delay = 5000; //ms
     if (e->type() == QEvent::DeferredDelete && is_transitioning
         && !allow_delete) {
+        if (!deferred_delete_later_timer.isValid()) {
+            deferred_delete_later_timer.start();
+        } else if (deferred_delete_later_timer.hasExpired(max_allowed_delay)) {
+            dumpStateAndDie();
+        }
         // Can't delete the object yet, try again in the next iteration.
         deleteLater();
         return true;
     } else
         return QObject::event(e);
+}
+
+void MCompositeWindow::dumpStateAndDie()
+{
+    openlog("mcompositor", LOG_PERROR, LOG_USER);
+    syslog(LOG_ERR, "Failing to delete window - giving up and dying");
+    syslog(LOG_ERR, "Problematic window: WinId 0x%x with WM_NAME \"%s\" and window type %d",
+                   (unsigned int)pc->winId(), qPrintable(pc->wmName()), pc->windowType());
+    syslog(LOG_ERR, "History of mapped and unmapped windows (oldest first):");
+    MCompositeManagerPrivate *cmp = ((MCompositeManager*)qApp)->d;
+    foreach(const QString &s, cmp->mapUnmapTracker) {
+        syslog(LOG_ERR, qPrintable(s));
+    }
+    syslog(LOG_ERR, "Bye bye!");
+    closelog();
+    qDebug() << *static_cast<int*>(0);
 }
 
 void MCompositeWindow::finalizeState()

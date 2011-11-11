@@ -284,6 +284,7 @@ public:
       */
     void endAnimation();
 
+    void dumpStateAndDie();
 public slots:
 
     void updateIconGeometry();
@@ -381,6 +382,7 @@ private:
     // Main ping timer
     QTimer *t_ping, *t_reappear;
     QTimer *damage_timer;
+    QElapsedTimer deferred_delete_later_timer;
     QTimer close_timer;
     Qt::HANDLE win_id;
 
