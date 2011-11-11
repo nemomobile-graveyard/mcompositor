@@ -1,8 +1,9 @@
-mcompositor (1.1.26-1~unreleased) unstable; urgency=low
+mcompositor (1.1.26-1) unstable; urgency=low
 
-  * foo
+  * Fixes: NB#289743 - Killing window when transition occures freezes device.
+  * Fixes: NB#287371 - "Settings" UI freezes after switching UI
 
- -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 09 Nov 2011 16:05:17 +0200
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 11 Nov 2011 10:05:17 +0200
 
 mcompositor (1.1.25-1) unstable; urgency=low
 
