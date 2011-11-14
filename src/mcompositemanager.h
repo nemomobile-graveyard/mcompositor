@@ -226,6 +226,9 @@ public:
     // for MRestacker to ignore certain special windows
     bool ignoreThisWindow(Window) const;
 
+    bool disableRedrawingDueToDamage() const;
+    void setDisableRedrawingDueToDamage(bool);
+
 #ifdef WINDOW_DEBUG
     // initialize MCompositeManager with an empty window stack
     void ut_prepare();

@@ -425,7 +425,8 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
       lastDestroyedSplash(0, 0),
       defaultGraphicsAlpha(MAXIMUM_GLOBAL_ALPHA),
       defaultVideoAlpha(MAXIMUM_GLOBAL_ALPHA),
-      globalAlphaOverridden(false)
+      globalAlphaOverridden(false),
+      disable_redrawing_due_to_damage(false)
 {
     xcb_conn = XGetXCBConnection(QX11Info::display());
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
@@ -4599,6 +4600,16 @@ bool MCompositeManager::ignoreThisWindow(Window w) const
     if (w == d->xoverlay || w == d->localwin)
         return true;
     return false;
+}
+
+bool MCompositeManager::disableRedrawingDueToDamage() const
+{
+    return d->disable_redrawing_due_to_damage;
+}
+
+void MCompositeManager::setDisableRedrawingDueToDamage(bool b)
+{
+    d->disable_redrawing_due_to_damage = b;
 }
 
 #ifdef WINDOW_DEBUG
