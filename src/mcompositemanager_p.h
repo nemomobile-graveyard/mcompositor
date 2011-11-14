@@ -250,6 +250,7 @@ public:
     int defaultGraphicsAlpha;
     int defaultVideoAlpha;
     bool globalAlphaOverridden;
+    bool disable_redrawing_due_to_damage;
 
 signals:
     void currentAppChanged(Window w);

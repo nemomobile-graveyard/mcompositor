@@ -21,6 +21,7 @@
 #include "mtexturepixmapitem_p.h"
 #include "mcompositewindowgroup.h"
 #include "mcompositewindowanimation.h"
+#include "mcompositemanager.h"
 
 #include <QPainterPath>
 #include <QRect>
@@ -241,10 +242,13 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
     
     if (!d->damageRegion.isEmpty()) {
         d->TFP.update();
-        if (!d->current_window_group) 
-            d->glwidget->update();
-        else
-            d->current_window_group->updateWindowPixmap();
+        MCompositeManager *m = (MCompositeManager*)qApp;
+        if (!m->disableRedrawingDueToDamage()) {
+            if (!d->current_window_group) 
+                d->glwidget->update();
+            else
+                d->current_window_group->updateWindowPixmap();
+        }
     }
     propertyCache()->damageSubtract();
 }
