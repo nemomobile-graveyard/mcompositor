@@ -34,10 +34,7 @@ tests_xml.commands +=          </environments>
 tests_xml.commands +=        </set>
 tests_xml.commands +=      </suite>
 tests_xml.commands +=    </testdefinition>\';
-tests_xml.commands += fi | xmllint --pretty 1
-tests_xml.commands +=              --schema \"$$td-syntax.xsd\"
-tests_xml.commands +=              --schema \"$$td-tm_terms.xsd\" -
-tests_xml.commands += > $${tests_xml.output}
+tests_xml.commands += fi > $${tests_xml.output}
 QMAKE_EXTRA_COMPILERS += tests_xml
 QMAKE_EXTRA_TARGETS   += tests_xml
 
