@@ -50,10 +50,12 @@ testsuite_template="<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<testdefini
 
 # Output it.
 echo -e "$testsuite_template" > "$xml";
-if type -p xmllint > /dev/null;
-then
-	td="/usr/share/test-definition/testdefinition";
-	exec xmllint --noout --schema "$td-syntax.xsd" --schema "$td-tm_terms.xsd" "$xml";
-fi
+
+# install test-definition package and uncomment to validate against the schema
+#if type -p xmllint > /dev/null;
+#then
+#	td="/usr/share/test-definition/testdefinition";
+#	exec xmllint --noout --schema "$td-syntax.xsd" --schema "$td-tm_terms.xsd" "$xml";
+#fi
 
 exit 0
