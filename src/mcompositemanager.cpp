@@ -399,17 +399,6 @@ static void kill_window(MCompositeWindow *window)
         XKillClient(QX11Info::display(), window->window());
 }
 
-static void safe_move(QList<Window>& winlist, int from, int to)
-{
-    if (from == to)
-        return;
-    int slsize = winlist.size();
-    if ((0 <= from && from < slsize) && (0 <= to && to < slsize))
-        winlist.move(from,to);
-    else
-        qWarning("safe_move(%d -> %d); nwins=%d", from, to, slsize);
-}
-
 MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
     : QObject(p),
       prev_focus(0),
@@ -1221,10 +1210,10 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
                     setWindowState(e->window, IconicState);
                 if (above_i > win_i) {
                     STACKING_MOVE(win_i, above_i);
-                    safe_move(stacking_list, win_i, above_i);
+                    stacking_list.move(win_i, above_i);
                 } else {
                     STACKING_MOVE(win_i, above_i+1);
-                    safe_move(stacking_list, win_i, above_i + 1);
+                    stacking_list.move(win_i, above_i + 1);
                 }
                 dirtyStacking(false);
             }
@@ -1271,10 +1260,10 @@ void MCompositeManagerPrivate::configureWindow(MWindowPropertyCache *pc,
                     setWindowState(e->window, IconicState);
                 if (above_i > win_i) {
                     STACKING_MOVE(win_i, above_i-1);
-                    safe_move(stacking_list, win_i, above_i - 1);
+                    stacking_list.move(win_i, above_i - 1);
                 } else {
                     STACKING_MOVE(win_i, above_i);
-                    safe_move(stacking_list, win_i, above_i);
+                    stacking_list.move(win_i, above_i);
                 }
                 dirtyStacking(false);
             }
@@ -3509,7 +3498,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         stacking_list.append(window);
     } else if (!pc->stackedUnmapped()) {
         STACKING_MOVE(i, stacking_list.size()-1);
-        safe_move(stacking_list, i, stacking_list.size() - 1);
+        stacking_list.move(i, stacking_list.size() - 1);
     }
     roughSort();
 
@@ -3655,13 +3644,13 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
                 iconifyApps();
         }
         STACKING_MOVE(wp, stacking_list.size()-1);
-        safe_move(stacking_list, wp, stacking_list.size() - 1);
+        stacking_list.move(wp, stacking_list.size() - 1);
         // needed so that checkStacking() finds the current application
         roughSort();
     } else {
         //qDebug() << __func__ << "to bottom:" << w;
         STACKING_MOVE(wp, 0);
-        safe_move(stacking_list, wp, 0);
+        stacking_list.move(wp, 0);
         // make sure it's not painted with the old Z value before the next
         // checkStacking() call, which sets the new Z value
         MCompositeWindow *i = COMPOSITE_WINDOW(w);
