@@ -283,7 +283,7 @@ private slots:
 private:
     void init();
     void init_invalid();
-    int alphaValue(const QLatin1String me);
+    int alphaValue(const QLatin1String &me);
 
 protected:
     Window transient_for;
@@ -340,11 +340,11 @@ protected:
     // the reply unconditionally when it expires.
     MCSmartTimer *collect_timer;
     QHash<const QLatin1String, unsigned> requests;
-    bool isUpdate(const QLatin1String collector);
-    bool requestPending(const QLatin1String collector);
-    void addRequest(const QLatin1String collector, unsigned cookie);
-    void replyCollected(const QLatin1String collector);
-    void cancelRequest(const QLatin1String collector);
+    bool isUpdate(const QLatin1String &collector);
+    bool requestPending(const QLatin1String &collector);
+    void addRequest(const QLatin1String &collector, unsigned cookie);
+    void replyCollected(const QLatin1String &collector);
+    void cancelRequest(const QLatin1String &collector);
     unsigned requestProperty(Atom prop, Atom type, unsigned n = 1);
 
     // Overloads to make the routines above callable with other types.

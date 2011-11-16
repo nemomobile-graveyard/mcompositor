@@ -52,14 +52,14 @@ xcb_render_query_pict_formats_cookie_t MWindowPropertyCache::pict_formats_cookie
 
 // Returns whether the property of @collector does not need to be refreshed:
 // if it has been requested and it has been replied.
-bool MWindowPropertyCache::isUpdate(const QLatin1String collector)
+bool MWindowPropertyCache::isUpdate(const QLatin1String &collector)
 {
     return requests.contains(collector) && !requests[collector];
 }
 
 // Returns whether @collector's property is being queried:
 // if it has been requested but hasn't been replied.
-bool MWindowPropertyCache::requestPending(const QLatin1String collector)
+bool MWindowPropertyCache::requestPending(const QLatin1String &collector)
 {
     return requests.contains(collector) &&  requests[collector];
 }
@@ -67,7 +67,7 @@ bool MWindowPropertyCache::requestPending(const QLatin1String collector)
 // Called when @collector's property is being queried, and it sets up
 // a timer to collect the reply in a while.  If a query is already ongoing
 // it's cancelled.  @cookie should be what xcb_*() returned.
-void MWindowPropertyCache::addRequest(const QLatin1String collector,
+void MWindowPropertyCache::addRequest(const QLatin1String &collector,
                                       unsigned cookie)
 {
     if (is_virtual)
@@ -83,7 +83,7 @@ void MWindowPropertyCache::addRequest(const QLatin1String collector,
 }
 
 // Makes @collector's property considered isUpdate().
-void MWindowPropertyCache::replyCollected(const QLatin1String collector)
+void MWindowPropertyCache::replyCollected(const QLatin1String &collector)
 {
     Q_ASSERT(!is_virtual);
     requests[collector] = 0;
@@ -92,7 +92,7 @@ void MWindowPropertyCache::replyCollected(const QLatin1String collector)
 
 // If @collector has an ongoing query, cancels it.  @collector's property
 // will have been considered isUpdate().
-void MWindowPropertyCache::cancelRequest(const QLatin1String collector)
+void MWindowPropertyCache::cancelRequest(const QLatin1String &collector)
 {
     if (requestPending(collector)) {
         xcb_discard_reply(xcb_conn, requests[collector]);
@@ -1161,7 +1161,7 @@ const QRectF &MWindowPropertyCache::iconGeometry()
     return icon_geometry;
 }
 
-int MWindowPropertyCache::alphaValue(const QLatin1String me)
+int MWindowPropertyCache::alphaValue(const QLatin1String &me)
 {
     xcb_get_property_cookie_t c = { requests[me] };
     xcb_get_property_reply_t *r;
