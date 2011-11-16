@@ -23,6 +23,8 @@
 #include <QObject>
 #include <X11/Xutil.h>
 
+uint qHash(const QLatin1String &key);
+
 // this class is not instantiated, we only use the metaobject
 class MCompAtoms: public QObject
 {

@@ -147,6 +147,21 @@ static QString dumpWindows(const T &wins, bool leftToRight=true,
 Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
 MCompAtoms::randr_t MCompAtoms::randr;
 
+// Slightly adapted from the version found in Qt's corelib/tools/qhash.cpp.
+// qHash() for QLatin1String to avoid temporary QString object on hash lookup.
+uint qHash(const QLatin1String &key)
+{
+    uint h = 0;
+    const uchar *p = reinterpret_cast<const uchar *>(key.latin1());
+
+    while (*p) {
+        h = (h << 4) + *p++;
+        h ^= (h & 0xf0000000) >> 23;
+        h &= 0x0fffffff;
+    }
+    return h;
+}
+
 void MCompAtoms::init()
 {
     Display *dpy = QX11Info::display();
