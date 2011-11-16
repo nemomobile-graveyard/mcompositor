@@ -2227,7 +2227,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
             item->setNewlyMapped(false);
             if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG) ||
                 pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU) ||
-                pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)) {
+                pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
+                pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION)) {
                 item->setVisible(false);
                 item->waitForPainting();
             } else
