@@ -420,9 +420,10 @@ void ut_Lockscreen::testPaintingDuringScreenOff()
     QCOMPARE(cmgr->d->watch->keep_black, true);
     QCOMPARE(cmgr->d->compositing, true);
 
-    // test that damage is not handled until the screen is on again
+    // lockscreen damage is handled even when screen is off to avoid
+    // a race condition
     fakeDamageEvent(cw);
-    QCOMPARE(pc->pendingDamage(), true);
+    QCOMPARE(pc->pendingDamage(), false);
 
     // display on
     device_state->fake_display_off = false;
@@ -430,10 +431,15 @@ void ut_Lockscreen::testPaintingDuringScreenOff()
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
     QCOMPARE(cmgr->d->compositing, true);
+    QCOMPARE(cmgr->d->lockscreen_painted, false);
+    QCOMPARE(cw->paintedAfterMapping(), false);
 
-    QCOMPARE(pc->pendingDamage(), true);
+    QCOMPARE(pc->pendingDamage(), false);
     fakeDamageEvent(cw); // second damage stops the wait
     QCOMPARE(pc->pendingDamage(), false);
+    QCOMPARE(cmgr->d->lockscreen_painted, true);
+    QCOMPARE(cw->paintedAfterMapping(), true);
+    QCOMPARE(cmgr->d->watch->keep_black, false);
 }
 
 int main(int argc, char* argv[])

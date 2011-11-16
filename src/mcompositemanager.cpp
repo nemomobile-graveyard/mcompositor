@@ -108,7 +108,6 @@ const int MAXIMUM_GLOBAL_ALPHA = 255;
                      X->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU))
 
 static KeyCode switcher_key = 0;
-static bool lockscreen_painted = false;
 int MCompositeManager::sighupFd[2];
 static QHash<QLatin1String, QVariant> default_settings;
 
@@ -426,7 +425,8 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
       defaultGraphicsAlpha(MAXIMUM_GLOBAL_ALPHA),
       defaultVideoAlpha(MAXIMUM_GLOBAL_ALPHA),
       globalAlphaOverridden(false),
-      disable_redrawing_due_to_damage(false)
+      disable_redrawing_due_to_damage(false),
+      lockscreen_painted(false)
 {
     xcb_conn = XGetXCBConnection(QX11Info::display());
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
@@ -2733,7 +2733,7 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
 
 void MCompositeManager::lockScreenPainted()
 {
-    lockscreen_painted = true;
+    d->lockscreen_painted = true;
     if (!d->device_state->displayOff())
         d->displayOff(false);
     d->watch->keep_black = false;
@@ -2761,8 +2761,9 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
         if (!(pc = findLockScreen()) || !(cw = COMPOSITE_WINDOW(pc->winId()))
             || !pc->isMapped() || !cw->paintedAfterMapping())
             lockscreen_painted = false;
-        // check whether there is a low-power mode window visible -- when the lockscreen is visible
-        // we trust it to become the low-power mode window even if the flag is not yet set
+        // check whether there is a low-power mode window visible -- when the
+        // lockscreen is visible we trust it to become the low-power mode window
+        // even if the flag is not yet set
         bool lpm_window = lockscreen_painted;
         if (!lpm_window) {
             int covering_i = indexOfLastVisibleWindow();
