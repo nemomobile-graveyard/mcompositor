@@ -254,6 +254,7 @@ public:
     int defaultVideoAlpha;
     bool globalAlphaOverridden;
     bool disable_redrawing_due_to_damage;
+    bool lockscreen_painted;
 
     QQueue<QString> mapUnmapTracker;
 
