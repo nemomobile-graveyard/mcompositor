@@ -42,6 +42,7 @@
 #include <QtOpenGL> 
 #include <QList>
 #include <mcompositewindowgroup.h>
+#include <mtexturepixmapitem_p.h>
 
 #include <mtexturepixmapitem.h>
 #include <mcompositemanager.h>
@@ -109,7 +110,16 @@ MCompositeWindowGroup::~MCompositeWindowGroup()
                  __func__);
         return;
     }
-    
+
+#ifdef GLES2_VERSION
+    // The stacking timout call below may call updatePixmap() - make sure this
+    // window group is not used.
+    foreach(const MTexturePixmapItem* pi, d->item_list) {
+        if (pi->d->current_window_group == this)
+            pi->d->current_window_group = 0;
+    }
+#endif
+
     GLuint texture = d->texture;
     glDeleteTextures(1, &texture);
     GLuint depth_buffer = d->depth_buffer;
