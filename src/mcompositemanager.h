@@ -69,6 +69,8 @@ private:
     // @needs_grab tells whether commit() should grab or ungrab.
     // After commit() these state variables should be equal.
     bool needs_grab, has_grab;
+
+    friend class ut_Anim;
 };
 
 /*!

@@ -1152,6 +1152,25 @@ void ut_Anim::testExternalAnimHandler()
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
 }
 
+void ut_Anim::testGrabberRace()
+{
+    QVERIFY(!cmgr->servergrab.hasGrab());
+    QVERIFY(!cmgr->servergrab.needs_grab);
+
+    // make sure we delay grabbing
+    cmgr->config("ungrab-grab-delay", 100000000);
+    cmgr->servergrab.grabLater();
+    cmgr->servergrab.timeSinceLastUngrab.start();
+    cmgr->servergrab.delayedGrabTimer.start();
+    cmgr->servergrab.commit();
+    cmgr->servergrab.ungrab();
+    // Now both timers must be stopped
+    // If mercytimer is not stopped it will fire every 50ms.
+    QVERIFY(!cmgr->servergrab.mercytimer.isActive());
+    QVERIFY(!cmgr->servergrab.delayedGrabTimer.isActive());
+    cmgr->config("ungrab-grab-delay", 0);
+}
+
 int main(int argc, char* argv[])
 {
     // init fake but basic compositor environment
@@ -1196,7 +1215,7 @@ int main(int argc, char* argv[])
 
     ut_Anim anim;
 
-    return QTest::qExec(&anim);
+    return QTest::qExec(&anim, argc, argv);
 }
 
 #include "ut_anim.moc"

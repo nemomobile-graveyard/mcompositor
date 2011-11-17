@@ -32,6 +32,8 @@ private slots:
     void testDerivedAnimHandler();
     void testExternalAnimHandler();
 
+    void testGrabberRace();
+
 private:
     void fakeDamageEvent(MCompositeWindow *cw);
     void addWindow(MWindowPropertyCache *pc);
