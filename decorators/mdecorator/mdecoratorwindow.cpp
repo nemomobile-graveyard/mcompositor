@@ -536,6 +536,7 @@ void MDecoratorWindow::setInputRegion()
 
         Display *dpy = QX11Info::display();
         XserverRegion shapeRegion = XFixesCreateRegion(dpy, xrects, nxrects);
+        delete[] xrects;
         XFixesSetWindowShapeRegion(dpy, winId(), ShapeInput,
                                    0, 0, shapeRegion);
         XFixesSetWindowShapeRegion(dpy, winId(), ShapeBounding,
