@@ -395,9 +395,10 @@ void ut_Compositing::testBannerMapping()
     QTest::qWait(10); // run the idle handlers
     MCompositeWindow *w = cmgr->d->windows.value(5, 0);
     QCOMPARE(w != 0, true);
-    QCOMPARE(w->isVisible(), true);
+    // we wait for damage events
+    QCOMPARE(w->isVisible(), false);
     QCOMPARE(w->windowObscured(), false);
-    QCOMPARE(w->paintedAfterMapping(), true);
+    QCOMPARE(w->paintedAfterMapping(), false);
     QCOMPARE(banner->damageObject() != 0, true);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), false);
     QCOMPARE(cmgr->d->compositing, true);
