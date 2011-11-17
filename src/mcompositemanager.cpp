@@ -4693,8 +4693,14 @@ bool MSGrabber::grabDelayIsActive() const
 // Make the @needs_grab setting effective.
 void MSGrabber::commit()
 {
-    if (has_grab == needs_grab)
+    if (has_grab == needs_grab) {
+        if (!has_grab) {
+            // mercytimer would never be stopped otherwise
+            mercytimer.stop();
+            delayedGrabTimer.stop();
+        }
         return;
+    }
 
     MCompositeManager *cm = (MCompositeManager*)qApp;
     if (needs_grab && grabDelayIsActive()) {
@@ -4728,7 +4734,9 @@ void MSGrabber::commit()
 void MSGrabber::reinforce()
 {
     Q_ASSERT(has_grab && mercytimer.isActive());
-    mercytimer.start();
+    if (!has_grab) {
+        mercytimer.start();
+    }
 }
 
 void MSGrabber::grabLater(bool setting)
