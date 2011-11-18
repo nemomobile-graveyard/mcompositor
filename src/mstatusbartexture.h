@@ -23,6 +23,8 @@
 #include <QtOpenGL>
 #include <X11/extensions/Xdamage.h>
 
+#include <texturecoords.h>
+
 class QDBusServiceWatcher;
 class QDBusPendingCallWatcher;
 class MCompositeManagerExtension;
@@ -38,12 +40,16 @@ public:
     const QRect &landscapeRect() const { return texture_rect; }
     const QRect &portraitRect() const { return texture_rect_portrait; }
     Drawable pixmapDrawable() const;
-    const GLvoid* landscapeTexCoords() const { return texture_coords; }
-    const GLvoid* portraitTexCoords() const { return texture_coords_portrait; }
+    const TextureCoords& landscapeTexCoords() const { return texture_coords; }
+    const TextureCoords& portraitTexCoords() const { return texture_coords_portrait; }
 
     void updatePixmap();
     void trackDamages();
     void untrackDamages();
+
+ signals:
+    /* emmited whenever status bar geometry is updated. */
+    void geometryUpdated();
 
  private slots:
     void statusBarOn();
@@ -60,7 +66,7 @@ public:
 
     Drawable drawable;
     QRect texture_rect, texture_rect_portrait;
-    GLfloat texture_coords[8], texture_coords_portrait[8];
+    TextureCoords texture_coords, texture_coords_portrait;
     Damage pixmapDamage;
     MTextureFromPixmap* TFP;
     bool size_needs_update;

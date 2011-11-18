@@ -32,18 +32,17 @@ const QString PIXMAP_PROVIDER_DBUS_PATH = "/statusbar";
 const QString PIXMAP_PROVIDER_DBUS_INTERFACE = "com.meego.core.MStatusBar";
 const QString PIXMAP_PROVIDER_DBUS_SHAREDPIXMAP_CALL = "sharedPixmapHandle";
 
-static void calculate_texture_coords(GLfloat coords[8], GLfloat w, GLfloat h,
-                                     GLfloat tx, GLfloat ty, GLfloat tw, GLfloat th)
+static QRectF calculate_texture_coords(GLfloat w, GLfloat h,
+                                       GLfloat tx, GLfloat ty, 
+                                       GLfloat tw, GLfloat th)
 {
     tx = tx / w;
     ty = ty / h;
     tw = tw / w;
     th = th / h;
     
-    coords[0] = tx;      coords[1] = ty;
-    coords[2] = tx;      coords[3] = th + ty;
-    coords[4] = tx + tw; coords[5] = th + ty;
-    coords[6] = tx + tw; coords[7] = ty;
+    QRectF c (tx, ty, tx + tw, th + ty);
+    return c;
 }
 
 MStatusBarTexture* MStatusBarTexture::instance()
@@ -159,14 +158,27 @@ bool MStatusBarTexture::updateStatusBarGeometry()
     texture_rect = QRect(QPoint(0, 0), lscape);
     texture_rect_portrait = QRect(QPoint(0, 0), portrait);
     
-    calculate_texture_coords(texture_coords, pixmap.width(), pixmap.height(),
+    texture_coords = calculate_texture_coords(pixmap.width(), pixmap.height(),
                              texture_rect.x(), texture_rect.y(),
                              texture_rect.width(), texture_rect.height());
     
-    calculate_texture_coords(texture_coords_portrait, pixmap.width(), pixmap.height(),
-                             texture_rect_portrait.x(), texture_rect_portrait.y() + texture_rect.height(),
-                             texture_rect_portrait.width(), texture_rect_portrait.height());
+    texture_coords_portrait = calculate_texture_coords(pixmap.width(), 
+                                                       pixmap.height(),
+                                                       texture_rect_portrait.x(), 
+                                                       texture_rect_portrait.y() + 
+                                                       texture_rect.height(),
+                                                       texture_rect_portrait.width(), 
+                                                       texture_rect_portrait.height());
     
+    texture_coords_portrait.setOrientation(TextureCoords::StartTopRight |
+                                           TextureCoords::RotateCCW);
+    QTransform portrait_t;
+    portrait_t.rotate(90);
+    portrait_t.translate(0, -portrait.width());
+    portrait_t = portrait_t.inverted();
+    texture_rect_portrait = portrait_t.mapRect(texture_rect_portrait);
+    
+    emit geometryUpdated();
     return true;
 }
 
