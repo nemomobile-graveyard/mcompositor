@@ -456,8 +456,8 @@ void ut_Anim::testIconifyingAnimationBelowLockscreen()
     QVERIFY(lockscreen->isLockScreen());
     mapWindow(lockscreen);
     MCompositeWindow *lock_cw = cmgr->d->windows.value(5000, 0);
-    lock_cw->damageReceived();
-    lock_cw->damageReceived();
+    fakeDamageEvent(lock_cw);
+    fakeDamageEvent(lock_cw);
     QTest::qWait(10);
     QVERIFY(!cmgr->d->compositing);
 

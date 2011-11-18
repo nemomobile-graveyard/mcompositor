@@ -320,7 +320,7 @@ void ut_Stacking::testBehind()
     e.event = QX11Info::appRootWindow();
     cmgr->d->mapEvent(&e);
 
-    QTest::qWait(1000);
+    QTest::qWait(2000);
     QCOMPARE(cw3->behind()->window() == 2000, true);    
 }
 
