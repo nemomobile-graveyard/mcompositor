@@ -24,18 +24,22 @@ contains(QT_CONFIG, opengles2) {
      }
 } 
 
+contains(QT_CONFIG, xsync) {
+    message("adding support for synced swapbuffers")
+    DEFINES += HAVE_XSYNC
+}
+
 TEMPLATE = lib
 TARGET = mcompositor
 DEPENDPATH += .
 QT += dbus
 
 # Input
-INCLUDEPATH += ../decorators/libdecorator
+INCLUDEPATH += ../decorators/libdecorator ./scenegraph
 HEADERS += \
     mtexturepixmapitem.h \
     mtexturefrompixmap.h \
     mtexturepixmapitem_p.h \
-    mcompositescene.h \
     mcompositewindow.h \
     mwindowpropertycache.h \
     mcompositemanager.h \
@@ -52,11 +56,11 @@ HEADERS += \
     mcompositewindowanimation.h \
     mdynamicanimation.h \
     mrestacker.h \
-    mstatusbartexture.h
+    mstatusbartexture.h \
+    mrender.h
 
 SOURCES += \
     mtexturepixmapitem_p.cpp \
-    mcompositescene.cpp \
     mcompositewindow.cpp \
     mwindowpropertycache.cpp \
     mcompositemanager.cpp \
@@ -69,7 +73,11 @@ SOURCES += \
     mcompositewindowanimation.cpp \
     mdynamicanimation.cpp \
     mrestacker.cpp \
-    mstatusbartexture.cpp
+    mstatusbartexture.cpp \
+    mrender.cpp \
+    scenegraph/scenenode.cpp \
+    scenegraph/scenerender.cpp \
+    scenegraph/texturecoords.cpp 
 
 CONFIG += release link_pkgconfig
 PKGCONFIG += contextsubscriber-1.0 contextprovider-1.0
@@ -86,7 +94,8 @@ publicHeaders.files += mcompositewindow.h \
                       mcompmgrextensionfactory.h \
                       mcompositewindowanimation.h \
                       mstatusbartexture.h \
-                      mdevicestate.h
+                      mdevicestate.h \
+                      scenegraph/texturecoords.h
 publicHeaders.path = $$M_INSTALL_HEADERS/mcompositor
 INSTALLS += publicHeaders
 
@@ -101,5 +110,6 @@ LIBS += -lXdamage -lXcomposite -lXfixes -lX11-xcb -lxcb-render -lxcb-shape \
         -lXrandr ../decorators/libdecorator/libdecorator.so
 
 QMAKE_EXTRA_TARGETS += check
+QMAKE_CLEAN += scenegraph/*~
 check.depends = $$TARGET
 check.commands = $$system(true)
