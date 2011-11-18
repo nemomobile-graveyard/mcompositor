@@ -32,6 +32,11 @@
 #include <X11/extensions/Xdamage.h>
 #include <mcompatoms_p.h>
 
+#ifdef HAVE_XSYNC
+#include <X11/extensions/sync.h>
+#endif
+
+
 class MCSmartTimer;
 
 /*!
@@ -84,7 +89,8 @@ public:
         videoGlobalAlphaKey,
         windowTypeAtomKey,
         realGeometryKey,
-        wmNameKey
+        wmNameKey,
+        swapCounterKey
     };
 
     /*! Construct a MWindowPropertyCache
@@ -269,6 +275,11 @@ public slots:
 
     bool skippingTaskbarMarker();
 
+    
+#ifdef HAVE_XSYNC
+    XSyncCounter swapCounter();
+#endif
+    
 public:
     /*!
      * Called on PropertyNotify for this window.
@@ -312,6 +323,7 @@ signals:
     void desktopViewChanged(MWindowPropertyCache *pc);
     void alwaysMappedChanged(MWindowPropertyCache *pc);
     void customRegionChanged(MWindowPropertyCache *pc);
+    void swapCounterChanged();
 
 private slots:
     bool prestartedApp();
@@ -402,6 +414,10 @@ protected:
     int video_overlay;
     bool pending_damage;
     bool skipping_taskbar_marker;
+
+#ifdef HAVE_XSYNC
+    XSyncCounter swap_counter;
+#endif
 };
 
 // Non-deletable dummy MWindowPropertyCache.

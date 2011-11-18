@@ -162,6 +162,7 @@ void MWindowPropertyCache::init()
     video_overlay = 0;
     pending_damage = false;
     skipping_taskbar_marker = false;
+    swap_counter = 0;
 }
 
 void MWindowPropertyCache::init_invalid()
@@ -220,6 +221,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                    xcb_get_geometry(xcb_conn, window).sequence);
     addRequest(isDecoratorKey, SLOT(isDecorator()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_DECORATOR_WINDOW,
+                               XCB_ATOM_CARDINAL));
+    addRequest(swapCounterKey, SLOT(swapCounter()), 
+               requestProperty(MCompAtoms::_MEEGOTOUCH_WM_SWAP_COUNTER,
                                XCB_ATOM_CARDINAL));
     addRequest(transientForKey, SLOT(transientFor()),
                requestProperty(XCB_ATOM_WM_TRANSIENT_FOR,
@@ -512,6 +516,24 @@ Window MWindowPropertyCache::invokedBy()
         }
     }
     return invoked_by;    
+}
+
+XSyncCounter MWindowPropertyCache::swapCounter()
+{
+    CollectorKey me = swapCounterKey;
+    if (is_valid && requests[me].cookie) {
+        xcb_get_property_cookie_t c = { requests[me].cookie };
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        replyCollected(me);
+        swap_counter = 0;
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                swap_counter = *((CARD32*)xcb_get_property_value(r));
+            free(r);
+        }
+    }
+    return swap_counter;
 }
 
 int MWindowPropertyCache::cannotMinimize()
@@ -811,6 +833,10 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     } else if (e->atom == ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE)) {
         addRequest(cannotMinimizeKey, SLOT(cannotMinimize()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
+    } else if (e->atom == ATOM(_MEEGOTOUCH_WM_SWAP_COUNTER)) {
+        addRequest(SLOT(swapCounter()),
+                   requestProperty(e->atom, XCB_ATOM_CARDINAL));
+        emit swapCounterChanged();
     } else if (e->atom == ATOM(_MEEGOTOUCH_DESKTOP_VIEW)) {
         emit desktopViewChanged(this);
     } else if (e->atom == ATOM(WM_HINTS)) {
