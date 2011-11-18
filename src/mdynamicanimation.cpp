@@ -40,39 +40,26 @@ class MStatusBarCrop: public MCompositeWindowShaderEffect
          appwindow(0),
          portrait(false)
     {
-         p_transform.rotate(90);
-         p_transform.translate(0, -screen.height());
-         p_transform = p_transform.inverted();
+        connect(MStatusBarTexture::instance(), SIGNAL(geometryUpdated()),
+                SLOT(setupStatusbar()));
     }
     
-    void drawTexture(const QTransform &transform,
-                     const QRectF &drawRect, qreal opacity)
+    void render()
     {
         const MStatusBarTexture *sbtex = MStatusBarTexture::instance();
-        QRectF draw_rect(drawRect);
+        QRectF draw_rect = appwindow->propertyCache()->realGeometry();
         if (appwindow && appwindow->propertyCache()
             && !appwindow->propertyCache()->statusbarGeometry().isEmpty()) {
             // subtract statusbar
             if (portrait)
-                draw_rect.setLeft(sbtex->portraitRect().height());
-            else
+                draw_rect.setLeft(sbtex->portraitRect().width());
+            else 
                 draw_rect.setTop(sbtex->landscapeRect().height());
+            
+            setWindowGeometry(draw_rect, Qt::KeepAspectRatio);
         }
-        
-        // original texture with cropped statusbar
-        glBindTexture(GL_TEXTURE_2D, texture());
-        drawSource(transform, draw_rect, opacity, true); 
-
-        // draw status bar texture
-        glBindTexture(GL_TEXTURE_2D, sbtex->texture());
-        if (!portrait)
-            drawSource(QTransform(), sbtex->landscapeRect(), 1.0,
-                       sbtex->landscapeTexCoords());
-        else 
-            drawSource(p_transform, sbtex->portraitRect(), 1.0,
-                       sbtex->portraitTexCoords());
     }
-
+    
     void setAppWindow(MCompositeWindow* a)
     {
         appwindow = a;
@@ -83,9 +70,16 @@ class MStatusBarCrop: public MCompositeWindowShaderEffect
         portrait = p;
     }
 
+private slots:
+    void setupStatusbar()
+    {
+        const MStatusBarTexture *sbtex = MStatusBarTexture::instance();
+        addQuad(sbtex->texture(), sbtex->portraitRect(),
+                sbtex->portraitTexCoords(), false);
+    }
+
 private:
     QPointer<MCompositeWindow> appwindow;
-    QTransform p_transform;
     bool portrait;
 };
 
@@ -316,6 +310,7 @@ void MChainedAnimation::windowShown()
     }
 
     animationGroup()->setDirection(QAbstractAnimation::Forward);
+    targetWindow()->setVisible(true);
     start();
 }
 
@@ -531,6 +526,8 @@ void MCallUiAnimation::windowShown()
         animationGroup()->setDirection(QAbstractAnimation::Forward);
     else if (call_mode == MCallUiAnimation::OutgoingCall)
         animationGroup()->setDirection(QAbstractAnimation::Backward);
+    
+    targetWindow()->setVisible(true);
     start();
 }
  
