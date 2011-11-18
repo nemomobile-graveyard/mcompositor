@@ -39,15 +39,13 @@
   and the GL_EXT_framebuffer_object extension on the desktop.
 */
 
-#include <QtOpenGL> 
 #include <QList>
-#include <QScopedPointer>
-#include <mcompositewindowgroup.h>
-#include <mtexturepixmapitem_p.h>
+#include "mcompositewindowgroup.h"
 
-#include <mtexturepixmapitem.h>
-#include <mcompositemanager.h>
-#include <mcompositemanager_p.h>
+#include "mtexturepixmapitem.h"
+#include "mcompositemanager.h"
+#include "mcompositemanager_p.h"
+#include "mrender.h"
 
 #ifdef GLES2_VERSION
 #define FORMAT GL_RGBA
@@ -57,28 +55,75 @@
 #define DEPTH GL_DEPTH_COMPONENT
 #endif
 
-class MCompositeWindowGroupPrivate
+
+class MCompositeWindowGroupPrivate: public Item2DInterface
 {
 public:
-    MCompositeWindowGroupPrivate(MTexturePixmapItem* mainWindow)
-        :main_window(mainWindow),
-         texture(0),
-         fbo(0),
-         depth_buffer(0),
-         valid(false),
-         renderer(new MTexturePixmapPrivate(0, mainWindow))            
-    {       
-        renderer->inverted_texture = true;
-    }
-    MTexturePixmapItem* main_window;
+    MCompositeWindowGroupPrivate(MTexturePixmapItem* mainWindow, 
+                                 MCompositeWindowGroup* wg);
+
+    ~MCompositeWindowGroupPrivate();
+    QTransform transform() const;
+    virtual bool isVisible();
+    virtual bool hasAlpha();
+    virtual qreal opacity();
+
+private:
+    QPointer<MTexturePixmapItem> main_window;
     GLuint texture;
-    GLuint fbo;
+    QGLFramebufferObject* fbo;
     GLuint depth_buffer;
     
     bool valid;
     QList<MTexturePixmapItem*> item_list;
-    QScopedPointer<MTexturePixmapPrivate> renderer;
+    QPointer<MCompositeWindowGroup> group;
+   
+    friend class MCompositeWindowGroup;
 };
+
+MCompositeWindowGroupPrivate::MCompositeWindowGroupPrivate(MTexturePixmapItem* mw,
+                                                           MCompositeWindowGroup* wg)
+    :main_window(mw),
+     texture(0),
+     fbo(0),
+     depth_buffer(0),
+     valid(false),
+     group(wg)
+{               
+    MRender::setFboRendered(main_window, true);
+    setFboContainer(true);
+}
+
+MCompositeWindowGroupPrivate::~MCompositeWindowGroupPrivate()
+{
+    delete fbo;
+}
+
+QTransform MCompositeWindowGroupPrivate::transform() const
+{
+    if (group)
+        return group->sceneTransform();
+    return QTransform();
+}
+    
+bool MCompositeWindowGroupPrivate::isVisible()
+{
+    if (group)
+        return group->isVisible();
+    return false;
+}
+
+bool MCompositeWindowGroupPrivate::hasAlpha()
+{
+    // never render FBOs themselves as translucent unless
+    // we have a good reason!
+    return false;
+}
+
+qreal MCompositeWindowGroupPrivate::opacity()
+{
+    return 1.0;
+}
 
 /*!
   Creates a window group object. Specify the main window
@@ -86,15 +131,15 @@ public:
  */
 MCompositeWindowGroup::MCompositeWindowGroup(MTexturePixmapItem* mainWindow)
     :MCompositeWindow(0, MWindowDummyPropertyCache::get()),
-     d_ptr(new MCompositeWindowGroupPrivate(mainWindow))
-{
+     d_ptr(new MCompositeWindowGroupPrivate(mainWindow, this))
+{    
     MCompositeManager *p = (MCompositeManager *) qApp;
     p->scene()->addItem(this);
     
-    mainWindow->d->current_window_group = this;
-    connect(mainWindow, SIGNAL(destroyed()), SLOT(mainWindowDestroyed()));
     init();
     setZValue(mainWindow->zValue());
+    
+    MRender::addNode(this, d_ptr.data());
     stackBefore(mainWindow);
 }
 
@@ -111,24 +156,10 @@ MCompositeWindowGroup::~MCompositeWindowGroup()
                  __func__);
         return;
     }
-
-#ifdef GLES2_VERSION
-    // The stacking timout call below may call updatePixmap() - make sure this
-    // window group is not used.
-    foreach(const MTexturePixmapItem* pi, d->item_list) {
-        if (pi->d->current_window_group == this)
-            pi->d->current_window_group = 0;
-    }
-#endif
-
-    GLuint texture = d->texture;
-    glDeleteTextures(1, &texture);
-    GLuint depth_buffer = d->depth_buffer;
-    glDeleteRenderbuffers(1, &depth_buffer);
-    GLuint fbo = d->fbo;
-    glDeleteFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+    
+    if (d->main_window)
+        MRender::setFboRendered(d->main_window, false);
+    
     // if stacking is dirty, stack windows now, otherwise we paint the scene
     // according to the old stacking
     MCompositeManager *p = (MCompositeManager*)qApp;
@@ -140,58 +171,21 @@ void MCompositeWindowGroup::init()
 {
     Q_D(MCompositeWindowGroup);
     
-    if (!QGLContext::currentContext()) {
+    QGLContext* ctx = const_cast<QGLContext*>(QGLContext::currentContext());
+    if (!ctx || !d->main_window) {
         qWarning("MCompositeWindowGroup::%s(): no current GL context",
                  __func__);
         d->valid = false;
         return;
     }
-    d->renderer->current_window_group = this;
-    
-    glGenFramebuffers(1, &d->fbo);
-    glGenRenderbuffers(1, &d->depth_buffer);
-    glBindFramebuffer(GL_RENDERBUFFER, d->fbo);
-    
-    glGenTextures(1, &d->texture);
-    glBindTexture(GL_TEXTURE_2D, d->texture);
-    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    
-    glBindRenderbuffer(GL_RENDERBUFFER, d->depth_buffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, DEPTH, 
-                          d->main_window->boundingRect().width(), 
-                          d->main_window->boundingRect().height());
-
-    glBindFramebuffer(GL_FRAMEBUFFER, d->fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_2D, d->texture, 0);
-
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                              GL_RENDERBUFFER, d->depth_buffer);
-    
-    glBindTexture(GL_TEXTURE_2D, d->texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, FORMAT, 
-                 d->main_window->boundingRect().width(), 
-                 d->main_window->boundingRect().height(), 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    
-    GLenum ret = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (ret == GL_FRAMEBUFFER_COMPLETE)
-        d->valid = true;
-    else         
-        qWarning("MCompositeWindowGroup::%s(): incomplete FBO attachment 0x%x",
-                 __func__, ret);           
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);    
+    ctx->makeCurrent();
+    d->fbo = new QGLFramebufferObject(d->main_window->boundingRect().size().toSize(),
+                                      QGLFramebufferObject::Depth);    
 }
 
 static bool behindCompare(MTexturePixmapItem* a, MTexturePixmapItem* b)
 {
-    return a->indexInStack() < b->indexInStack();
+    return a->indexInStack() > b->indexInStack();
 }
 
 /*!
@@ -203,10 +197,17 @@ static bool behindCompare(MTexturePixmapItem* a, MTexturePixmapItem* b)
 bool MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
 {
     Q_D(MCompositeWindowGroup);
-    if (d->item_list.contains(window))
+    if (d->item_list.contains(window) || !d->main_window)
         return false;
-    window->d->current_window_group = this;
+
+    MRender::setFboRendered(window, true);
     connect(window, SIGNAL(destroyed()), SLOT(q_removeWindow()));
+
+    if (d->item_list.isEmpty())
+        d->main_window->stackBefore(window);
+    else
+        d->item_list.last()->stackBefore(window);
+    
     d->item_list.append(window);
     
     // ensure group windows are already stacked in proper order in advance
@@ -223,7 +224,8 @@ bool MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
 void MCompositeWindowGroup::removeChildWindow(MTexturePixmapItem* window)
 {
     Q_D(MCompositeWindowGroup);
-    window->d->current_window_group = 0;
+    
+    MRender::setFboRendered(window, false);
     d->item_list.removeOne(window);
     disconnect(window, SIGNAL(destroyed()), this, SLOT(q_removeWindow()));
 }
@@ -253,12 +255,6 @@ MCompositeWindow *MCompositeWindowGroup::topWindow() const
     return cw;
 }
 
-void MCompositeWindowGroup::mainWindowDestroyed()
-{
-    Q_D(MCompositeWindowGroup);
-    d->main_window = NULL;
-}
-
 void MCompositeWindowGroup::q_removeWindow()
 {
     Q_D(MCompositeWindowGroup);
@@ -286,22 +282,6 @@ void MCompositeWindowGroup::paint(QPainter* painter,
     Q_D(MCompositeWindowGroup);
     Q_UNUSED(options)
     Q_UNUSED(widget)
-
-    if (!d->main_window)
-        return;
-    if (painter->paintEngine()->type() != QPaintEngine::OpenGL2)
-        return;
-
-    glBindTexture(GL_TEXTURE_2D, d->texture);    
-    if (d->main_window->propertyCache()->hasAlphaAndIsNotOpaque() || 
-        opacity() < 1.0f) {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    }
-    d->renderer->drawTexture(painter->combinedTransform(), boundingRect(), 
-                             opacity());    
-    glBlendFunc(GL_ONE, GL_ZERO);
-    glDisable(GL_BLEND);
 }
 
 void MCompositeWindowGroup::windowRaised()
@@ -325,42 +305,27 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
         // is used in MTexturePixmapItemPrivate and is heavy, too
         return;
     }
-    if (!d->valid) {
+    if (!d->fbo->bind()) {
         qDebug() << "invalid fbo";
         return;
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, d->fbo);
-    GLenum ret = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (ret == GL_FRAMEBUFFER_COMPLETE)
-        d->valid = true;
-    else {
-        qWarning("MCompositeWindowGroup::%s(): incomplete FBO attachment 0x%x",
-                 __func__, ret); 
-        d->valid = false;
-    }
-    bool orig_value = d->main_window->d->inverted_texture;
-    d->main_window->d->inverted_texture = false;
+   
     // The redirection method is expected not to play with GL_FRAMEBUFFER.
     d->main_window->enableRedirectedRendering();
-    d->main_window->renderTexture(d->main_window->sceneTransform());
-    d->main_window->d->inverted_texture = orig_value;
     for (int i = 0; i < d->item_list.size(); ++i) {
         MTexturePixmapItem* item = d->item_list[i];
-        orig_value = item->d->inverted_texture;
-        item->d->inverted_texture = false;
         item->enableRedirectedRendering();
-        item->renderTexture(item->sceneTransform());
-        item->d->inverted_texture = orig_value;
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+    MRender::renderScene(true);
+    d->fbo->release();
 }
 
 // internal re-implementation from MCompositeWindow
 MTexturePixmapPrivate* MCompositeWindowGroup::renderer() const
 {
-    Q_D(const MCompositeWindowGroup);
-    return d->renderer.data();
+    return 0;
 }
 
 /*!
@@ -369,5 +334,6 @@ MTexturePixmapPrivate* MCompositeWindowGroup::renderer() const
 GLuint MCompositeWindowGroup::texture()
 {
     Q_D(MCompositeWindowGroup);
-    return d->texture;
+    return d->fbo->texture();
 }
+
