@@ -120,6 +120,7 @@ public:
         _MEEGOTOUCH_STATUSBAR_VISIBLE,
         _MEEGOTOUCH_NO_ANIMATIONS,
         _MCOMPOSITOR_SKIP_TASKBAR,
+        _MEEGOTOUCH_WM_SWAP_COUNTER,
 
         // set to 1 if there is a video overlay
         _OMAP_VIDEO_OVERLAY,
