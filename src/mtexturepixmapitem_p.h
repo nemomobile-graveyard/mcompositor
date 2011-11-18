@@ -23,7 +23,6 @@
 #include <QObject>
 #include <QRect>
 #include <QRegion>
-#include <QPointer>
 #include <QtOpenGL>
 #include <X11/Xlib.h>
 
@@ -39,48 +38,36 @@ class EglTextureManager;
 #endif
 
 #include "mtexturefrompixmap.h"
+#include "scenegraph/scenenode.h"
 
 class QGLWidget;
 class QGraphicsItem;
 class MTexturePixmapItem;
-class QGLContext;
 class QTransform;
-class MGLResourceManager;
-class MCompositeWindowShaderEffect;
-class MCompositeWindowGroup;
 
 /*! Internal private implementation of MTexturePixmapItem
   Warning! Interface here may change at any time!
  */
-class MTexturePixmapPrivate: QObject
+class MTexturePixmapPrivate: public Item2DInterface
 {
-    Q_OBJECT
 public:
     MTexturePixmapPrivate(Window window, MTexturePixmapItem *item);
     ~MTexturePixmapPrivate();
     void init();
     void updateWindowPixmap(XRectangle *rects = 0, int num = 0);
     void saveBackingStore();
-    void clearTexture();
     bool isDirectRendered() const;
     void resize(int w, int h);
-    void drawTexture(const QTransform& transform, const QRectF& drawRect,
-                     qreal opacity);
-    
-    void q_drawTexture(const QTransform& transform, const QRectF& drawRect,
-                       qreal opacity, bool texcoords_from_rect = false);
-    void q_drawTexture(const QTransform& transform, const QRectF& drawRect,
-                       qreal opacity, const GLvoid* texCoords);
-    void installEffect(MCompositeWindowShaderEffect* effect);
-    void paint(QPainter *painter);
-    void renderTexture(const QTransform& transform);
-    static GLuint installPixelShader(const QByteArray& code);
+    // \re-imp
+    virtual QTransform transform() const;
+    virtual bool isVisible();
+    virtual bool hasAlpha();
+    virtual qreal opacity();
+    // \re-imp
                 
-    static QGLContext *ctx;
     static QGLWidget *glwidget;
     Window window;
     MTextureFromPixmap TFP;
-    bool inverted_texture;
     bool direct_fb_render;
 
     QRect brect;
@@ -89,11 +76,6 @@ public:
     qreal angle;
 
     MTexturePixmapItem *item;
-    QPointer<MCompositeWindowShaderEffect> current_effect;
-#ifdef GLES2_VERSION
-    QPointer<MCompositeWindowGroup> current_window_group;
-#endif
-    const MCompositeWindowShaderEffect *prev_effect;
 
     // Contains a limited number of server times we received damage
     // notifications for this window.  Only used by the EGL variant
@@ -107,11 +89,6 @@ public:
     static EglTextureManager *texman;
     static EglResourceManager *eglresource;
 #endif
-    static MGLResourceManager* glresource;
-
-private slots:
-    void activateEffect(bool enabled);
-    void removeEffect();
 };
 
 #endif //DUITEXTUREPIXMAPITEM_P_H
