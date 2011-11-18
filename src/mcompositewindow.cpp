@@ -16,7 +16,6 @@
 ** of this file.
 **
 ****************************************************************************/
-
 #include "mcompositewindow.h"
 #include "mcompositewindowanimation.h"
 #include "mcompositemanager.h"
@@ -28,6 +27,7 @@
 #include "msplashscreen.h"
 #include "mdynamicanimation.h"
 #include "mdevicestate.h"
+#include "mrender.h"
 
 #include <syslog.h>
 #include <QX11Info>
@@ -36,6 +36,8 @@
 #include <X11/Xatom.h>
 
 int MCompositeWindow::window_transitioning = 0;
+static XSyncValue consumed;
+static bool init_xsyncconsumed = false;
 
 MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
                                    MWindowPropertyCache *mpc, 
@@ -57,8 +59,19 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       resize_expected(false),
       painted_after_mapping(false),
       allow_delete(false),
+      is_synced(false),
+      init_sync_objects(false),
+      item_node(0,0),
+#ifdef HAVE_XSYNC
+      swap_counter(0),
+      sync_alarm(0),
+#endif
       win_id(window)
 {
+    if (!init_xsyncconsumed) {
+        XSyncIntToValue(&consumed, COMPOSITE_PIXMAP_CONSUMED);
+        init_xsyncconsumed = true;
+    }
     const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
 
     if (!mpc || (mpc && !mpc->is_valid && !mpc->isVirtual())) {
@@ -67,6 +80,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         return;
     }
     connect(mpc, SIGNAL(iconGeometryUpdated()), SLOT(updateIconGeometry()));
+    connect(mpc, SIGNAL(swapCounterChanged()), SLOT(initSyncCounters()));
 
     t_ping = new QTimer(this);
     t_ping->setInterval(mc->configInt("ping-interval-ms"));
@@ -112,7 +126,13 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 
 MCompositeWindow::~MCompositeWindow()
 {
+    MRender::freeNode(this);
     MCompositeManager *p = (MCompositeManager *) qApp;
+    // reset and destroy counter
+    if (isSynced()) {
+        resetSyncCounter();
+        clearSyncObjects();
+    }
     in_destructor = true;
 
     endAnimation();    
@@ -388,9 +408,11 @@ void MCompositeWindow::resize(int, int)
 
 void MCompositeWindow::q_fadeIn()
 {
-    newly_mapped = false;
-    setVisible(true);
-    updateWindowPixmap();
+    // newly_mapped = false;
+    // setZValue(-1);
+    // setVisible(true);
+    // updateWindowPixmap();
+    // setVisible(false);
     newly_mapped = true;
     
     iconified = false;
@@ -736,6 +758,7 @@ QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant 
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
     if (change == ItemZValueHasChanged) {
+        MRender::setNodePosition(this, value.toReal());
         p->d->setWindowDebugProperties(window());
     }
 
@@ -842,16 +865,89 @@ bool MCompositeWindow::isMapped() const
     return pc ? pc->isMapped() : false;
 }
 
-MCompositeWindowGroup* MCompositeWindow::group() const
-{
-#ifdef GLES2_VERSION
-    return renderer()->current_window_group;
-#else
-    return 0;
-#endif
-}
-
 MCompositeWindowAnimation* MCompositeWindow::windowAnimator() const
 {
     return animator;
 }
+
+
+#ifdef HAVE_XSYNC
+
+static XSyncAlarm createSyncAlarm(XSyncCounter counter)
+{
+    XSyncAlarm sync_alarm;
+    Display* dpy = QX11Info::display();
+    
+    XSyncAlarmAttributes attrs;
+    attrs.trigger.counter = counter;
+    attrs.trigger.value_type = XSyncAbsolute;
+    attrs.trigger.test_type = XSyncNegativeTransition;
+    XSyncIntToValue( &attrs.delta, 0 );
+    XSyncIntToValue( &attrs.trigger.wait_value, COMPOSITE_PIXMAP_READY );
+    sync_alarm = XSyncCreateAlarm( dpy,  XSyncCACounter | XSyncCAValueType | 
+                                   XSyncCATestType | XSyncCAValue | 
+                                   XSyncCADelta, &attrs );
+    return sync_alarm;
+}
+
+void MCompositeWindow::initSyncCounters()
+{    
+    if (swap_counter > 0) 
+        clearSyncObjects();
+    
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    swap_counter = pc->swapCounter();
+    ((MGLWidget*)p->d->glwidget)->setSwapCounter(swap_counter);
+    resetSyncCounter();
+    
+    sync_alarm = createSyncAlarm(swap_counter);
+    p->d->synced_windows[sync_alarm] = this;
+    init_sync_objects = true;
+}
+
+bool MCompositeWindow::isSynced()
+{
+    if (!is_synced) {
+        is_synced = pc && pc->swapCounter() > 0;        
+        if (is_synced && !init_sync_objects) 
+            initSyncCounters();
+    }
+    
+    return is_synced;
+}
+
+MCompositeWindow* MCompositeWindow::syncedWindow(Qt::HANDLE syncalarm)
+{
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    return p->d->synced_windows.value(syncalarm, 0); 
+}
+
+void MCompositeWindow::processSyncCounter()
+{
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    MGLWidget* g = (MGLWidget*)p->d->glwidget;
+    
+    // should be atomic
+    
+    g->setSwapCounter(swap_counter);
+    if (p->isCompositing()) {
+        updateWindowPixmap();
+    } else {
+        resetSyncCounter();
+    }
+    // end atomic
+}
+
+void MCompositeWindow::resetSyncCounter()
+{
+    XSyncSetCounter(QX11Info::display(), swap_counter, consumed);
+}
+
+void MCompositeWindow::clearSyncObjects()
+{
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    p->d->synced_windows.remove(sync_alarm);
+    XSyncDestroyAlarm(QX11Info::display(), sync_alarm);
+    XSyncDestroyCounter(QX11Info::display(), swap_counter);
+}
+#endif

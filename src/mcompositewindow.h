@@ -26,11 +26,16 @@
 #include <X11/Xutil.h>
 #include <mwindowpropertycache.h>
 
+#ifdef HAVE_XSYNC
+#include <X11/extensions/sync.h>
+#endif
+
 class MCompWindowAnimator;
 class MTexturePixmapPrivate;
 class MCompositeWindowGroup;
 class MCompositeWindowAnimation;
 class McParallelAnimation;
+class SceneNode;
 
 /*!
  * This is the base class for composited window items. It provided general
@@ -169,7 +174,9 @@ public:
     void receivedPing(ulong timeStamp);
 
     static MCompositeWindow *compositeWindow(Qt::HANDLE window);
-
+#ifdef HAVE_XSYNC
+    static MCompositeWindow* syncedWindow(Qt::HANDLE syncalarm);
+#endif
     /*!
      * Ensures that the corresponding texture reflects the contents of the
      * associated pixmap and schedules a redraw of this item.
@@ -187,6 +194,11 @@ public:
       Clears the texture that is associated with the offscreen pixmap
      */
     virtual void clearTexture() = 0;
+    
+    /*!
+      Returns the texture used by this window
+     */
+    virtual GLuint texture() = 0;
 
     /*!
       Returns pixmap for the window.
@@ -256,12 +268,6 @@ public:
      */
     MCompositeWindow* behind() const;
 
-    /*!
-     *  Returns a pointer to this window's group if it belongs to a group and 0
-     * if 0 if not a member
-     */
-    MCompositeWindowGroup* group() const;
-
     bool paintedAfterMapping() const { return painted_after_mapping; }
     /*!
      * Needed for the startup time.
@@ -273,6 +279,15 @@ public:
 
     void startCloseTimer();
     void stopCloseTimer();
+
+#ifdef HAVE_XSYNC
+    /*!
+     * Returns whether this window has synced swapbuffers with the compositor
+     */     
+    bool isSynced();
+    void processSyncCounter();
+    void resetSyncCounter();
+#endif
 
      /*!
       * This is called whenever a start of window animation occurs.
@@ -286,7 +301,9 @@ public:
 
     void dumpStateAndDie();
 public slots:
-
+#ifdef HAVE_XSYNC
+    void initSyncCounters();
+#endif
     void updateIconGeometry();
     void startTransition();
     
@@ -347,12 +364,14 @@ signals:
     /*! Emitted when a damage event was received */
     void damageReceived(MCompositeWindow *window);
 
-protected:
+ protected:
 
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);    
     virtual QPainterPath shape() const;
         
 private:
+    void clearSyncObjects();    
+
     /* re-implemented in GL/GLES2 backends for internal interaction
       between shader effects */
     virtual MTexturePixmapPrivate* renderer() const = 0;
@@ -376,6 +395,8 @@ private:
     bool resize_expected;
     bool painted_after_mapping;
     bool allow_delete;
+    bool is_synced;
+    bool init_sync_objects;
 
     static int window_transitioning;
 
@@ -384,6 +405,13 @@ private:
     QTimer *damage_timer;
     QElapsedTimer deferred_delete_later_timer;
     QTimer close_timer;
+    // Transform - Geometry pair;
+    QPair<SceneNode*, SceneNode*> item_node;
+
+#ifdef HAVE_XSYNC
+    XSyncCounter swap_counter;
+    XSyncAlarm   sync_alarm;
+#endif
     Qt::HANDLE win_id;
 
     friend class MTexturePixmapPrivate;
@@ -391,6 +419,7 @@ private:
     friend class MCompositeWindowAnimation;
     friend class MChainedAnimation;
     friend class McParallelAnimation;
+    friend class MRender;
     friend class ut_Anim;
     friend class ut_Compositing;
     friend class ut_splashscreen;
