@@ -20,6 +20,7 @@
 #include <QtGui>
 #include <QGLWidget>
 #include "mcompositescene.h"
+#include "mrender.h"
 #include "mcompositemanager.h"
 
 // @plugindir ?
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
     MCompositeManager app(argc, argv);
 
     QGraphicsScene *scene = app.scene();
-    QGraphicsView view(scene);
+    MGraphicsView view(scene);
     
     view.setFrameStyle(0);
     view.setProperty("NoMStyle", true);
@@ -73,7 +74,7 @@ int main(int argc, char *argv[])
     fmt.setSamples(0);
     fmt.setSampleBuffers(false);
 
-    QGLWidget *w = new QGLWidget(fmt);
+    MGLWidget *w = new MGLWidget(fmt);
     w->setAttribute(Qt::WA_PaintOutsidePaintEvent);
     if (!app.isEgl()) {
         QPalette p = w->palette();
@@ -88,7 +89,6 @@ int main(int argc, char *argv[])
                       QApplication::desktop()->height());
     app.setGLWidget(w);
     view.setViewport(w);
-    w->makeCurrent();
 
     int testPlugin;
     const QStringList &args = app.arguments();
