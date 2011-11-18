@@ -22,6 +22,7 @@
 #include "mcompositewindowgroup.h"
 #include "mcompositewindowanimation.h"
 #include "mcompositemanager.h"
+#include "mrender.h"
 
 #include <QPainterPath>
 #include <QRect>
@@ -83,14 +84,32 @@ private:
 
 EglTextureManager *MTexturePixmapPrivate::texman = 0;
 
+static Atom comp_msg_atom;
+//  value is 0: direct rendering, 1: redirected
+static void set_composited_status(const MCompositeWindow *win, int value)
+{ 
+    XEvent ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.xclient.type = ClientMessage;
+    ev.xclient.message_type = comp_msg_atom;
+    ev.xclient.window = win->window();
+    ev.xclient.format = 32;
+    ev.xclient.data.l[0] = value;
+    ev.xclient.data.l[1] = CurrentTime;
+    XSendEvent(QX11Info::display(), win->window(), False, NoEventMask, &ev);
+}
+
 void MTexturePixmapItem::init()
 {
     if ((!isValid() && !propertyCache()->isVirtual())
         || propertyCache()->isInputOnly())
         return;
     
-    if (!d->texman)
+    if (!d->texman) {
+        comp_msg_atom = XInternAtom(QX11Info::display(),
+                                    "_MEEGOTOUCH_COMPOSITED_STATUS", False);
         d->texman = new EglTextureManager;
+    }
     
     d->TFP.textureId = d->texman->getTexture();
     glEnable(GL_TEXTURE_2D);
@@ -102,7 +121,6 @@ void MTexturePixmapItem::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
-    d->inverted_texture = d->TFP.invertedTexture();
     d->saveBackingStore();
     if (propertyCache()->isVirtual())
         // splash screen hasn't loaded the pixmap yet
@@ -113,6 +131,10 @@ void MTexturePixmapItem::init()
     d->damageRetryTimer.setSingleShot(true);
     connect(&d->damageRetryTimer, SIGNAL(timeout()),
             SLOT(updateWindowPixmapProxy()));
+    
+    // initially composited due to XCompositeRedirectSubwindows
+    set_composited_status(this, 1);
+    resetSyncCounter();
 }
 
 MTexturePixmapItem::MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
@@ -121,6 +143,7 @@ MTexturePixmapItem::MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
       d(new MTexturePixmapPrivate(window, this))
 {
     init();
+    MRender::addNode(this, d);
 }
 
 void MTexturePixmapItem::enableDirectFbRendering()
@@ -134,11 +157,14 @@ void MTexturePixmapItem::enableDirectFbRendering()
 
     Drawable pixmap = d->TFP.drawable;
     d->TFP.unbind();
+    
     if (pixmap)
         XFreePixmap(QX11Info::display(), pixmap);
 
     XCompositeUnredirectWindow(QX11Info::display(), window(),
                                CompositeRedirectManual);
+    resetSyncCounter();
+    set_composited_status(this, 0);
 }
 
 void MTexturePixmapItem::enableRedirectedRendering()
@@ -151,6 +177,8 @@ void MTexturePixmapItem::enableRedirectedRendering()
     d->direct_fb_render = false;
     XCompositeRedirectWindow(QX11Info::display(), window(),
                              CompositeRedirectManual);
+    
+    set_composited_status(this, 1);    
     saveBackingStore();
     updateWindowPixmap();
 }
@@ -244,10 +272,8 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
         d->TFP.update();
         MCompositeManager *m = (MCompositeManager*)qApp;
         if (!m->disableRedrawingDueToDamage()) {
-            if (!d->current_window_group) 
-                d->glwidget->update();
-            else
-                d->current_window_group->updateWindowPixmap();
+            // use our own scheduler to swap buffers immediately
+            d->glwidget->repaint();
         }
     }
     propertyCache()->damageSubtract();

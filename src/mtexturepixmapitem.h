@@ -76,6 +76,8 @@ public:
      */
     void clearTexture();
 
+    GLuint texture();
+
     /*!
       Returns true if the window corresponding to the offscreen pixmap
       is rendering directly to the framebuffer, otherwise return false.
@@ -112,6 +114,8 @@ private:
     friend class MCompositeWindowShaderEffect;
     friend class MCompositeWindowGroupPrivate;
     friend class MCompositeWindowGroup;
+    friend class SgManager;
+    friend class MCompositeScene;
     friend class ut_Anim;
     friend class ut_Compositing;
     friend class ut_splashscreen;
