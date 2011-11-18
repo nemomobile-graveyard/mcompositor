@@ -24,12 +24,16 @@
 #include <QVector>
 #include <QGLShaderProgram>
 
+#include <texturecoords.h>
+
 class QTransform;
 class QRectF;
 class MCompositeWindowShaderEffect;
 class MTexturePixmapPrivate;
 class MCompositeWindow;
 class MCompositeWindowShaderEffectPrivate;
+class EffectNode;
+class GeometryNode;
 
 class MCompositeWindowShaderEffect: public QObject
 {
@@ -38,7 +42,8 @@ class MCompositeWindowShaderEffect: public QObject
     MCompositeWindowShaderEffect(QObject* parent = 0);
     virtual ~MCompositeWindowShaderEffect();
     
-    GLuint installShaderFragment(const QByteArray& code);
+    GLuint installShader(const QByteArray& fragment,
+                         const QByteArray& vertex = QByteArray());
     GLuint texture() const;
     void setActiveShaderFragment(GLuint id);
     GLuint activeShaderFragment() const;
@@ -47,6 +52,21 @@ class MCompositeWindowShaderEffect: public QObject
     void removeEffect(MCompositeWindow* window);
     bool enabled() const;
 
+    /* Primitives */
+    int addQuad(GLuint textureId, 
+                const QRectF& geometry, 
+                const TextureCoords& texcoords = TextureCoords(),
+                bool parent_transform = true,
+                bool has_alpha = false,
+                GLuint fragshaderId = 0);
+    void setQuadVisible(int id, bool visible);
+    void setQuadGeometry(int id, const QRectF& geometry);
+    const QRectF& quadGeometry(int id);
+    
+    /* Painting control */
+    void setWindowGeometry(const QRectF& geometry, 
+                           Qt::AspectRatioMode mode = Qt::IgnoreAspectRatio);
+    
  public slots:
     void setEnabled(bool enabled);
 
@@ -54,53 +74,28 @@ class MCompositeWindowShaderEffect: public QObject
     void enabledChanged( bool enabled);
     
  protected: 
+    virtual void render();
+    
     MCompositeWindow* currentWindow();
-    void drawSource(const QTransform &transform,
-                    const QRectF &drawRect, qreal opacity,
-                    bool texcoords_from_rect = false);
-    void drawSource(const QTransform &transform,
-                    const QRectF &drawRect, qreal opacity,
-                    const GLvoid* texCoords);
-    virtual void drawTexture(const QTransform &transform,
-                             const QRectF &drawRect, qreal opacity) = 0;
     virtual void setUniforms(QGLShaderProgram* program);
 
  private:    
     /* \cond */
     const QVector<GLuint>& fragmentIds() const;
+    int addQuad(GeometryNode*);
+    EffectNode* effectNode() const;
+    void hookWindowNode(GeometryNode* node);
+    // for node manager
+    QVector<GeometryNode*>& customQuads();
 
     MCompositeWindowShaderEffectPrivate* d;
     friend class MTexturePixmapPrivate;
     friend class MCompositeWindowShaderEffectPrivate;
+    friend class MRender;
     /* \endcond */
 
  private slots:
     void compWindowDestroyed();
 };
 
-/* \cond
- * Internal class. Do not use! Not part of public API
- */
-class MCompositeWindowShaderEffectPrivate
-{
- public:    
-    void drawTexture(MTexturePixmapPrivate* render,
-                     const QTransform &transform,
-                     const QRectF &drawRect, qreal opacity);
-
- private:
-    explicit MCompositeWindowShaderEffectPrivate(MCompositeWindowShaderEffect*);
-    
-    MCompositeWindowShaderEffect* effect;
-    MTexturePixmapPrivate* priv_render;
-    MCompositeWindow *comp_window;
-    QVector<GLuint> pixfrag_ids;
-    GLuint active_fragment;
-    
-    bool enabled;
-
-    friend class MCompositeWindowShaderEffect;
-};
-
-/* \endcond */
 #endif

@@ -33,10 +33,47 @@
 */
 
 #include "mtexturepixmapitem.h"
+#include "msplashscreen.h"
 #include "mcompositewindowshadereffect.h"
 #include "mtexturepixmapitem_p.h"
 #include "mcompositewindowgroup.h"
+#include "mrender.h"
+#include "scenegraph/scenenode.h"
+#include "scenegraph/scenerender.h"
+
 #include <QByteArray>
+
+/* \cond
+ * Internal class. Do not use! Not part of public API
+ */
+class MCompositeWindowShaderEffectPrivate: public EffectInterface
+{
+ public:    
+    void currentNodeProcessed(SceneNode*);
+
+    void setUniforms(QGLShaderProgram* program);
+    ~MCompositeWindowShaderEffectPrivate();
+
+ private:
+    explicit MCompositeWindowShaderEffectPrivate(MCompositeWindowShaderEffect*);
+    
+    MCompositeWindowShaderEffect* effect;
+    MTexturePixmapPrivate* priv_render;
+    MCompositeWindow *comp_window;
+    QVector<GLuint> pixfrag_ids;
+    QVector<GeometryNode*> custom_quads;
+    // Windows nodes where this effect is hooked
+    QVector<GeometryNode*> hooked_windows;
+    GLuint active_fragment;
+    EffectNode* effect_node;
+    GeometryNode* current_node;
+    
+    bool enabled;
+
+    friend class MCompositeWindowShaderEffect;
+};
+
+/* \endcond */
 
 static const char default_frag[] = "\
     lowp vec4 customShader(lowp sampler2D imageTexture, highp vec2 textureCoords) { \
@@ -47,18 +84,31 @@ MCompositeWindowShaderEffectPrivate::MCompositeWindowShaderEffectPrivate(MCompos
     :effect(e),
      priv_render(0),
      comp_window(0),
-     active_fragment(0)
+     active_fragment(0),
+     current_node(0)
 {
+    effect_node = new EffectNode();
+    effect_node->setEffectHandler(this);
 }
 
-void MCompositeWindowShaderEffectPrivate::drawTexture(MTexturePixmapPrivate* render,
-                                                      const QTransform &transform,
-                                                      const QRectF &drawRect,
-                                                      qreal opacity)
+MCompositeWindowShaderEffectPrivate::~MCompositeWindowShaderEffectPrivate()
 {
-    priv_render = render;
-    effect->drawTexture(transform, drawRect, opacity);
-    enabled = false;
+    MRender::freeNode(effect);
+    delete effect_node;
+}
+
+void MCompositeWindowShaderEffectPrivate::currentNodeProcessed(SceneNode* n)
+{
+    current_node = static_cast<GeometryNode*> (n);
+    current_node->setShaderId(active_fragment);
+    // qDebug() << __func__ << "shader id" << active_fragment;
+    effect->render();
+}
+
+
+void MCompositeWindowShaderEffectPrivate::setUniforms(QGLShaderProgram* program)
+{
+    effect->setUniforms(program);
 }
 
 /*!
@@ -70,7 +120,7 @@ MCompositeWindowShaderEffect::MCompositeWindowShaderEffect(QObject* parent)
 {    
     // install default pixel shader
     QByteArray code = default_frag;
-    d->active_fragment = installShaderFragment(code);
+    d->active_fragment = installShader(code);
 }
 
 /*!
@@ -79,6 +129,7 @@ MCompositeWindowShaderEffect::MCompositeWindowShaderEffect(QObject* parent)
 */
 MCompositeWindowShaderEffect::~MCompositeWindowShaderEffect()
 {
+    delete d;
 }
 
 /*!
@@ -102,11 +153,10 @@ MCompositeWindowShaderEffect::~MCompositeWindowShaderEffect()
   
   \sa setUniforms()
 */   
-GLuint MCompositeWindowShaderEffect::installShaderFragment(const QByteArray& code)
+GLuint MCompositeWindowShaderEffect::installShader(const QByteArray& fragment,
+                                                   const QByteArray& vertex)
 {
-    GLuint id = MTexturePixmapPrivate::installPixelShader(code);
-    d->pixfrag_ids.push_back(id);
-    return id;
+    return SceneRender::installPixelShader(fragment, vertex);
 }
 
  /*!
@@ -117,10 +167,7 @@ GLuint MCompositeWindowShaderEffect::texture() const
     // TODO: This assumes we have always have hadware TFP support 
     if (d->priv_render) {
 #ifdef GLES2_VERSION
-        if (!d->priv_render->current_window_group)
-            return d->priv_render->TFP.textureId;
-        else
-            return d->priv_render->current_window_group->texture();
+        return d->priv_render->TFP.textureId;
 #else
         return d->priv_render->TFP.textureId;
 #endif
@@ -164,41 +211,6 @@ GLuint MCompositeWindowShaderEffect::activeShaderFragment() const
 */
 
 /*!
-  Draws currently bound source window texture. Specify a transformation matrix to
-  \a transform and texture geometry to \a drawRect. Opacity can be set
-  by specifying \a opacity (0.0 - 1.0). 
-  This function should only be called inside drawTexture()      
-*/
-void MCompositeWindowShaderEffect::drawSource(const QTransform &transform, 
-                                              const QRectF &drawRect, 
-                                              qreal opacity,
-                                              bool texcoords_from_rect)
-{
-    if (d->priv_render)
-        d->priv_render->q_drawTexture(transform, drawRect, opacity,
-                                      texcoords_from_rect);
-}
-
-/*!
-  Draws currently bound source window texture. Specify a transformation matrix to
-  \a transform and texture geometry to \a drawRect. Opacity can be set
-  by specifying \a opacity (0.0 - 1.0). \a texCoords specifies custom texture
-  coordinates.
-  This function should only be called inside drawTexture()
-*/
-void MCompositeWindowShaderEffect::drawSource(const QTransform &transform,
-                                              const QRectF &drawRect,
-                                              qreal opacity,
-                                              const GLvoid* texCoords)
-{
-    if (d->priv_render) {
-        d->priv_render->q_drawTexture(transform, drawRect, opacity,
-                                      texCoords);
-    }
-}
-
-
-/*!
   Install this effect on a composite window object \a window. Note that
   we override QGraphicsItem::setGraphicsEffect() because
   we have a completely different painting engine.
@@ -206,23 +218,17 @@ void MCompositeWindowShaderEffect::drawSource(const QTransform &transform,
 */
 void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 {
-    if (!window)
+    if (!window || (!window->isValid() && 
+                    (window->type() != MCompositeWindowGroup::Type)))
         return;
-    if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
-        return;
-
-    if (d->comp_window != window) {
-        if (d->comp_window)
-            disconnect(d->comp_window, SIGNAL(destroyed()),
-                       this, SLOT(compWindowDestroyed()));
+    
+    if (d->comp_window != window) 
         d->comp_window = window;
-        connect(d->comp_window, SIGNAL(destroyed()), SLOT(compWindowDestroyed()));
-    }
 
 #ifdef QT_OPENGL_LIB
-    MTexturePixmapPrivate* renderer = window->renderer();
-    if (renderer && renderer->current_effect != this)
-        renderer->installEffect(this);
+    if (window) {
+        MRender::addNode(this, window);
+    }
 #endif
 }
 
@@ -231,18 +237,17 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
   the effect the window will use default shaders.
 */
 void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
-{
-    if (window != d->comp_window)
-        return;
-    if (d->comp_window)
-        disconnect(d->comp_window, SIGNAL(destroyed()),
-                   this, SLOT(compWindowDestroyed()));
-    d->comp_window = 0;
+{    
 #ifdef QT_OPENGL_LIB
     if (window) {
-        MTexturePixmapPrivate* renderer = window->renderer();
-        if (renderer && renderer->current_effect == this)
-            renderer->installEffect(0);
+        d->current_node = static_cast<GeometryNode*>(window->item_node.second);
+        if (d->current_node) {
+            
+            setWindowGeometry(window->boundingRect());
+            // reset shaders
+            d->current_node->setShaderId(0);
+        }
+        MRender::clearNode(window);
     }
 #endif
 }
@@ -287,4 +292,77 @@ void MCompositeWindowShaderEffect::setUniforms(QGLShaderProgram* program)
 MCompositeWindow* MCompositeWindowShaderEffect::currentWindow()
 {
     return d->comp_window;
+}
+
+EffectNode* MCompositeWindowShaderEffect::effectNode() const
+{
+    return d->effect_node;
+}
+
+/* Primitives */
+int MCompositeWindowShaderEffect::addQuad(GLuint textureId, 
+                                          const QRectF& geometry,
+                                          const TextureCoords& texcoords,
+                                          bool parent_transform,
+                                          bool has_alpha,
+                                          GLuint fragshaderId)
+{
+    return MRender::addNode(this, geometry, texcoords,
+                              parent_transform, has_alpha, textureId);
+}
+
+QVector<GeometryNode*>& MCompositeWindowShaderEffect::customQuads()
+{
+    return d->custom_quads;
+}
+
+void MCompositeWindowShaderEffect::setQuadVisible(int id, bool visible)
+{
+    GeometryNode* node = d->custom_quads.value(id, 0);
+    if (node)
+        node->setVisible(visible);
+}
+
+void MCompositeWindowShaderEffect::setQuadGeometry(int id, const QRectF& geometry)
+{
+    GeometryNode* node = d->custom_quads.value(id, 0);
+    if (node && (node->geometry() != geometry))
+        node->setGeometry(geometry);
+}
+
+const QRectF& MCompositeWindowShaderEffect::quadGeometry(int id)
+{
+    static QRectF r;
+
+    GeometryNode* node = d->custom_quads.value(id, 0);
+    if (node)
+        return node->geometry();
+    
+    return r;
+}
+
+int MCompositeWindowShaderEffect::addQuad(GeometryNode* node)
+{
+    d->custom_quads.append(node);
+    return d->custom_quads.indexOf(node);
+}
+
+void MCompositeWindowShaderEffect::render()
+{
+    /*NOOP*/
+    //qDebug() << __func__;
+}
+
+void MCompositeWindowShaderEffect::setWindowGeometry(const QRectF& geometry,
+                                                     Qt::AspectRatioMode mode)
+{
+    if (!d->current_node || d->current_node->geometry() == geometry)
+        return;
+ 
+    MRender::setNodeGeometry(d->current_node, geometry, mode);
+}
+
+void MCompositeWindowShaderEffect::hookWindowNode(GeometryNode* node)
+{
+    d->hooked_windows.append(node);
 }
