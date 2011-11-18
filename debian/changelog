@@ -1,6 +1,7 @@
-mcompositor (1.1.27-1~unreleased) unstable; urgency=low
+mcompositor (1.1.27-1) unstable; urgency=low
 
-  * foo
+  * Fixes: NB#290569 - Bad performance of swipe up animation for
+    call/alarm/reminder from lock screen
 
  -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Thu, 17 Nov 2011 17:59:47 +0200
 
