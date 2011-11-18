@@ -4722,7 +4722,7 @@ void MSGrabber::commit()
 void MSGrabber::reinforce()
 {
     Q_ASSERT(has_grab && mercytimer.isActive());
-    if (!has_grab) {
+    if (has_grab) {
         mercytimer.start();
     }
 }
