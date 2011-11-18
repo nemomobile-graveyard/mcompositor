@@ -23,6 +23,7 @@
 #include "mdevicestate.h"
 #include "mcompositewindowanimation.h"
 #include "mcompatoms_p.h"
+#include "mrender.h"
 
 #include <X11/Xatom.h>
 
@@ -127,6 +128,8 @@ MSplashScreen::MSplashScreen(unsigned int splash_pid,
     }
     connect(this, SIGNAL(itemIconified(MCompositeWindow*)),
             this, SLOT(iconified()));
+    
+    MRender::setWindowGeometry(this, QApplication::desktop()->geometry());
 }
 
 MSplashScreen::~MSplashScreen()
