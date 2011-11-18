@@ -36,6 +36,9 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xdamage.h>
 #include <X11/Xlib-xcb.h>
+#ifdef HAVE_XSYNC
+#include <X11/extensions/sync.h>
+#endif
 
 #include "mrestacker.h"
 
@@ -43,7 +46,6 @@ class QGraphicsScene;
 class QGLWidget;
 
 class MCompositeManager;
-class MCompositeScene;
 class MSimpleWindowFrame;
 class MCompAtoms;
 class MCompositeWindow;
@@ -86,6 +88,9 @@ public:
     void positionWindow(Window w, bool on_top);
     void addItem(MCompositeWindow *item);
     void damageEvent(XDamageNotifyEvent *);
+#ifdef HAVE_XSYNC
+    void syncEvent(XSyncAlarmNotifyEvent *);
+#endif
     void createEvent(XCreateWindowEvent *);
     void destroyEvent(XDestroyWindowEvent *);
     void propertyEvent(XPropertyEvent *);
@@ -136,7 +141,7 @@ public:
 
     void addMapInformation(bool map, MWindowPropertyCache *pc);
 
-    MCompositeScene *watch;
+    QGraphicsScene *watch;
     Window localwin, localwin_parent, wm_window;
     Window xoverlay;
     Window prev_focus;
@@ -170,6 +175,9 @@ public:
     // they belong to.  When an X window is destroyed its objects are
     // deleteLater()ed and removed from these maps.
     QHash<Window, MCompositeWindow *> windows;
+#ifdef HAVE_XSYNC
+    QHash<XSyncAlarm, MCompositeWindow *> synced_windows;
+#endif
     QHash<Window, MWindowPropertyCache*> prop_caches;
 
 #ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
@@ -188,6 +196,10 @@ public:
 
     int damage_event;
     int damage_error;
+#ifdef HAVE_XSYNC
+    int sync_event;
+    int sync_error;
+#endif
 
     bool compositing;
     bool overlay_mapped;

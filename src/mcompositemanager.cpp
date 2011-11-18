@@ -40,7 +40,6 @@
 #include "mtexturepixmapitem_p.h"
 #include "mcompositemanager.h"
 #include "mcompositemanager_p.h"
-#include "mcompositescene.h"
 #include "msimplewindowframe.h"
 #include "mdecoratorframe.h"
 #include "mdevicestate.h"
@@ -50,6 +49,7 @@
 #include "mcompositordebug.h"
 #include "msplashscreen.h"
 #include "mcompositewindowanimation.h"
+#include "mrender.h"
 
 #include <QX11Info>
 #include <QByteArray>
@@ -436,11 +436,13 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
     xserver_stacking.init(QX11Info::display());
 
-    watch = new MCompositeScene(this);
+    watch = new QGraphicsScene(this);
+    watch->setSceneRect(QRect(0, 0, QApplication::desktop()->width(),
+                              QApplication::desktop()->height()));
     MCompAtoms::init();
 
     device_state = new MDeviceState(this);
-    watch->keep_black = device_state->displayOff();
+    MRender::setClearedScene(device_state->displayOff());
     connect(device_state, SIGNAL(displayStateChange(bool)),
             this, SLOT(displayOff(bool)));
     connect(device_state, SIGNAL(callStateChange(bool)),
@@ -524,6 +526,34 @@ static void setup_key_grabs()
     }
 }
 
+static int error_handler(Display * , XErrorEvent *error)
+{
+    if (error->resourceid == QX11Info::appRootWindow()
+        && error->error_code == BadAccess) {
+        qCritical("Another window manager is running.");
+        ::exit(0);
+    }
+    /*if (error->error_code == BadMatch)
+        qDebug() << "Bad match error " << error->resourceid;*/
+
+    return 0;
+}
+
+static void prepare_root(bool skip_wm_check)
+{
+    Display *dpy = QX11Info::display();
+    Window root =  QX11Info::appRootWindow();
+
+    // All newly mapped windows should be redirected to avoid double Expose
+    XCompositeRedirectSubwindows(dpy, root, CompositeRedirectManual);
+
+    XSelectInput(dpy, root, SubstructureNotifyMask | SubstructureRedirectMask
+                            | StructureNotifyMask | PropertyChangeMask
+                            | FocusChangeMask);
+    if (!skip_wm_check)
+        XSetErrorHandler(error_handler);
+}
+
 void MCompositeManagerPrivate::prepare()
 {
     MDecoratorFrame::instance();
@@ -562,6 +592,10 @@ void MCompositeManagerPrivate::prepare()
     localwin_parent = xoverlay;
 
     XDamageQueryExtension(QX11Info::display(), &damage_event, &damage_error);
+#ifdef HAVE_XSYNC    
+	if(!XSyncQueryExtension(QX11Info::display(), &sync_event, &sync_error)) 
+        qWarning("error initializing sync extension");
+#endif
 
     prepared = true;
 }
@@ -625,13 +659,25 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
          * check for EGL_BUFFER_PRESERVED or GLX_SWAP_COPY_OML first, see
          * http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html and
          * http://www.opengl.org/registry/specs/OML/glx_swap_method.txt */
-        if (((item->isVisible() || !item->paintedAfterMapping())
-             && !device_state->displayOff())
-            || item->propertyCache()->isLockScreen())
-            item->updateWindowPixmap(0, 0, e->timestamp);
+        if ((!item->isSynced())) {
+            if (((item->isVisible() || !item->paintedAfterMapping())
+                 && !device_state->displayOff())
+                || item->propertyCache()->isLockScreen())
+                item->updateWindowPixmap(0, 0, e->timestamp);
+        }
         item->damageReceived();
     }
 }
+
+#ifdef HAVE_XSYNC
+void MCompositeManagerPrivate::syncEvent(XSyncAlarmNotifyEvent *e)
+{
+    MCompositeWindow* w = MCompositeWindow::syncedWindow(e->alarm);
+    if (w && w->isSynced()) {
+        w->processSyncCounter();
+    }    
+}
+#endif
 
 void MCompositeManagerPrivate::createEvent(XCreateWindowEvent *e)
 {
@@ -948,7 +994,12 @@ bool MCompositeManagerPrivate::haveMappedWindow() const
 
 bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 {
-    if (watch->keep_black || (splash && !device_state->displayOff()))
+    if (QCoreApplication::arguments().contains("--no-selective")) {
+        qDebug() << __func__ << ": selective compositing disabled";
+        return false;
+    }
+
+    if (MRender::isClearedScene() || (splash && !device_state->displayOff()))
         return false;
     static const QRegion fs_r(0, 0,
                     ScreenOfDisplay(QX11Info::display(),
@@ -1832,7 +1883,7 @@ void MCompositeManagerPrivate::sendSyntheticVisibilityEventsForOurBabies()
             if (cw->propertyCache()->lowPowerMode() > 0
                 && i >= covering_i) {
                 cw->setWindowObscured(false);
-                watch->keep_black = false;
+                MRender::setClearedScene(false);
             } else
                 cw->setWindowObscured(true);
             // setVisible(false) is not needed because updates are frozen
@@ -2196,8 +2247,15 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
             updateNetClientList(win, true);
         if (!new_item) {
             // reset item for the case previous animation did not end cleanly
-            item->setUntransformed();
-            item->setPos(pc->realGeometry().x(), pc->realGeometry().y());
+            // ...and only if it _really_didn't_ end cleanly, otherwise 
+            // this will introduce flicker due to setUntransformed() 
+            // resetting newly_mapped
+            if (!(item->scale() == 1.0
+                  &&item->pos() == QPointF(pc->realGeometry().x(), 
+                                           pc->realGeometry().y()))) {
+                item->setUntransformed();
+                item->setPos(pc->realGeometry().x(), pc->realGeometry().y());
+            }
         }
 #ifdef WINDOW_DEBUG
         if (debug_mode)
@@ -2754,7 +2812,7 @@ void MCompositeManager::lockScreenPainted()
     d->lockscreen_painted = true;
     if (!d->device_state->displayOff())
         d->displayOff(false);
-    d->watch->keep_black = false;
+    MRender::setClearedScene(false);
 }
 
 MWindowPropertyCache *MCompositeManagerPrivate::findLockScreen() const
@@ -2794,7 +2852,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
                 }
             }
             if (!lpm_window) {
-                watch->keep_black = true;
+                MRender::setClearedScene(true);
                 if (!compositing)
                     enableCompositing();
                 else
@@ -2826,7 +2884,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
                 lockscreen_map_timer.start();
             return;
         }
-        watch->keep_black = false;
+        MRender::setClearedScene(false);
         glwidget->update();
         if (!possiblyUnredirectTopmostWindow() && !compositing)
             enableCompositing();
@@ -2918,6 +2976,15 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event, bool startup)
     // Core non-subclassable events
     static const int damage_ev = damage_event + XDamageNotify;
     static int shape_event_base = 0;
+
+#ifdef HAVE_XSYNC
+    if (event->type == sync_event + XSyncAlarmNotify) {
+        XSyncAlarmNotifyEvent* e = reinterpret_cast<XSyncAlarmNotifyEvent*>(event);
+        syncEvent(e);
+        return true;
+    }
+#endif
+
     if (!shape_event_base) {
         int i;
         if (!XShapeQueryExtension(QX11Info::display(), &shape_event_base, &i))
@@ -4394,6 +4461,7 @@ bool MCompositeManager::isEgl()
 
 void MCompositeManager::setGLWidget(QGLWidget *glw)
 {
+    SceneRender::init(glw);
     d->glwidget = glw;
 }
 
@@ -4432,7 +4500,7 @@ void MCompositeManager::prepareEvents()
     }
 
     d->xserver_stacking.syncState();
-    d->watch->prepareRoot();
+    prepare_root(false);
     d->prepare();
 }
 
@@ -4621,7 +4689,7 @@ void MCompositeManager::setDisableRedrawingDueToDamage(bool b)
 #ifdef WINDOW_DEBUG
 void MCompositeManager::ut_prepare()
 {
-    d->watch->prepareRoot(true);
+    prepare_root(true);
     d->prepare();
     d->xserver_stacking.init();
 }
