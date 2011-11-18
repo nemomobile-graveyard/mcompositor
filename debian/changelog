@@ -1,3 +1,9 @@
+mcompositor (1.1.28-1) unstable; urgency=low
+
+  * MSGrabber::reinforce(): fix the if condition
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 18 Nov 2011 13:12:57 +0200
+
 mcompositor (1.1.27-1) unstable; urgency=low
 
   * Fixes: NB#290569 - Bad performance of swipe up animation for
