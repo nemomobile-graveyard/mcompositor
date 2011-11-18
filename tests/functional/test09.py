@@ -70,7 +70,7 @@ check_order([deco_win, app1, home_win], 'mapped app1 in right order')
 
 fd = os.popen('windowctl n')
 app2 = fd.readline().strip()
-time.sleep(1)
+time.sleep(2)
 
 check_order([deco_win, app2, app1, home_win], 'mapped both apps in right order')
 

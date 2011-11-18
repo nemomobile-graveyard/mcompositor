@@ -78,7 +78,7 @@ mcompositor-test-init.py;
 (
 	# Create two application windows.
 	windowctl kn & patience;
-	windowctl kn;
+	windowctl kn & patience;
 ) | (
         trap "pkill windowctl" EXIT;
 	read win1; read win2; patience;
