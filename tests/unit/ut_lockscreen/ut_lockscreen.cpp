@@ -7,7 +7,7 @@
 #include <mcompositewindow.h>
 #include <mcompositewindowanimation.h>
 #include <mtexturepixmapitem.h>
-#include <mcompositescene.h>
+#include <mrender.h>
 #include <mdevicestate.h>
 #include "ut_lockscreen.h"
 
@@ -150,7 +150,7 @@ void ut_Lockscreen::testScreenOnBeforeLockscreenPaint()
     device_state->fake_display_off = true;
     cmgr->d->displayOff(true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // display on
@@ -162,7 +162,7 @@ void ut_Lockscreen::testScreenOnBeforeLockscreenPaint()
                                                           lockscreen_win, 0);
     mapWindow(pc);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(pc->damageObject() != 0, true);
 
     MCompositeWindow *cw = cmgr->d->windows.value(lockscreen_win, 0);
@@ -171,7 +171,7 @@ void ut_Lockscreen::testScreenOnBeforeLockscreenPaint()
     fakeDamageEvent(cw);
     fakeDamageEvent(cw);
 
-    QCOMPARE(cmgr->d->watch->keep_black, false);
+    QVERIFY(!MRender::isClearedScene());
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
     QCOMPARE(pc->damageObject() == 0, true);
 
@@ -184,7 +184,7 @@ void ut_Lockscreen::testScreenOnAfterLockscreenPaint()
     device_state->fake_display_off = true;
     cmgr->d->displayOff(true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // map and paint lockscreen
@@ -197,14 +197,14 @@ void ut_Lockscreen::testScreenOnAfterLockscreenPaint()
     fakeDamageEvent(cw);
     fakeDamageEvent(cw);
 
-    QCOMPARE(cmgr->d->watch->keep_black, false);
+    QVERIFY(!MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, false);
 
     // display on
     device_state->fake_display_off = false;
     cmgr->d->displayOff(false);
 
-    QCOMPARE(cmgr->d->watch->keep_black, false);
+    QVERIFY(!MRender::isClearedScene());
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
     QCOMPARE(pc->damageObject() == 0, true);
 
@@ -217,7 +217,7 @@ void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
     device_state->fake_display_off = true;
     cmgr->d->displayOff(true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // map the lockscreen
@@ -228,7 +228,7 @@ void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
     QCOMPARE(cw != 0, true);
     QCOMPARE(pc->damageObject() != 0, true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // display on
@@ -236,14 +236,14 @@ void ut_Lockscreen::testScreenOnAfterMapButBeforePaint()
     cmgr->d->displayOff(false);
 
     // keeps black because lockscreen is not yet painted
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // paint the lockscreen
     fakeDamageEvent(cw);
     fakeDamageEvent(cw);
 
-    QCOMPARE(cmgr->d->watch->keep_black, false);
+    QVERIFY(!MRender::isClearedScene());
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
     QCOMPARE(pc->damageObject() == 0, true);
 
@@ -256,7 +256,7 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
     device_state->fake_display_off = true;
     cmgr->d->displayOff(true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // map the lockscreen
@@ -267,7 +267,7 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
     QCOMPARE(cw != 0, true);
     QCOMPARE(pc->damageObject() != 0, true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // display on
@@ -275,7 +275,7 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
     cmgr->d->displayOff(false);
 
     // keeps black because lockscreen is not yet painted
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // wait for the painting timeout
@@ -283,7 +283,7 @@ void ut_Lockscreen::testScreenOnThenMapsButDoesNotPaint()
                          configInt("damage-timeout-ms");
     QTest::qWait(t + 100);
 
-    QCOMPARE(cmgr->d->watch->keep_black, false);
+    QVERIFY(!MRender::isClearedScene());
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
     QCOMPARE(pc->damageObject() == 0, true);
 
@@ -296,14 +296,14 @@ void ut_Lockscreen::testScreenOnButLockscreenTimesOut()
     device_state->fake_display_off = true;
     cmgr->d->displayOff(true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // display on
     device_state->fake_display_off = false;
     cmgr->d->displayOff(false);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // wait for the timeout
@@ -311,7 +311,7 @@ void ut_Lockscreen::testScreenOnButLockscreenTimesOut()
                          configInt("lockscreen-map-timeout-ms");
     QTest::qWait(t + 100);
 
-    QCOMPARE(cmgr->d->watch->keep_black, false);
+    QVERIFY(!MRender::isClearedScene());
 }
 
 void ut_Lockscreen::testScreenOnAndThenQuicklyOff()
@@ -320,14 +320,14 @@ void ut_Lockscreen::testScreenOnAndThenQuicklyOff()
     device_state->fake_display_off = true;
     cmgr->d->displayOff(true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // display on
     device_state->fake_display_off = false;
     cmgr->d->displayOff(false);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // wait less than the timeout
@@ -339,12 +339,12 @@ void ut_Lockscreen::testScreenOnAndThenQuicklyOff()
     device_state->fake_display_off = true;
     cmgr->d->displayOff(true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // check that the timeout does not occur anymore
     QTest::qWait(t / 2 + 1);
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
 }
 
 void ut_Lockscreen::testScreenOffAndThenQuicklyOn()
@@ -361,27 +361,27 @@ void ut_Lockscreen::testScreenOffAndThenQuicklyOn()
     device_state->fake_display_off = true;
     cmgr->d->displayOff(true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // display on
     device_state->fake_display_off = false;
     cmgr->d->displayOff(false);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // simulate case where lockscreen is still unmapping
     // because of screen off
     unmapLockscreen();
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // map the lockscreen
     mapWindow(pc);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
     QCOMPARE(pc->damageObject() != 0, true);
 
@@ -389,7 +389,7 @@ void ut_Lockscreen::testScreenOffAndThenQuicklyOn()
     fakeDamageEvent(cw);
     fakeDamageEvent(cw);
 
-    QCOMPARE(cmgr->d->watch->keep_black, false);
+    QVERIFY(!MRender::isClearedScene());
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
     QCOMPARE(pc->damageObject() == 0, true);
 }
@@ -417,7 +417,7 @@ void ut_Lockscreen::testPaintingDuringScreenOff()
     device_state->fake_display_off = true;
     cmgr->d->displayOff(true);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
 
     // lockscreen damage is handled even when screen is off to avoid
@@ -429,7 +429,7 @@ void ut_Lockscreen::testPaintingDuringScreenOff()
     device_state->fake_display_off = false;
     cmgr->d->displayOff(false);
 
-    QCOMPARE(cmgr->d->watch->keep_black, true);
+    QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
     QCOMPARE(cmgr->d->lockscreen_painted, false);
     QCOMPARE(cw->paintedAfterMapping(), false);
@@ -439,7 +439,7 @@ void ut_Lockscreen::testPaintingDuringScreenOff()
     QCOMPARE(pc->pendingDamage(), false);
     QCOMPARE(cmgr->d->lockscreen_painted, true);
     QCOMPARE(cw->paintedAfterMapping(), true);
-    QCOMPARE(cmgr->d->watch->keep_black, false);
+    QVERIFY(!MRender::isClearedScene());
 }
 
 int main(int argc, char* argv[])
