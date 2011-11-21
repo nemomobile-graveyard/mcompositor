@@ -52,33 +52,33 @@ xcb_render_query_pict_formats_cookie_t MWindowPropertyCache::pict_formats_cookie
 
 // Returns whether the property of @collector does not need to be refreshed:
 // if it has been requested and it has been replied.
-bool MWindowPropertyCache::isUpdate(void *collector)
+bool MWindowPropertyCache::isUpdate(CollectorKey key)
 {
-    QHash<void*, Collector>::const_iterator i = requests.find(collector); 
+    QHash<CollectorKey, Collector>::const_iterator i = requests.find(key); 
     return i != requests.end() && !(*i).cookie;
 }
 
 // Returns whether @collector's property is being queried:
 // if it has been requested but hasn't been replied.
-bool MWindowPropertyCache::requestPending(void *collector)
+bool MWindowPropertyCache::requestPending(CollectorKey key)
 {
-    QHash<void*, Collector>::const_iterator i = requests.find(collector); 
+    QHash<CollectorKey, Collector>::const_iterator i = requests.find(key);
     return i != requests.end() && (*i).cookie;
 }
 
 // Called when @collector's property is being queried, and it sets up
 // a timer to collect the reply in a while.  If a query is already ongoing
 // it's cancelled.  @cookie should be what xcb_*() returned.
-void MWindowPropertyCache::addRequest(void *collector_addr,
+void MWindowPropertyCache::addRequest(CollectorKey key,
                                       const QLatin1String &collector,
                                       unsigned cookie)
 {
     if (is_virtual)
         return;
 
-    QHash<void*, Collector>::iterator i = requests.find(collector_addr);
+    QHash<CollectorKey, Collector>::iterator i = requests.find(key);
     if (i == requests.end())
-        i = requests.insert(collector_addr, Collector());
+        i = requests.insert(key, Collector());
     Collector prev_val = *i;
     (*i).cookie = cookie;
     (*i).name = collector;
@@ -90,10 +90,10 @@ void MWindowPropertyCache::addRequest(void *collector_addr,
 }
 
 // Makes @collector's property considered isUpdate().
-void MWindowPropertyCache::replyCollected(void *addr)
+void MWindowPropertyCache::replyCollected(CollectorKey key)
 {
     Q_ASSERT(!is_virtual);
-    QHash<void*, Collector>::iterator i = requests.find(addr);
+    QHash<CollectorKey, Collector>::iterator i = requests.find(key);
     QLatin1String collector = (*i).name;
     *i = Collector();
     collect_timer->disconnect(collector.latin1());
@@ -101,19 +101,19 @@ void MWindowPropertyCache::replyCollected(void *addr)
 
 // If @collector has an ongoing query, cancels it.  @collector's property
 // will have been considered isUpdate().
-void MWindowPropertyCache::cancelRequest(void *addr)
+void MWindowPropertyCache::cancelRequest(CollectorKey key)
 {
-    if (requestPending(addr)) {
-        xcb_discard_reply(xcb_conn, requests[addr].cookie);
-        replyCollected(addr);
+    if (requestPending(key)) {
+        xcb_discard_reply(xcb_conn, requests[key].cookie);
+        replyCollected(key);
     } else
-        requests[addr] = Collector();
+        requests[key] = Collector();
 }
 
 // some unit tests want to fake window properties
 void MWindowPropertyCache::cancelAllRequests()
 {
-    for (QHash<void*, Collector>::const_iterator i = requests.begin();
+    for (QHash<CollectorKey, Collector>::const_iterator i = requests.begin();
          i != requests.end(); ++i)
         cancelRequest(i.key());
 }
@@ -196,8 +196,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
 
     if (geom) {
         real_geom = QRect(geom->x, geom->y, geom->width, geom->height);
-        void *addr = (void*)&MWindowPropertyCache::realGeometry;
-        requests[addr] = Collector();
+        requests[realGeometryKey] = Collector();
         free(geom);
     }
 
@@ -217,92 +216,80 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     collect_timer->setSingleShot(true);
 
     if (!geom)
-        addRequest((void*)&MWindowPropertyCache::realGeometry,
-                   SLOT(realGeometry()),
+        addRequest(realGeometryKey, SLOT(realGeometry()),
                    xcb_get_geometry(xcb_conn, window).sequence);
-    addRequest((void*)&MWindowPropertyCache::isDecorator, SLOT(isDecorator()),
+    addRequest(isDecoratorKey, SLOT(isDecorator()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_DECORATOR_WINDOW,
                                XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::transientFor, SLOT(transientFor()),
+    addRequest(transientForKey, SLOT(transientFor()),
                requestProperty(XCB_ATOM_WM_TRANSIENT_FOR,
                                XCB_ATOM_WINDOW));
-    addRequest((void*)&MWindowPropertyCache::invokedBy, SLOT(invokedBy()),
+    addRequest(invokedByKey, SLOT(invokedBy()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_WM_INVOKED_BY,
                                XCB_ATOM_WINDOW));
-    addRequest((void*)&MWindowPropertyCache::meegoStackingLayer,
-               SLOT(meegoStackingLayer()),
+    addRequest(meegoStackingLayerKey, SLOT(meegoStackingLayer()),
                requestProperty(MCompAtoms::_MEEGO_STACKING_LAYER,
                                XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::lowPowerMode, SLOT(lowPowerMode()),
+    addRequest(lowPowerModeKey, SLOT(lowPowerMode()),
                requestProperty(MCompAtoms::_MEEGO_LOW_POWER_MODE,
                                XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::opaqueWindow, SLOT(opaqueWindow()),
+    addRequest(opaqueWindowKey, SLOT(opaqueWindow()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_OPAQUE_WINDOW,
                                XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::prestartedApp,
-               SLOT(prestartedApp()),
+    addRequest(prestartedAppKey, SLOT(prestartedApp()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_PRESTARTED,
                                XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::windowTypeAtom,
-               SLOT(windowTypeAtom()),
+    addRequest(windowTypeAtomKey, SLOT(windowTypeAtom()),
                requestProperty(MCompAtoms::_NET_WM_WINDOW_TYPE,
                                XCB_ATOM_ATOM, MAX_TYPES));
     if (!pict_formats_reply && !pict_formats_cookie.sequence)
         pict_formats_cookie = xcb_render_query_pict_formats(xcb_conn);
-    addRequest((void*)&MWindowPropertyCache::orientationAngle,
-               SLOT(orientationAngle()),
+    addRequest(orientationAngleKey, SLOT(orientationAngle()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_ORIENTATION_ANGLE,
                                XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::statusbarGeometry,
-               SLOT(statusbarGeometry()),
+    addRequest(statusbarGeometryKey, SLOT(statusbarGeometry()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_MSTATUSBAR_GEOMETRY,
                                XCB_ATOM_CARDINAL, 4));
-    addRequest((void*)&MWindowPropertyCache::supportedProtocols,
-               SLOT(supportedProtocols()),
+    addRequest(supportedProtocolsKey, SLOT(supportedProtocols()),
                requestProperty(MCompAtoms::WM_PROTOCOLS,
                                XCB_ATOM_ATOM, 100));
-    addRequest((void*)&MWindowPropertyCache::windowState, SLOT(windowState()),
+    addRequest(windowStateKey, SLOT(windowState()),
                requestProperty(MCompAtoms::WM_STATE, ATOM(WM_STATE)));
-    addRequest((void*)&MWindowPropertyCache::getWMHints, SLOT(getWMHints()),
+    addRequest(getWMHintsKey, SLOT(getWMHints()),
                requestProperty(XCB_ATOM_WM_HINTS, XCB_ATOM_WM_HINTS, 10));
-    addRequest((void*)&MWindowPropertyCache::iconGeometry, SLOT(iconGeometry()),
+    addRequest(iconGeometryKey, SLOT(iconGeometry()),
                requestProperty(MCompAtoms::_NET_WM_ICON_GEOMETRY,
                                XCB_ATOM_CARDINAL, 4));
-    addRequest((void*)&MWindowPropertyCache::globalAlpha, SLOT(globalAlpha()),
+    addRequest(globalAlphaKey, SLOT(globalAlpha()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_GLOBAL_ALPHA,
                                 XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::videoGlobalAlpha,
-               SLOT(videoGlobalAlpha()),
+    addRequest(videoGlobalAlphaKey, SLOT(videoGlobalAlpha()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_VIDEO_ALPHA,
                                 XCB_ATOM_CARDINAL));
     if (!isInputOnly())
-        addRequest((void*)&MWindowPropertyCache::shapeRegion,
-                   SLOT(shapeRegion()),
+        addRequest(shapeRegionKey, SLOT(shapeRegion()),
                    xcb_shape_get_rectangles(xcb_conn, window,
                                             ShapeBounding).sequence);
-    addRequest((void*)&MWindowPropertyCache::netWmState, SLOT(netWmState()),
+    addRequest(netWmStateKey, SLOT(netWmState()),
                requestProperty(MCompAtoms::_NET_WM_STATE,
                                XCB_ATOM_ATOM, 100));
-    addRequest((void*)&MWindowPropertyCache::alwaysMapped, SLOT(alwaysMapped()),
+    addRequest(alwaysMappedKey, SLOT(alwaysMapped()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_ALWAYS_MAPPED,
                                 XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::cannotMinimize,
-               SLOT(cannotMinimize()),
+    addRequest(cannotMinimizeKey, SLOT(cannotMinimize()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_CANNOT_MINIMIZE,
                                 XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::wmName, SLOT(wmName()),
+    addRequest(wmNameKey, SLOT(wmName()),
                requestProperty(MCompAtoms::WM_NAME, XCB_ATOM_STRING, 100));
-    addRequest((void*)&MWindowPropertyCache::pid,
-               SLOT(pid()), requestProperty(MCompAtoms::_NET_WM_PID,
-                                            XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::noAnimations, SLOT(noAnimations()),
+    addRequest(pidKey, SLOT(pid()), requestProperty(MCompAtoms::_NET_WM_PID,
+                                                    XCB_ATOM_CARDINAL));
+    addRequest(noAnimationsKey, SLOT(noAnimations()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_NO_ANIMATIONS,
                                XCB_ATOM_CARDINAL));
-    addRequest((void*)&MWindowPropertyCache::videoOverlay, SLOT(videoOverlay()),
+    addRequest(videoOverlayKey, SLOT(videoOverlay()),
                requestProperty(MCompAtoms::_OMAP_VIDEO_OVERLAY,
                                XCB_ATOM_INTEGER));
-    addRequest((void*)&MWindowPropertyCache::skippingTaskbarMarker,
-               SLOT(skippingTaskbarMarker()),
+    addRequest(skippingTaskbarMarkerKey, SLOT(skippingTaskbarMarker()),
                requestProperty(MCompAtoms::_MCOMPOSITOR_SKIP_TASKBAR,
                                XCB_ATOM_CARDINAL));
 
@@ -339,7 +326,7 @@ MWindowPropertyCache::~MWindowPropertyCache()
     }
 
     // Discard pending replies.
-    for (QHash<void*, Collector>::const_iterator i = requests.begin();
+    for (QHash<CollectorKey, Collector>::const_iterator i = requests.begin();
          i != requests.end(); ++i)
       if ((*i).cookie)
           xcb_discard_reply(xcb_conn, (*i).cookie);
@@ -400,7 +387,7 @@ bool MWindowPropertyCache::hasAlpha()
 
 const QRegion &MWindowPropertyCache::shapeRegion()
 {
-    void *me = (void*)&MWindowPropertyCache::shapeRegion;
+    CollectorKey me = shapeRegionKey;
     if (isUpdate(me))
         return shape_region;
     if (isInputOnly() || !requests.contains(me)) {
@@ -440,7 +427,7 @@ const QRegion &MWindowPropertyCache::shapeRegion()
 
 const QRegion &MWindowPropertyCache::customRegion()
 {
-    void *me = (void*)&MWindowPropertyCache::customRegionDummy;
+    CollectorKey me = customRegionKey;
     if (is_valid && !is_virtual && !requests.contains(me)) {
         requests[me].cookie = requestProperty(MCompAtoms::_MEEGOTOUCH_CUSTOM_REGION,
                                               XCB_ATOM_CARDINAL, 10 * 4);
@@ -474,14 +461,14 @@ void MWindowPropertyCache::customRegion(bool request_only)
     Q_UNUSED(request_only);
     QLatin1String me(SLOT(customRegion()));
     Q_ASSERT(request_only);
-    addRequest((void*)&MWindowPropertyCache::customRegionDummy,
+    addRequest(customRegionKey,
                me, requestProperty(MCompAtoms::_MEEGOTOUCH_CUSTOM_REGION,
                                    XCB_ATOM_CARDINAL, 10 * 4));
 }
 
 Window MWindowPropertyCache::transientFor()
 {
-    void *me = (void*)&MWindowPropertyCache::transientFor;
+    CollectorKey me = transientForKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -511,7 +498,7 @@ Window MWindowPropertyCache::transientFor()
 
 Window MWindowPropertyCache::invokedBy()
 {
-    void *me = (void*)&MWindowPropertyCache::invokedBy;
+    CollectorKey me = invokedByKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -529,7 +516,7 @@ Window MWindowPropertyCache::invokedBy()
 
 int MWindowPropertyCache::cannotMinimize()
 {
-    void *me = (void*)&MWindowPropertyCache::cannotMinimize;
+    CollectorKey me = cannotMinimizeKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -547,7 +534,7 @@ int MWindowPropertyCache::cannotMinimize()
 
 unsigned int MWindowPropertyCache::noAnimations()
 {
-    void *me = (void*)&MWindowPropertyCache::noAnimations;
+    CollectorKey me = noAnimationsKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -565,7 +552,7 @@ unsigned int MWindowPropertyCache::noAnimations()
 
 int MWindowPropertyCache::videoOverlay()
 {
-    void *me = (void*)&MWindowPropertyCache::videoOverlay;
+    CollectorKey me = videoOverlayKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -585,7 +572,7 @@ int MWindowPropertyCache::videoOverlay()
 
 int MWindowPropertyCache::alwaysMapped()
 {
-    void *me = (void*)&MWindowPropertyCache::alwaysMapped;
+    CollectorKey me = alwaysMappedKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -605,7 +592,7 @@ int MWindowPropertyCache::alwaysMapped()
 
 int MWindowPropertyCache::desktopView()
 {
-    void *me = (void*)&MWindowPropertyCache::desktopViewDummy;
+    CollectorKey me = desktopViewKey;
     if (is_valid && !is_virtual && !requests.contains(me)) {
         requests[me].cookie = requestProperty(MCompAtoms::_MEEGOTOUCH_DESKTOP_VIEW,
                                               XCB_ATOM_CARDINAL);
@@ -635,14 +622,14 @@ void MWindowPropertyCache::desktopView(bool request_only)
     Q_UNUSED(request_only);
     QLatin1String me(SLOT(desktopView()));
     Q_ASSERT(request_only);
-    addRequest((void*)&MWindowPropertyCache::desktopViewDummy,
+    addRequest(desktopViewKey,
                me, requestProperty(MCompAtoms::_MEEGOTOUCH_DESKTOP_VIEW,
                                    XCB_ATOM_CARDINAL));
 }
 
 bool MWindowPropertyCache::isDecorator()
 {
-    void *me = (void*)&MWindowPropertyCache::isDecorator;
+    CollectorKey me = isDecoratorKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -660,7 +647,7 @@ bool MWindowPropertyCache::isDecorator()
 
 unsigned int MWindowPropertyCache::meegoStackingLayer()
 {
-    void *me = (void*)&MWindowPropertyCache::meegoStackingLayer;
+    CollectorKey me = meegoStackingLayerKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -681,7 +668,7 @@ unsigned int MWindowPropertyCache::meegoStackingLayer()
 
 unsigned int MWindowPropertyCache::lowPowerMode()
 {
-    void *me = (void*)&MWindowPropertyCache::lowPowerMode;
+    CollectorKey me = lowPowerModeKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -699,7 +686,7 @@ unsigned int MWindowPropertyCache::lowPowerMode()
 
 unsigned int MWindowPropertyCache::opaqueWindow()
 {
-    void *me = (void*)&MWindowPropertyCache::opaqueWindow;
+    CollectorKey me = opaqueWindowKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -717,7 +704,7 @@ unsigned int MWindowPropertyCache::opaqueWindow()
 
 bool MWindowPropertyCache::prestartedApp()
 {
-    void *me = (void*)&MWindowPropertyCache::prestartedApp;
+    CollectorKey me = prestartedAppKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -778,7 +765,7 @@ XID MWindowPropertyCache::windowGroup()
 
 const XWMHints &MWindowPropertyCache::getWMHints()
 {
-    void *me = (void*)&MWindowPropertyCache::getWMHints;
+    CollectorKey me = getWMHintsKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -803,7 +790,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
     if (!is_valid)
         return false;
     if (e->atom == ATOM(WM_TRANSIENT_FOR)) {
-        void *me = (void*)&MWindowPropertyCache::transientFor;
+        CollectorKey me = transientForKey;
         if (isUpdate(me)) {
             MCompositeManager *m = (MCompositeManager*)qApp;
             // remove reference from the old "parent"
@@ -814,75 +801,64 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
                    requestProperty(e->atom, XCB_ATOM_WINDOW));
         return true;
     } else if (e->atom == ATOM(_MEEGOTOUCH_WM_INVOKED_BY)) {
-        addRequest((void*)&MWindowPropertyCache::invokedBy, SLOT(invokedBy()),
+        addRequest(invokedByKey, SLOT(invokedBy()),
                    requestProperty(e->atom, XCB_ATOM_WINDOW));
         return true;
     } else if (e->atom == ATOM(_MEEGOTOUCH_ALWAYS_MAPPED)) {
-        addRequest((void*)&MWindowPropertyCache::alwaysMapped,
-                   SLOT(alwaysMapped()),
+        addRequest(alwaysMappedKey, SLOT(alwaysMapped()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
         emit alwaysMappedChanged(this);
     } else if (e->atom == ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE)) {
-        addRequest((void*)&MWindowPropertyCache::cannotMinimize,
-                   SLOT(cannotMinimize()),
+        addRequest(cannotMinimizeKey, SLOT(cannotMinimize()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
     } else if (e->atom == ATOM(_MEEGOTOUCH_DESKTOP_VIEW)) {
         emit desktopViewChanged(this);
     } else if (e->atom == ATOM(WM_HINTS)) {
-        addRequest((void*)&MWindowPropertyCache::getWMHints, SLOT(getWMHints()),
+        addRequest(getWMHintsKey, SLOT(getWMHints()),
                    requestProperty(e->atom, XCB_ATOM_WM_HINTS, 10));
         return true;
     } else if (e->atom == ATOM(_NET_WM_WINDOW_TYPE)) {
-        addRequest((void*)&MWindowPropertyCache::windowTypeAtom,
-                   SLOT(windowTypeAtom()),
+        addRequest(windowTypeAtomKey, SLOT(windowTypeAtom()),
                    requestProperty(e->atom, XCB_ATOM_ATOM, MAX_TYPES));
         window_type = MCompAtoms::INVALID;
         return true;
     } else if (e->atom == ATOM(_NET_WM_ICON_GEOMETRY)) {
-        addRequest((void*)&MWindowPropertyCache::iconGeometry,
-                   SLOT(iconGeometry()),
+        addRequest(iconGeometryKey, SLOT(iconGeometry()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL, 4));
         emit iconGeometryUpdated();
     } else if (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA)) {
-        addRequest((void*)&MWindowPropertyCache::globalAlpha,
-                   SLOT(globalAlpha()),
+        addRequest(globalAlphaKey, SLOT(globalAlpha()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
     } else if (e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA)) {
-        addRequest((void*)&MWindowPropertyCache::videoGlobalAlpha,
-                   SLOT(videoGlobalAlpha()),
+        addRequest(videoGlobalAlphaKey, SLOT(videoGlobalAlpha()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
     } else if (e->atom == ATOM(_MEEGOTOUCH_DECORATOR_WINDOW)) {
-        addRequest((void*)&MWindowPropertyCache::isDecorator, SLOT(isDecorator()),
+        addRequest(isDecoratorKey, SLOT(isDecorator()),
                    requestProperty(MCompAtoms::_MEEGOTOUCH_DECORATOR_WINDOW,
                                    XCB_ATOM_CARDINAL));
         return true;
     } else if (e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE)) {
-        addRequest((void*)&MWindowPropertyCache::orientationAngle,
-                   SLOT(orientationAngle()),
+        addRequest(orientationAngleKey, SLOT(orientationAngle()),
               requestProperty(MCompAtoms::_MEEGOTOUCH_ORIENTATION_ANGLE,
                               XCB_ATOM_CARDINAL));
     } else if (e->atom == ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY)) {
-        addRequest((void*)&MWindowPropertyCache::statusbarGeometry,
-                   SLOT(statusbarGeometry()),
+        addRequest(statusbarGeometryKey, SLOT(statusbarGeometry()),
             requestProperty(e->atom, XCB_ATOM_CARDINAL, 4));
         return true; // re-check _MEEGOTOUCH_STATUSBAR_VISIBLE
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
-        addRequest((void*)&MWindowPropertyCache::supportedProtocols,
-                   SLOT(supportedProtocols()),
+        addRequest(supportedProtocolsKey, SLOT(supportedProtocols()),
                    requestProperty(e->atom, XCB_ATOM_ATOM, 100));
         return true;
     } else if (e->atom == ATOM(_NET_WM_STATE)) {
-        addRequest((void*)&MWindowPropertyCache::netWmState, SLOT(netWmState()),
+        addRequest(netWmStateKey, SLOT(netWmState()),
                    requestProperty(e->atom, XCB_ATOM_ATOM, 100));
         return false;
     } else if (e->atom == ATOM(WM_STATE)) {
-        addRequest((void*)&MWindowPropertyCache::windowState,
-                   SLOT(windowState()),
+        addRequest(windowStateKey, SLOT(windowState()),
                    requestProperty(e->atom, ATOM(WM_STATE)));
         return true;
     } else if (e->atom == ATOM(_MEEGO_STACKING_LAYER)) {
-        addRequest((void*)&MWindowPropertyCache::meegoStackingLayer,
-                   SLOT(meegoStackingLayer()),
+        addRequest(meegoStackingLayerKey, SLOT(meegoStackingLayer()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
         if (window_state == NormalState) {
             // raise it so that it becomes on top of same-leveled windows
@@ -891,35 +867,31 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         }
         return true;
     } else if (e->atom == ATOM(_MEEGO_LOW_POWER_MODE)) {
-        addRequest((void*)&MWindowPropertyCache::lowPowerMode,
-                   SLOT(lowPowerMode()),
+        addRequest(lowPowerModeKey, SLOT(lowPowerMode()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
     } else if (e->atom == ATOM(_MEEGOTOUCH_OPAQUE_WINDOW)) {
-        addRequest((void*)&MWindowPropertyCache::opaqueWindow,
-                   SLOT(opaqueWindow()),
+        addRequest(opaqueWindowKey, SLOT(opaqueWindow()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
         return true;  // check if compositing mode needs to change
     } else if (e->atom == ATOM(_MEEGOTOUCH_CUSTOM_REGION)) {
         emit customRegionChanged(this);
     } else if (e->atom == ATOM(WM_NAME)) {
-        addRequest((void*)&MWindowPropertyCache::wmName, SLOT(wmName()),
+        addRequest(wmNameKey, SLOT(wmName()),
                    requestProperty(MCompAtoms::WM_NAME, XCB_ATOM_STRING, 100));
     } else if (e->atom == ATOM(_MEEGOTOUCH_NO_ANIMATIONS)) {
-        addRequest((void*)&MWindowPropertyCache::noAnimations,
-                   SLOT(noAnimations()),
+        addRequest(noAnimationsKey, SLOT(noAnimations()),
                requestProperty(MCompAtoms::_MEEGOTOUCH_NO_ANIMATIONS,
                                XCB_ATOM_CARDINAL));
     } else if (e->atom == ATOM(_OMAP_VIDEO_OVERLAY)) {
-        addRequest((void*)&MWindowPropertyCache::videoOverlay,
-                   SLOT(videoOverlay()),
+        addRequest(videoOverlayKey, SLOT(videoOverlay()),
                    requestProperty(MCompAtoms::_OMAP_VIDEO_OVERLAY,
                                    XCB_ATOM_INTEGER));
     } else if (e->atom == ATOM(_NET_WM_PID)) {
         wm_pid = 0;
         if (e->state == PropertyNewValue)
-            addRequest((void*)&MWindowPropertyCache::pid,
-                       SLOT(pid()), requestProperty(MCompAtoms::_NET_WM_PID,
-                                                    XCB_ATOM_CARDINAL));
+            addRequest(pidKey, SLOT(pid()),
+                       requestProperty(MCompAtoms::_NET_WM_PID,
+                                       XCB_ATOM_CARDINAL));
     } else if (e->state == PropertyNewValue
                && e->atom == ATOM(_MEEGOTOUCH_PRESTARTED)) {
         prestarted = true;
@@ -930,7 +902,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
 
 unsigned MWindowPropertyCache::pid()
 {
-    void *me = (void*)&MWindowPropertyCache::pid;
+    CollectorKey me = pidKey;
     if (!is_valid || !requests[me].cookie)
         return wm_pid;
 
@@ -947,7 +919,7 @@ unsigned MWindowPropertyCache::pid()
 
 int MWindowPropertyCache::windowState()
 {
-    void *me = (void*)&MWindowPropertyCache::windowState;
+    CollectorKey me = windowStateKey;
     if (requests[me].cookie) {
         xcb_generic_error_t *error = 0;
 
@@ -982,13 +954,13 @@ void MWindowPropertyCache::setWindowState(int state)
     // The window's type is about to change.  Change the the idea of the
     // property cache about the window's type now to make windowState()
     // non-blocking.
-    cancelRequest((void*)&MWindowPropertyCache::windowState);
+    cancelRequest(windowStateKey);
     window_state = state;
 }
 
 unsigned MWindowPropertyCache::orientationAngle()
 {
-    void *me = (void*)&MWindowPropertyCache::orientationAngle;
+    CollectorKey me = orientationAngleKey;
     if (!is_valid || !requests[me].cookie)
         return orientation_angle;
 
@@ -1008,7 +980,7 @@ unsigned MWindowPropertyCache::orientationAngle()
 
 const QRect &MWindowPropertyCache::statusbarGeometry()
 {
-    void *me = (void*)&MWindowPropertyCache::statusbarGeometry;
+    CollectorKey me = statusbarGeometryKey;
     if (!is_valid || !requests[me].cookie)
         return statusbar_geom;
 
@@ -1028,7 +1000,7 @@ const QRect &MWindowPropertyCache::statusbarGeometry()
 
 const QList<Atom>& MWindowPropertyCache::supportedProtocols()
 {
-    void *me = (void*)&MWindowPropertyCache::supportedProtocols;
+    CollectorKey me = supportedProtocolsKey;
     if (!is_valid || !requests[me].cookie)
         return wm_protocols;
 
@@ -1049,7 +1021,7 @@ const QList<Atom>& MWindowPropertyCache::supportedProtocols()
 
 const QVector<Atom> &MWindowPropertyCache::netWmState()
 {
-    void *me = (void*)&MWindowPropertyCache::netWmState;
+    CollectorKey me = netWmStateKey;
     if (!is_valid || !requests[me].cookie)
         return net_wm_state;
 
@@ -1152,7 +1124,7 @@ void MWindowPropertyCache::forceSkippingTaskbar(bool force)
 
 bool MWindowPropertyCache::skippingTaskbarMarker()
 {
-    void *me = (void*)&MWindowPropertyCache::skippingTaskbarMarker;
+    CollectorKey me = skippingTaskbarMarkerKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -1187,7 +1159,7 @@ void MWindowPropertyCache::setSkippingTaskbarMarker(bool setting)
 
 const QRectF &MWindowPropertyCache::iconGeometry()
 {
-    void *me = (void*)&MWindowPropertyCache::iconGeometry;
+    CollectorKey me = iconGeometryKey;
     if (!is_valid || !requests[me].cookie)
         return icon_geometry;
 
@@ -1204,7 +1176,7 @@ const QRectF &MWindowPropertyCache::iconGeometry()
     return icon_geometry;
 }
 
-int MWindowPropertyCache::alphaValue(void *me)
+int MWindowPropertyCache::alphaValue(CollectorKey me)
 {
     xcb_get_property_cookie_t c = { requests[me].cookie };
     xcb_get_property_reply_t *r;
@@ -1226,7 +1198,7 @@ int MWindowPropertyCache::alphaValue(void *me)
 
 int MWindowPropertyCache::globalAlpha()
 {
-    void *me = (void*)&MWindowPropertyCache::globalAlpha;
+    CollectorKey me = globalAlphaKey;
     if (is_valid && requests[me].cookie)
         global_alpha = alphaValue(me);
     return global_alpha;
@@ -1234,7 +1206,7 @@ int MWindowPropertyCache::globalAlpha()
 
 int MWindowPropertyCache::videoGlobalAlpha()
 {    
-    void *me = (void*)&MWindowPropertyCache::videoGlobalAlpha;
+    CollectorKey me = videoGlobalAlphaKey;
     if (is_valid && requests[me].cookie)
         video_global_alpha = alphaValue(me);
     return video_global_alpha;
@@ -1242,7 +1214,7 @@ int MWindowPropertyCache::videoGlobalAlpha()
 
 Atom MWindowPropertyCache::windowTypeAtom()
 {
-    void *me = (void*)&MWindowPropertyCache::windowTypeAtom;
+    CollectorKey me = windowTypeAtomKey;
     if (!is_valid)
         return None;
     if (!requests[me].cookie) {
@@ -1311,7 +1283,7 @@ MCompAtoms::Type MWindowPropertyCache::windowType()
 
 void MWindowPropertyCache::setRealGeometry(const QRect &rect)
 {
-    void *me = (void*)&MWindowPropertyCache::realGeometry;
+    CollectorKey me = realGeometryKey;
     if (!is_valid)
         return;
 
@@ -1320,14 +1292,13 @@ void MWindowPropertyCache::setRealGeometry(const QRect &rect)
 
     // shape needs to be refreshed in case it was the default value
     // (i.e. the same as geometry), because there is no ShapeNotify
-    if (!isUpdate((void*)&MWindowPropertyCache::shapeRegion)
-        || QRegion(real_geom) != shape_region)
+    if (!isUpdate(shapeRegionKey) || QRegion(real_geom) != shape_region)
         shapeRefresh();
 }
 
 const QRect MWindowPropertyCache::realGeometry()
 {
-    void *me = (void*)&MWindowPropertyCache::realGeometry;
+    CollectorKey me = realGeometryKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_geometry_cookie_t c = { requests[me].cookie };
         xcb_get_geometry_reply_t *xcb_real_geom;
@@ -1346,7 +1317,7 @@ const QRect MWindowPropertyCache::realGeometry()
 
 const QString &MWindowPropertyCache::wmName()
 {
-    void *me = (void*)&MWindowPropertyCache::wmName;
+    CollectorKey me = wmNameKey;
     if (is_valid && requests[me].cookie) {
         xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
@@ -1371,8 +1342,7 @@ void MWindowPropertyCache::shapeRefresh()
 {
     if (!is_valid)
         return;
-    addRequest((void*)&MWindowPropertyCache::shapeRegion,
-               SLOT(shapeRegion()),
+    addRequest(shapeRegionKey, SLOT(shapeRegion()),
                xcb_shape_get_rectangles(xcb_conn, window,
                                         ShapeBounding).sequence);
 }

@@ -56,6 +56,36 @@ public:
         unsigned cookie;
         QLatin1String name;
     };
+    enum CollectorKey {
+        shapeRegionKey,
+        customRegionKey,
+        transientForKey,
+        invokedByKey,
+        cannotMinimizeKey,
+        noAnimationsKey,
+        videoOverlayKey,
+        alwaysMappedKey,
+        desktopViewKey,
+        isDecoratorKey,
+        meegoStackingLayerKey,
+        lowPowerModeKey,
+        opaqueWindowKey,
+        prestartedAppKey,
+        getWMHintsKey,
+        pidKey,
+        windowStateKey,
+        orientationAngleKey,
+        statusbarGeometryKey,
+        supportedProtocolsKey,
+        netWmStateKey,
+        skippingTaskbarMarkerKey,
+        iconGeometryKey,
+        globalAlphaKey,
+        videoGlobalAlphaKey,
+        windowTypeAtomKey,
+        realGeometryKey,
+        wmNameKey
+    };
 
     /*! Construct a MWindowPropertyCache
      * \param window id to the window whose properties are cached
@@ -223,12 +253,10 @@ public slots:
     //! Returns value of _MEEGOTOUCH_CUSTOM_REGION.
     const QRegion &customRegion();
     void customRegion(bool request_only);
-    void customRegionDummy() const {}
 
     //! Returns value of _MEEGOTOUCH_DESKTOP_VIEW (makes sense for desktop only).
     int desktopView();
     void desktopView(bool request_only);
-    void desktopViewDummy() const {}
 
     // WM_NAME
     const QString &wmName();
@@ -291,7 +319,7 @@ private slots:
 private:
     void init();
     void init_invalid();
-    int alphaValue(void *me);
+    int alphaValue(CollectorKey me);
 
 protected:
     Window transient_for;
@@ -347,17 +375,18 @@ protected:
     // When a request is made @collect_timer is restarted, and we collect
     // the reply unconditionally when it expires.
     MCSmartTimer *collect_timer;
-    QHash<void*, Collector> requests;
-    bool isUpdate(void *collector);
-    bool requestPending(void *collector);
-    void addRequest(void *addr, const QLatin1String &collector, unsigned cookie);
-    void replyCollected(void *addr);
-    void cancelRequest(void *addr);
+    QHash<CollectorKey, Collector> requests;
+    bool isUpdate(CollectorKey collector);
+    bool requestPending(CollectorKey collector);
+    void addRequest(CollectorKey key, const QLatin1String &collector,
+                    unsigned cookie);
+    void replyCollected(CollectorKey key);
+    void cancelRequest(CollectorKey key);
     unsigned requestProperty(Atom prop, Atom type, unsigned n = 1);
 
     // Overloads to make the routines above callable with other types.
-    void addRequest(void *addr, const char *collector, unsigned cookie)
-        { addRequest(addr, QLatin1String(collector), cookie); }
+    void addRequest(CollectorKey key, const char *collector, unsigned cookie)
+        { addRequest(key, QLatin1String(collector), cookie); }
     unsigned requestProperty(MCompAtoms::Atoms prop, Atom type,
                              unsigned n = 1)
         { return requestProperty(MCompAtoms::atoms[prop], type, n); }
