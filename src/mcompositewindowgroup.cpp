@@ -41,6 +41,7 @@
 
 #include <QtOpenGL> 
 #include <QList>
+#include <QScopedPointer>
 #include <mcompositewindowgroup.h>
 #include <mtexturepixmapitem_p.h>
 
@@ -76,7 +77,7 @@ public:
     
     bool valid;
     QList<MTexturePixmapItem*> item_list;
-    MTexturePixmapPrivate* renderer;
+    QScopedPointer<MTexturePixmapPrivate> renderer;
 };
 
 /*!
@@ -359,7 +360,7 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
 MTexturePixmapPrivate* MCompositeWindowGroup::renderer() const
 {
     Q_D(const MCompositeWindowGroup);
-    return d->renderer;
+    return d->renderer.data();
 }
 
 /*!
