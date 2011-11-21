@@ -19,7 +19,6 @@
 
 #include <QtGui>
 #include <QGLWidget>
-#include "mcompositescene.h"
 #include "mrender.h"
 #include "mcompositemanager.h"
 
