@@ -1,3 +1,9 @@
+mcompositor (1.1.29-2) unstable; urgency=low
+
+  * Reverted 445cece797a9d because SSU has some issues with it.
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 22 Nov 2011 16:48:29 +0200
+
 mcompositor (1.1.29-1) unstable; urgency=low
 
   * Fixes: NB#289583 - Lock screen flashes quickly when a banner or notification
