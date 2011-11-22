@@ -1,3 +1,12 @@
+mcompositor (1.1.29-1) unstable; urgency=low
+
+  * Fixes: NB#289583 - Lock screen flashes quickly when a banner or notification
+    is shown on home
+  * Fixes: NB#291459 - mcompositor uses unacceptable amount of CPU time when
+    Search application repeatedly opened and closed
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 22 Nov 2011 16:24:42 +0200
+
 mcompositor (1.1.28-1) unstable; urgency=low
 
   * MSGrabber::reinforce(): fix the if condition
