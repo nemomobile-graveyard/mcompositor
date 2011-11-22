@@ -5,11 +5,5 @@
       <for path="/usr/bin/mcompositor" />
       <for path="/usr/bin/mdecorator" />
    </request>
-   <request>
-     <credential name="xserver-security-policy::record-input" />
-     <credential name="xserver-security-policy::playback-input" />
-     <credential name="xserver-security-policy::capture-drawables" />
-     <for path="/usr/bin/mcompositor" />
-   </request>
 </aegis>
 
