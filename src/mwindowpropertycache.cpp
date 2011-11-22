@@ -58,14 +58,6 @@ bool MWindowPropertyCache::isUpdate(CollectorKey key)
     return i != requests.end() && !(*i).cookie;
 }
 
-// Returns whether @collector's property is being queried:
-// if it has been requested but hasn't been replied.
-bool MWindowPropertyCache::requestPending(CollectorKey key)
-{
-    QHash<CollectorKey, Collector>::const_iterator i = requests.find(key);
-    return i != requests.end() && (*i).cookie;
-}
-
 // Called when @collector's property is being queried, and it sets up
 // a timer to collect the reply in a while.  If a query is already ongoing
 // it's cancelled.  @cookie should be what xcb_*() returned.
@@ -90,10 +82,10 @@ void MWindowPropertyCache::addRequest(CollectorKey key,
 }
 
 // Makes @collector's property considered isUpdate().
-void MWindowPropertyCache::replyCollected(CollectorKey key)
+void MWindowPropertyCache::replyCollected(QHash<CollectorKey,
+                                                Collector>::iterator i)
 {
     Q_ASSERT(!is_virtual);
-    QHash<CollectorKey, Collector>::iterator i = requests.find(key);
     QLatin1String collector = (*i).name;
     *i = Collector();
     collect_timer->disconnect(collector.latin1());
@@ -103,11 +95,12 @@ void MWindowPropertyCache::replyCollected(CollectorKey key)
 // will have been considered isUpdate().
 void MWindowPropertyCache::cancelRequest(CollectorKey key)
 {
-    if (requestPending(key)) {
-        xcb_discard_reply(xcb_conn, requests[key].cookie);
-        replyCollected(key);
+    QHash<CollectorKey, Collector>::iterator i = requests.find(key);
+    if (i != requests.end() && (*i).cookie) {
+        xcb_discard_reply(xcb_conn, (*i).cookie);
+        replyCollected(i);
     } else
-        requests[key] = Collector();
+        *i = Collector();
 }
 
 // some unit tests want to fake window properties
@@ -137,7 +130,7 @@ void MWindowPropertyCache::init()
     invoked_by = None,
     has_alpha = -1;
     global_alpha = 255;
-    video_global_alpha = -1;
+    video_global_alpha = 255;
     is_decorator = false;
     force_skipping_taskbar = false;
     wmhints = XAllocWMHints();
@@ -388,9 +381,10 @@ bool MWindowPropertyCache::hasAlpha()
 const QRegion &MWindowPropertyCache::shapeRegion()
 {
     CollectorKey me = shapeRegionKey;
-    if (isUpdate(me))
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me); 
+    if (it != requests.end() && !(*it).cookie)
         return shape_region;
-    if (isInputOnly() || !requests.contains(me)) {
+    if (isInputOnly() || it == requests.end()) {
         // InputOnly window obstructs nothing
         cancelRequest(me);
         QRect r = realGeometry();
@@ -400,10 +394,10 @@ const QRegion &MWindowPropertyCache::shapeRegion()
         return shape_region;
     }
 
-    xcb_shape_get_rectangles_cookie_t c = { requests[me].cookie };
+    xcb_shape_get_rectangles_cookie_t c = { (*it).cookie };
     xcb_shape_get_rectangles_reply_t *r;
     r = xcb_shape_get_rectangles_reply(xcb_conn, c, 0);
-    replyCollected(me);
+    replyCollected(it);
     if (!r) {
         QRect r = realGeometry();
         r.translate(-r.x(), -r.y());
@@ -428,17 +422,19 @@ const QRegion &MWindowPropertyCache::shapeRegion()
 const QRegion &MWindowPropertyCache::customRegion()
 {
     CollectorKey me = customRegionKey;
-    if (is_valid && !is_virtual && !requests.contains(me)) {
-        requests[me].cookie = requestProperty(MCompAtoms::_MEEGOTOUCH_CUSTOM_REGION,
-                                              XCB_ATOM_CARDINAL, 10 * 4);
-        requests[me].name = QLatin1String(SLOT(customRegion()));
-    } else if (!is_valid || !requests[me].cookie)
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me); 
+    if (is_valid && !is_virtual && it == requests.end()) {
+        Collector c(requestProperty(MCompAtoms::_MEEGOTOUCH_CUSTOM_REGION,
+                                        XCB_ATOM_CARDINAL, 10 * 4),
+                    QLatin1String(SLOT(customRegion())));
+        it = requests.insert(me, c);
+    } else if (!is_valid || it == requests.end() || !(*it).cookie)
         return custom_region;
 
-    xcb_get_property_cookie_t c = { requests[me].cookie };
     xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c = { (*it).cookie };
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
+    replyCollected(it);
     custom_region = QRegion(0, 0, 0, 0);
     if (r) {
         int len = xcb_get_property_value_length(r);
@@ -469,11 +465,12 @@ void MWindowPropertyCache::customRegion(bool request_only)
 Window MWindowPropertyCache::transientFor()
 {
     CollectorKey me = transientForKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me); 
+    if (is_valid && it != requests.end() && (*it).cookie) {
         xcb_get_property_reply_t *r;
+        xcb_get_property_cookie_t c = { (*it).cookie };
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
+        replyCollected(it);
         transient_for = None;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(Window))
@@ -499,11 +496,12 @@ Window MWindowPropertyCache::transientFor()
 Window MWindowPropertyCache::invokedBy()
 {
     CollectorKey me = invokedByKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me); 
+    if (is_valid && it != requests.end() && (*it).cookie) {
         xcb_get_property_reply_t *r;
+        xcb_get_property_cookie_t c = { (*it).cookie };
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
+        replyCollected(it);
         invoked_by = None;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(Window))
@@ -516,48 +514,29 @@ Window MWindowPropertyCache::invokedBy()
 
 int MWindowPropertyCache::cannotMinimize()
 {
-    CollectorKey me = cannotMinimizeKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
-        xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
-        cannot_minimize = 0;
-        if (r) {
-            if (xcb_get_property_value_length(r) == sizeof(CARD32))
-                cannot_minimize = *((CARD32*)xcb_get_property_value(r));
-            free(r);
-        }
-    }
+    CARD32 val;
+    if (is_valid && getCARD32(cannotMinimizeKey, &val))
+        cannot_minimize = val;
     return cannot_minimize;
 }
 
 unsigned int MWindowPropertyCache::noAnimations()
 {
-    CollectorKey me = noAnimationsKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
-        xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
-        no_animations = 0;
-        if (r) {
-            if (xcb_get_property_value_length(r) == sizeof(CARD32))
-                no_animations = *((CARD32*)xcb_get_property_value(r));
-            free(r);
-        }
-    }
+    CARD32 val;
+    if (is_valid && getCARD32(noAnimationsKey, &val))
+        no_animations = val;
     return no_animations;
 }
 
 int MWindowPropertyCache::videoOverlay()
 {
     CollectorKey me = videoOverlayKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me); 
+    if (is_valid && it != requests.end() && (*it).cookie) {
         xcb_get_property_reply_t *r;
+        xcb_get_property_cookie_t c = { (*it).cookie };
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
+        replyCollected(it);
         video_overlay = 0;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(INT8))
@@ -573,11 +552,12 @@ int MWindowPropertyCache::videoOverlay()
 int MWindowPropertyCache::alwaysMapped()
 {
     CollectorKey me = alwaysMappedKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me); 
+    if (is_valid && it != requests.end() && (*it).cookie) {
         xcb_get_property_reply_t *r;
+        xcb_get_property_cookie_t c = { (*it).cookie };
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
+        replyCollected(it);
         always_mapped = 0;
         if (r) {
             if (xcb_get_property_value_length(r) == sizeof(CARD32))
@@ -593,17 +573,19 @@ int MWindowPropertyCache::alwaysMapped()
 int MWindowPropertyCache::desktopView()
 {
     CollectorKey me = desktopViewKey;
-    if (is_valid && !is_virtual && !requests.contains(me)) {
-        requests[me].cookie = requestProperty(MCompAtoms::_MEEGOTOUCH_DESKTOP_VIEW,
-                                              XCB_ATOM_CARDINAL);
-        requests[me].name = QLatin1String(SLOT(desktopView()));
-    } else if (!is_valid || !requests[me].cookie)
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (is_valid && !is_virtual && it == requests.end()) {
+        Collector c(requestProperty(MCompAtoms::_MEEGOTOUCH_DESKTOP_VIEW,
+                                    XCB_ATOM_CARDINAL),
+                    QLatin1String(SLOT(desktopView())));
+        it = requests.insert(me, c);
+    } else if (!is_valid || it == requests.end() || !(*it).cookie)
         return desktop_view;
 
-    xcb_get_property_cookie_t c = { requests[me].cookie };
     xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c = { (*it).cookie };
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
+    replyCollected(it);
     desktop_view = -1;
     if (r) {
         if (xcb_get_property_value_length(r) == sizeof(CARD32))
@@ -627,89 +609,70 @@ void MWindowPropertyCache::desktopView(bool request_only)
                                    XCB_ATOM_CARDINAL));
 }
 
-bool MWindowPropertyCache::isDecorator()
+// returns true if there was a reply with valid value
+bool MWindowPropertyCache::getCARD32(CollectorKey key, CARD32 *value)
 {
-    CollectorKey me = isDecoratorKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
-        xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
-        is_decorator = false;
-        if (r) {
-            if (xcb_get_property_value_length(r) == sizeof(CARD32))
-                is_decorator = *((CARD32*)xcb_get_property_value(r));
+    QHash<CollectorKey, Collector>::iterator it = requests.find(key);
+    if (!is_valid || it == requests.end() || !(*it).cookie)
+        return false;
+    xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c = { (*it).cookie };
+    r = xcb_get_property_reply(xcb_conn, c, 0);
+    replyCollected(it);
+    if (r) {
+        if (xcb_get_property_value_length(r) == sizeof(CARD32)) {
+            *value = *((CARD32*)xcb_get_property_value(r));
             free(r);
+            return true;
+        } else {
+            free(r);
+            return false;
         }
     }
+    return false;
+}
+
+bool MWindowPropertyCache::isDecorator()
+{
+    CARD32 val;
+    if (is_valid && getCARD32(isDecoratorKey, &val))
+        is_decorator = true;
     return is_decorator;
 }
 
 unsigned int MWindowPropertyCache::meegoStackingLayer()
 {
-    CollectorKey me = meegoStackingLayerKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
-        xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
-        meego_layer = 0;
-        if (r) {
-            if (xcb_get_property_value_length(r) == sizeof(CARD32)) {
-                meego_layer = *((CARD32*)xcb_get_property_value(r));
-                if (meego_layer > 10)
-                    meego_layer = 10;
-            }
-            free(r);
-        }
-    }
+    CARD32 val;
+    if (is_valid && getCARD32(meegoStackingLayerKey, &val))
+        meego_layer = val > 10 ? 10 : val;
     return meego_layer;
 }
 
 unsigned int MWindowPropertyCache::lowPowerMode()
 {
-    CollectorKey me = lowPowerModeKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
-        xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
-        low_power_mode = 0;
-        if (r) {
-            if (xcb_get_property_value_length(r) == sizeof(CARD32))
-                low_power_mode = *((CARD32*)xcb_get_property_value(r));
-            free(r);
-        }
-    }
+    CARD32 val;
+    if (is_valid && getCARD32(lowPowerModeKey, &val))
+        low_power_mode = val;
     return low_power_mode;
 }
 
 unsigned int MWindowPropertyCache::opaqueWindow()
 {
-    CollectorKey me = opaqueWindowKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
-        xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
-        opaque_window = 0;
-        if (r) {
-            if (xcb_get_property_value_length(r) == sizeof(CARD32))
-                opaque_window = *((CARD32*)xcb_get_property_value(r));
-            free(r);
-        }
-    }
+    CARD32 val;
+    if (is_valid && getCARD32(opaqueWindowKey, &val))
+        opaque_window = val;
     return opaque_window;
 }
 
 bool MWindowPropertyCache::prestartedApp()
 {
     CollectorKey me = prestartedAppKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (is_valid && it != requests.end() && (*it).cookie) {
         xcb_get_property_reply_t *r;
+        xcb_get_property_cookie_t c = { (*it).cookie };
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
+        replyCollected(it);
         // some bright soul decided to make it 8-bit..
         if (r && xcb_get_property_value_length(r) == sizeof(char)
             && *((char*)xcb_get_property_value(r)))
@@ -766,11 +729,12 @@ XID MWindowPropertyCache::windowGroup()
 const XWMHints &MWindowPropertyCache::getWMHints()
 {
     CollectorKey me = getWMHintsKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (is_valid && it != requests.end() && (*it).cookie) {
         xcb_get_property_reply_t *r;
+        xcb_get_property_cookie_t c = { (*it).cookie };
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
+        replyCollected(it);
         if (r && xcb_get_property_value_length(r) >= int(sizeof(XWMHints))) {
             memcpy(wmhints, xcb_get_property_value(r), sizeof(XWMHints));
             if (prestartedApp())
@@ -902,31 +866,23 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
 
 unsigned MWindowPropertyCache::pid()
 {
-    CollectorKey me = pidKey;
-    if (!is_valid || !requests[me].cookie)
-        return wm_pid;
-
-    xcb_get_property_cookie_t c = { requests[me].cookie };
-    xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, c, 0);
-    wm_pid = 0;
-    replyCollected(me);
-    if (r && xcb_get_property_value_length(r) >= int(sizeof(CARD32)))
-        wm_pid = ((CARD32*)xcb_get_property_value(r))[0];
-    free(r);
+    CARD32 val;
+    if (is_valid && getCARD32(pidKey, &val))
+        wm_pid = val;
     return wm_pid;
 }
 
 int MWindowPropertyCache::windowState()
 {
     CollectorKey me = windowStateKey;
-    if (requests[me].cookie) {
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (it != requests.end() && (*it).cookie) {
         xcb_generic_error_t *error = 0;
 
-        xcb_get_property_cookie_t c = { requests[me].cookie };
         xcb_get_property_reply_t *r;
+        xcb_get_property_cookie_t c = { (*it).cookie };
         r = xcb_get_property_reply(xcb_conn, c, &error);
-        replyCollected(me);
+        replyCollected(it);
         if (r && xcb_get_property_value_length(r) >= int(sizeof(CARD32)))
             window_state = ((CARD32*)xcb_get_property_value(r))[0];
         else if (window_state < 0 || window_state == WithdrawnState
@@ -960,34 +916,23 @@ void MWindowPropertyCache::setWindowState(int state)
 
 unsigned MWindowPropertyCache::orientationAngle()
 {
-    CollectorKey me = orientationAngleKey;
-    if (!is_valid || !requests[me].cookie)
-        return orientation_angle;
-
-    xcb_get_property_cookie_t c = { requests[me].cookie };
-    xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
-    orientation_angle = 0;
-    if (r != NULL) {
-        if (xcb_get_property_value_length(r) == sizeof(CARD32))
-            orientation_angle = *((CARD32*)xcb_get_property_value(r));
-        free(r);
-    }
-
+    CARD32 val;
+    if (is_valid && getCARD32(orientationAngleKey, &val))
+        orientation_angle = val;
     return orientation_angle;
 }
 
 const QRect &MWindowPropertyCache::statusbarGeometry()
 {
     CollectorKey me = statusbarGeometryKey;
-    if (!is_valid || !requests[me].cookie)
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (!is_valid || it == requests.end() || !(*it).cookie)
         return statusbar_geom;
 
-    xcb_get_property_cookie_t c = { requests[me].cookie };
     xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c = { (*it).cookie };
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
+    replyCollected(it);
     statusbar_geom.setRect(0, 0, 0, 0);
     if (r && xcb_get_property_value_length(r) == int(4*sizeof(CARD32))) {
         CARD32* coords = (CARD32 *)xcb_get_property_value(r);
@@ -1001,13 +946,14 @@ const QRect &MWindowPropertyCache::statusbarGeometry()
 const QList<Atom>& MWindowPropertyCache::supportedProtocols()
 {
     CollectorKey me = supportedProtocolsKey;
-    if (!is_valid || !requests[me].cookie)
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (!is_valid || it == requests.end() || !(*it).cookie)
         return wm_protocols;
 
-    xcb_get_property_cookie_t c = { requests[me].cookie };
     xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c = { (*it).cookie };
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
+    replyCollected(it);
     wm_protocols.clear();
     if (!r)
         return wm_protocols;
@@ -1022,13 +968,14 @@ const QList<Atom>& MWindowPropertyCache::supportedProtocols()
 const QVector<Atom> &MWindowPropertyCache::netWmState()
 {
     CollectorKey me = netWmStateKey;
-    if (!is_valid || !requests[me].cookie)
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (!is_valid || it == requests.end() || !(*it).cookie)
         return net_wm_state;
 
-    xcb_get_property_cookie_t c = { requests[me].cookie };
     xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c = { (*it).cookie };
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
+    replyCollected(it);
     if (!r) {
         net_wm_state.clear();
         return net_wm_state;
@@ -1056,7 +1003,8 @@ bool MWindowPropertyCache::addToNetWmState(Atom state)
     // netWmState() will complete a pending request
     if (netWmState().contains(state))
         return false;
-    Q_ASSERT(!requestPending(SLOT(netWmState())));
+    Q_ASSERT(!requests.contains(netWmStateKey)
+             || !requests[netWmStateKey].cookie);
 
     net_wm_state.append(state);
     XChangeProperty(QX11Info::display(), window,
@@ -1090,7 +1038,8 @@ bool MWindowPropertyCache::removeFromNetWmState(Atom state)
         // didn't actually remove anything
         return false;
 
-    Q_ASSERT(!requestPending(SLOT(netWmState())));
+    Q_ASSERT(!requests.contains(netWmStateKey)
+             || !requests[netWmStateKey].cookie);
     XChangeProperty(QX11Info::display(), window,
                     ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
                     (unsigned char *)net_wm_state.constData(),
@@ -1124,19 +1073,9 @@ void MWindowPropertyCache::forceSkippingTaskbar(bool force)
 
 bool MWindowPropertyCache::skippingTaskbarMarker()
 {
-    CollectorKey me = skippingTaskbarMarkerKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
-        xcb_get_property_reply_t *r;
-        r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
-        skipping_taskbar_marker = false;
-        if (r) {
-            if (xcb_get_property_value_length(r) == sizeof(CARD32))
-                skipping_taskbar_marker = true;
-            free(r);
-        }
-    }
+    CARD32 val;
+    if (is_valid && getCARD32(skippingTaskbarMarkerKey, &val))
+        skipping_taskbar_marker = true;
     return skipping_taskbar_marker;
 }
 
@@ -1160,13 +1099,14 @@ void MWindowPropertyCache::setSkippingTaskbarMarker(bool setting)
 const QRectF &MWindowPropertyCache::iconGeometry()
 {
     CollectorKey me = iconGeometryKey;
-    if (!is_valid || !requests[me].cookie)
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (!is_valid || it == requests.end() || !(*it).cookie)
         return icon_geometry;
 
-    xcb_get_property_cookie_t c = { requests[me].cookie };
     xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c = { (*it).cookie };
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
+    replyCollected(it);
     if (r && xcb_get_property_value_length(r) >= int(4*sizeof(CARD32))) {
         CARD32* coords = (CARD32*)xcb_get_property_value(r);
         icon_geometry.setRect(coords[0], coords[1], coords[2], coords[3]);
@@ -1176,39 +1116,21 @@ const QRectF &MWindowPropertyCache::iconGeometry()
     return icon_geometry;
 }
 
-int MWindowPropertyCache::alphaValue(CollectorKey me)
-{
-    xcb_get_property_cookie_t c = { requests[me].cookie };
-    xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
-    if (!r) 
-        return 255;
-    
-    if (xcb_get_property_value_length(r) < int(sizeof(CARD32))) {
-        free(r);
-        return 255;
-    }
-
-    /* Map 0..0xFFFFFFFF -> 0..0xFF. */
-    int ret = *(CARD32*)xcb_get_property_value(r) >> 24;
-    free(r);
-    return ret;
-}
-
 int MWindowPropertyCache::globalAlpha()
 {
-    CollectorKey me = globalAlphaKey;
-    if (is_valid && requests[me].cookie)
-        global_alpha = alphaValue(me);
+    CARD32 val;
+    if (is_valid && getCARD32(globalAlphaKey, &val))
+        /* Map 0..0xFFFFFFFF -> 0..0xFF. */
+        global_alpha = val >> 24;
     return global_alpha;
 }
 
 int MWindowPropertyCache::videoGlobalAlpha()
 {    
-    CollectorKey me = videoGlobalAlphaKey;
-    if (is_valid && requests[me].cookie)
-        video_global_alpha = alphaValue(me);
+    CARD32 val;
+    if (is_valid && getCARD32(videoGlobalAlphaKey, &val))
+        /* Map 0..0xFFFFFFFF -> 0..0xFF. */
+        video_global_alpha = val >> 24;
     return video_global_alpha;
 }
 
@@ -1217,16 +1139,17 @@ Atom MWindowPropertyCache::windowTypeAtom()
     CollectorKey me = windowTypeAtomKey;
     if (!is_valid)
         return None;
-    if (!requests[me].cookie) {
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (it == requests.end() || !(*it).cookie) {
         Q_ASSERT(!type_atoms.isEmpty());
         return type_atoms[0];
     }
 
     type_atoms.resize(0);
-    xcb_get_property_cookie_t c = { requests[me].cookie };
     xcb_get_property_reply_t *r;
+    xcb_get_property_cookie_t c = { (*it).cookie };
     r = xcb_get_property_reply(xcb_conn, c, 0);
-    replyCollected(me);
+    replyCollected(it);
     if (r) {
         int n = xcb_get_property_value_length(r) / (int)sizeof(Atom);
         if (n > 0) {
@@ -1299,11 +1222,12 @@ void MWindowPropertyCache::setRealGeometry(const QRect &rect)
 const QRect MWindowPropertyCache::realGeometry()
 {
     CollectorKey me = realGeometryKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_geometry_cookie_t c = { requests[me].cookie };
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (is_valid && it != requests.end() && (*it).cookie) {
         xcb_get_geometry_reply_t *xcb_real_geom;
+        xcb_get_geometry_cookie_t c = { (*it).cookie };
         xcb_real_geom = xcb_get_geometry_reply(xcb_conn, c, 0);
-        replyCollected(me);
+        replyCollected(it);
         if (xcb_real_geom) {
             // We can set @real_geom because setRealGeom() would have
             // cancelRequest()ed us if it was set explicitly.
@@ -1318,11 +1242,12 @@ const QRect MWindowPropertyCache::realGeometry()
 const QString &MWindowPropertyCache::wmName()
 {
     CollectorKey me = wmNameKey;
-    if (is_valid && requests[me].cookie) {
-        xcb_get_property_cookie_t c = { requests[me].cookie };
+    QHash<CollectorKey, Collector>::iterator it = requests.find(me);
+    if (is_valid && it != requests.end() && (*it).cookie) {
         xcb_get_property_reply_t *r;
+        xcb_get_property_cookie_t c = { (*it).cookie };
         r = xcb_get_property_reply(xcb_conn, c, 0);
-        replyCollected(me);
+        replyCollected(it);
         if (r) {
             int len = xcb_get_property_value_length(r);
             if (len > 0) {

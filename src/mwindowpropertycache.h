@@ -26,6 +26,7 @@
 #include <QVector>
 #include <X11/Xutil.h>
 #include <X11/Xlib-xcb.h>
+#include <X11/Xmd.h>
 #include <xcb/render.h>
 #include <xcb/shape.h>
 #include <X11/extensions/shape.h>
@@ -53,6 +54,7 @@ public:
     class Collector {
     public:
         Collector() : cookie(0), name(QLatin1String("")) {}
+        Collector(unsigned c, QLatin1String s) : cookie(c), name(s) {}
         unsigned cookie;
         QLatin1String name;
     };
@@ -319,7 +321,7 @@ private slots:
 private:
     void init();
     void init_invalid();
-    int alphaValue(CollectorKey me);
+    bool getCARD32(CollectorKey key, CARD32 *value);
 
 protected:
     Window transient_for;
@@ -377,10 +379,9 @@ protected:
     MCSmartTimer *collect_timer;
     QHash<CollectorKey, Collector> requests;
     bool isUpdate(CollectorKey collector);
-    bool requestPending(CollectorKey collector);
     void addRequest(CollectorKey key, const QLatin1String &collector,
                     unsigned cookie);
-    void replyCollected(CollectorKey key);
+    void replyCollected(QHash<CollectorKey, Collector>::iterator i);
     void cancelRequest(CollectorKey key);
     unsigned requestProperty(Atom prop, Atom type, unsigned n = 1);
 
