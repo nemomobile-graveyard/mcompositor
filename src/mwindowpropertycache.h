@@ -22,7 +22,6 @@
 
 #include <QRegion>
 #include <QX11Info>
-#include <QHash>
 #include <QVector>
 #include <X11/Xutil.h>
 #include <X11/Xlib-xcb.h>
@@ -53,10 +52,10 @@ public:
     };
     class Collector {
     public:
-        Collector() : cookie(0), name(QLatin1String("")) {}
-        Collector(unsigned c, QLatin1String s) : cookie(c), name(s) {}
+        Collector() : cookie(0), name(QLatin1String("")), requested(0) {}
         unsigned cookie;
         QLatin1String name;
+        unsigned char requested;
     };
     enum CollectorKey {
         shapeRegionKey,
@@ -86,7 +85,8 @@ public:
         videoGlobalAlphaKey,
         windowTypeAtomKey,
         realGeometryKey,
-        wmNameKey
+        wmNameKey,
+        lastCollectorKey
     };
 
     /*! Construct a MWindowPropertyCache
@@ -321,7 +321,7 @@ private slots:
 private:
     void init();
     void init_invalid();
-    bool getCARD32(CollectorKey key, CARD32 *value);
+    bool getCARD32(const CollectorKey key, CARD32 *value);
 
 protected:
     Window transient_for;
@@ -377,16 +377,16 @@ protected:
     // When a request is made @collect_timer is restarted, and we collect
     // the reply unconditionally when it expires.
     MCSmartTimer *collect_timer;
-    QHash<CollectorKey, Collector> requests;
-    bool isUpdate(CollectorKey collector);
-    void addRequest(CollectorKey key, const QLatin1String &collector,
+    Collector requests[lastCollectorKey];
+    bool isUpdate(const CollectorKey collector);
+    void addRequest(const CollectorKey key, const QLatin1String &collector,
                     unsigned cookie);
-    void replyCollected(QHash<CollectorKey, Collector>::iterator i);
-    void cancelRequest(CollectorKey key);
+    void replyCollected(const CollectorKey key);
+    void cancelRequest(const CollectorKey key);
     unsigned requestProperty(Atom prop, Atom type, unsigned n = 1);
 
     // Overloads to make the routines above callable with other types.
-    void addRequest(CollectorKey key, const char *collector, unsigned cookie)
+    void addRequest(const CollectorKey key, const char *collector, unsigned cookie)
         { addRequest(key, QLatin1String(collector), cookie); }
     unsigned requestProperty(MCompAtoms::Atoms prop, Atom type,
                              unsigned n = 1)
