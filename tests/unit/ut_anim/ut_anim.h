@@ -34,6 +34,8 @@ private slots:
 
     void testGrabberRace();
 
+    static void setPaintCounter(MCompositeWindow* window);
+
 private:
     void fakeDamageEvent(MCompositeWindow *cw);
     void addWindow(MWindowPropertyCache *pc);

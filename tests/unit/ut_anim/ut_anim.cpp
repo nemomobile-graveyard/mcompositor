@@ -1,3 +1,9 @@
+
+#ifdef WINDOW_DEBUG
+#define DEBUG_SCENEGRAPH
+#define HAVE_XSYNC
+#endif
+
 #include <QtTest/QtTest>
 #include <QtGui>
 #include <QGLWidget>
@@ -9,6 +15,7 @@
 #include <mtexturepixmapitem.h>
 #include <mdynamicanimation.h>
 #include <mdevicestate.h>
+#include <mrender.h>
 #include "ut_anim.h"
 
 #include <QtDebug>
@@ -118,6 +125,13 @@ public:
 
 static fake_device_state *device_state;
 
+
+void ut_Anim::setPaintCounter(MCompositeWindow* window)
+{
+    ++(((MTexturePixmapItem*)window)->d->item_painted);
+}
+
+
 void ut_Anim::addWindow(MWindowPropertyCache *pc)
 {
     cmgr->d->prop_caches[pc->winId()] = pc;
@@ -141,6 +155,8 @@ void ut_Anim::mapWindow(MWindowPropertyCache *pc)
 
 void ut_Anim::initTestCase()
 {
+    MRender::setNodeDebugFilter(setPaintCounter);
+
     cmgr = (MCompositeManager*)qApp;
     // initialize MCompositeManager
     cmgr->setSurfaceWindow(0);
@@ -1181,7 +1197,7 @@ int main(int argc, char* argv[])
     XSetErrorHandler(error_handler);
     
     QGraphicsScene *scene = app.scene();
-    QGraphicsView view(scene);
+    MGraphicsView view(scene);
     view.setFrameStyle(0);
     view.setProperty("NoMStyle", true);
     view.setUpdatesEnabled(false);
@@ -1200,7 +1216,7 @@ int main(int argc, char* argv[])
     fmt.setSamples(0);
     fmt.setSampleBuffers(false);
 
-    QGLWidget w(fmt);
+    MGLWidget w(fmt);
     w.setAttribute(Qt::WA_PaintOutsidePaintEvent);    
     w.setAutoFillBackground(false);
     dheight = QApplication::desktop()->height();
