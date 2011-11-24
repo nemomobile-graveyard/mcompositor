@@ -45,7 +45,7 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/sync.h>
 
-#define DEBUG_SCENEGRAPH
+//#define CONSOLE_DEBUG
 
 static XSyncValue consumed;
 static XSyncValue ready;
@@ -53,6 +53,24 @@ static XSyncValue ready;
 // root of all creation
 static SceneNode* root = 0;
 static bool clear_scene = false;
+
+#ifdef DEBUG_SCENEGRAPH
+static ExternalRenderDebug external_debugger = 0;
+static QHash<GLuint, MCompositeWindow*> textured_windows;
+static void render_debug(void* msg)
+{
+    GLuint* tex = static_cast<GLuint*>(msg);
+    if (!tex)
+        return;
+    MCompositeWindow* w = textured_windows.value(*tex, 0);
+    if (!w)
+        return;
+    if (!external_debugger)
+        return;
+    external_debugger(w);
+}
+
+#endif
 
 MGLWidget::MGLWidget(const QGLFormat & format)
     :QGLWidget(format),
@@ -92,13 +110,13 @@ MGraphicsView::MGraphicsView(QGraphicsScene * scene, QWidget * parent )
 
 void MGraphicsView::paintEvent(QPaintEvent*)
 {    
-#ifdef DEBUG_SCENEGRAPH     
+#if (defined DEBUG_SCENEGRAPH && defined CONSOLE_DEBUG)     
     static QTime t;
     t.start();
 #endif
     MRender::renderScene();
     
-#ifdef DEBUG_SCENEGRAPH 
+#if (defined DEBUG_SCENEGRAPH && defined CONSOLE_DEBUG) 
     static int el = 0;
     static int avg = 0;
     avg++;
@@ -154,9 +172,11 @@ void MRender::addNode(MCompositeWindow* item, Item2DInterface* i)
     item->item_node.first = t;
     item->item_node.second = g;
     root->appendChild(t);
-#ifdef DEBUG_SCENEGRAPH
+#if (defined DEBUG_SCENEGRAPH && defined CONSOLE_DEBUG)
     qDebug("MRender::%s() Window: %d Texture: %d", __func__, 
            item->window(), item->texture());
+#elif defined DEBUG_SCENEGRAPH
+    textured_windows[item->texture()] = item;
 #endif
 }
 
@@ -272,6 +292,12 @@ void MRender::setFboRendered(MCompositeWindow* item, bool in_fbo)
  */
 void MRender::freeNode(MCompositeWindow* item)
 {
+#ifdef DEBUG_SCENEGRAPH
+    GeometryNode* g = static_cast<GeometryNode*> (item->item_node.second);
+    if (g)
+        textured_windows.remove(g->texture());
+#endif
+    
     if (item->item_node.first) 
         delete item->item_node.first;
     if (item->item_node.second)
@@ -313,6 +339,9 @@ void MRender::renderScene(bool in_fbo)
     static SceneRender s;
     s.setCleared(clear_scene);
     s.setFboRender(in_fbo);
+#ifdef DEBUG_SCENEGRAPH
+    s.setNodeDebugFilter(render_debug);
+#endif
     s.renderScene(root);
 }
 
@@ -331,3 +360,19 @@ bool MRender::isClearedScene()
 {
     return clear_scene;
 }
+
+#ifdef DEBUG_SCENEGRAPH
+
+/*! 
+  This function is used for purely for debugging purposes only. Sets an external
+  function \a f that gets called everytime a MCompositeWindow is rendered.
+
+  ExternalRenderDebug is a typedef for a function with the signature
+  void customfilter(MCompositeWindow* window);
+  
+*/
+void MRender::setNodeDebugFilter(ExternalRenderDebug f)
+{
+    external_debugger = f;
+}
+#endif

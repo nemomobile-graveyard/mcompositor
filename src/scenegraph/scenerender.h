@@ -31,6 +31,10 @@ class SceneRenderPrivate;
 typedef QPair<QMatrix4x4, GeometryNode*> AlphaMesh;
 typedef QPair<GLenum, GLenum> BlendFunc;
 
+#ifdef DEBUG_SCENEGRAPH
+typedef void (*RenderDebug)(void *message);
+#endif
+
 class SceneRender
 {
  public:
@@ -52,6 +56,11 @@ class SceneRender
     bool fboRender() { return _fbo_render; }
     void setCleared(bool cleared) { _clearscene = cleared; }
     bool isCleared() { return _clearscene; }
+
+#ifdef DEBUG_SCENEGRAPH
+    void setNodeDebugFilter(RenderDebug f) {  _render_debug = f; }
+    RenderDebug debugFilter() const { return _render_debug; }
+#endif
     
  private:
     void renderGeometry(GeometryNode* node, QMatrix4x4& transform);
@@ -68,9 +77,10 @@ class SceneRender
     bool               _clearscene;
     qreal              _current_opacity;
     BlendFunc          _current_blendfunc;
-
+#ifdef DEBUG_SCENEGRAPH
+    RenderDebug        _render_debug;
+#endif
     static SceneRenderPrivate* d;
-
     friend class TransformNode;
     friend class GeometryNode;
 };

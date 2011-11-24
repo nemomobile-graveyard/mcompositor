@@ -38,7 +38,7 @@
   render directly to the framebuffer or to an FBO.
  */
 
-//#define DEBUG_SCENEGRAPH
+//#define CONSOLE_DEBUG
 
 static const GLuint D_VERTEX_COORDS = 0;
 static const GLuint D_TEXTURE_COORDS = 1;
@@ -264,6 +264,9 @@ SceneRender::SceneRender()
       _clearscene(false),
       _current_opacity(1.0),
       _current_blendfunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+#ifdef DEBUG_SCENEGRAPH
+     ,_render_debug(0)
+#endif
 {
 }
 
@@ -366,7 +369,7 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
         }
         glDisable(GL_BLEND);
         
-#ifdef DEBUG_SCENEGRAPH 
+#if (defined DEBUG_SCENEGRAPH && defined CONSOLE_DEBUG)
         qDebug("--- end frame ---");
 #endif
         _visible_rects.clear();
@@ -378,6 +381,7 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
 static void render_debug(const char* location, SceneRender* s, 
                          GeometryNode* node, const QMatrix4x4& transform)
 {
+#ifdef CONSOLE_DEBUG
     QByteArray loc = location;
     loc = node->hasAlpha() ? loc + " Alpha" : loc; 
     qDebug() << loc.data()
@@ -388,6 +392,11 @@ static void render_debug(const char* location, SceneRender* s,
              << "] [hw Z:" << transform.data()[14]
              << "] [shader:" << node->shaderId()
              << "] [texture" << node->texture() << "]";
+#endif
+    static GLuint tex = 0;
+    tex = node->texture();
+    if (s->debugFilter())
+        s->debugFilter()(static_cast<void*>(&tex));
 }
 #endif
 

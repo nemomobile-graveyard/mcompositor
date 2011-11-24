@@ -28,6 +28,9 @@ contains(QT_CONFIG, xsync) {
     message("adding support for synced swapbuffers")
     DEFINES += HAVE_XSYNC
 }
+contains(DEFINES, WINDOW_DEBUG) {
+    DEFINES += DEBUG_SCENEGRAPH
+}
 
 TEMPLATE = lib
 TARGET = mcompositor

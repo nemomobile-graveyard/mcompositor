@@ -22,7 +22,6 @@
 
 #include "scenerender.h"
 #include "texturecoords.h"
-//#include "mrender.h"
 
 #ifndef SCENENODE_H
 #define SCENENODE_H

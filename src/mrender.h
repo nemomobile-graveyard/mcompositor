@@ -36,6 +36,10 @@ class TextureCoords;
 #define EXPLICIT_RESET 0x5002
 #endif
 
+#ifdef DEBUG_SCENEGRAPH
+typedef void (*ExternalRenderDebug)(MCompositeWindow* window);
+#endif
+
 class MGLWidget: public QGLWidget
 {
     Q_OBJECT
@@ -89,6 +93,11 @@ class MRender
     static void renderScene(bool in_fbo = false);
     static void setClearedScene(bool cleared);
     static bool isClearedScene();
+
+    /* Purely for debugging purposes */
+#ifdef DEBUG_SCENEGRAPH
+    static void setNodeDebugFilter(ExternalRenderDebug f);
+#endif
 };
 
 #endif
