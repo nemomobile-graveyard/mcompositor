@@ -978,12 +978,13 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         MCompositeWindow *p_cw;
         if (cw->propertyCache()->windowTypeAtom() ==
                                        ATOM(_NET_WM_WINDOW_TYPE_INPUT)
+            && cw->propertyCache()->isMapped()
             && (parent = cw->propertyCache()->transientFor())
             && (p_cw = COMPOSITE_WINDOW(parent))
             && (p_cw->isClosing() || p_cw->isWindowTransitioning()))
             // input method window's transient parent is animating
             return false;
-        if (!cw->paintedAfterMapping())
+        if (!cw->paintedAfterMapping() && cw->propertyCache()->isMapped())
             return false;
         if (cw->isMapped() && (cw->needsCompositing()
             // FIXME: implement direct rendering for shaped windows
