@@ -1,3 +1,8 @@
+#ifdef WINDOW_DEBUG
+#define DEBUG_SCENEGRAPH
+#define HAVE_XSYNC
+#endif
+
 #include <QtTest/QtTest>
 #include <QtGui>
 #include <QGLWidget>
@@ -7,6 +12,7 @@
 #include <mcompositewindow.h>
 #include <mtexturepixmapitem.h>
 #include <mcompositewindowanimation.h>
+#include <mrender.h>
 #include "ut_netClientList.h"
 
 #include <QtDebug>
@@ -275,14 +281,14 @@ int main(int argc, char* argv[])
     XSetErrorHandler(error_handler);
     
     QGraphicsScene *scene = app.scene();
-    QGraphicsView view(scene);
+    MGraphicsView view(scene);
     view.setFrameStyle(0);
     
     QGLFormat fmt;
     fmt.setSamples(0);
     fmt.setSampleBuffers(false);
 
-    QGLWidget w(fmt);
+    MGLWidget w(fmt);
     w.setAttribute(Qt::WA_PaintOutsidePaintEvent);    
     w.setAutoFillBackground(false);
     dheight = QApplication::desktop()->height();
