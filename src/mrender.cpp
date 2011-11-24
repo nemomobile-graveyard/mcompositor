@@ -91,9 +91,37 @@ MGraphicsView::MGraphicsView(QGraphicsScene * scene, QWidget * parent )
 }
 
 void MGraphicsView::paintEvent(QPaintEvent*)
-{        
-    MRender::renderScene();    
+{    
+#ifdef DEBUG_SCENEGRAPH     
+    static QTime t;
+    t.start();
+#endif
+    MRender::renderScene();
     
+#ifdef DEBUG_SCENEGRAPH 
+    static int el = 0;
+    static int avg = 0;
+    avg++;
+    el += t.elapsed();
+    
+    static int meanavg = 0;
+    static qreal score = 0;
+    
+    if (avg == 50) {
+        qDebug() << "average ms spent / frame:" << el / avg << " | frames" << avg
+                 << "| ms elapsed since timer start():" << el;
+        score +=  el / avg; 
+        avg = 0;
+        el = 0;
+        meanavg++;
+    }
+    
+    if (meanavg == 20) {
+        qDebug() << "== mean" << score / meanavg;
+        meanavg = 0;
+        score = 0;    
+    }
+#endif    
     MGLWidget* glw = (MGLWidget*) viewport();
     glw->swapBuffers();
 }
