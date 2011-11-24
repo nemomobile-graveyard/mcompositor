@@ -834,7 +834,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         addRequest(cannotMinimizeKey, SLOT(cannotMinimize()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
     } else if (e->atom == ATOM(_MEEGOTOUCH_WM_SWAP_COUNTER)) {
-        addRequest(SLOT(swapCounter()),
+        addRequest(swapCounterKey, SLOT(swapCounter()),
                    requestProperty(e->atom, XCB_ATOM_CARDINAL));
         emit swapCounterChanged();
     } else if (e->atom == ATOM(_MEEGOTOUCH_DESKTOP_VIEW)) {
