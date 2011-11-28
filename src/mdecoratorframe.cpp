@@ -39,6 +39,7 @@ MDecoratorFrame::MDecoratorFrame(QObject *p)
       decorator_window(0),
       decorator_item(0),
       sent_orientation(-1),
+      sent_show_dialog(false),
       no_resize(false)
 {    
     // One instance at a time
@@ -84,10 +85,12 @@ void MDecoratorFrame::sendManagedWindowId(bool show_dialog)
              << only_statusbar
              << show_dialog;
         sent_orientation = pc->orientationAngle();
+        sent_show_dialog = show_dialog;
     } else {
         args << unsigned(0) << QRect() << QString() << unsigned(0)
              << false << false;
         sent_orientation = -1;
+        sent_show_dialog = false;
     }
 
     remote_decorator->invoke("MAbstractDecorator", "RemoteSetManagedWinId",
@@ -103,7 +106,7 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
     this->only_statusbar = only_statusbar;
 
     if (client == cw) {
-        if (cw && (show_dialog ||
+        if (cw && (show_dialog != sent_show_dialog ||
             sent_orientation != (int)cw->propertyCache()->orientationAngle()))
             // Time to @show_dialog again or orientation changed.
             sendManagedWindowId(show_dialog);
@@ -169,7 +172,7 @@ void MDecoratorFrame::setDecoratorItem(MCompositeWindow *window)
     MTexturePixmapItem *item = (MTexturePixmapItem *) window;
     if (!decorator_window)
         setDecoratorWindow(item->window());
-    sendManagedWindowId();
+    sendManagedWindowId(sent_show_dialog);
 }
 
 MCompositeWindow *MDecoratorFrame::decoratorItem() const

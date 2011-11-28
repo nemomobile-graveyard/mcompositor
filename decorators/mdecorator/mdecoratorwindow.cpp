@@ -302,7 +302,7 @@ void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w,
 
     Qt::HANDLE old_window = managed_window;
     managed_window = w;
-    if (w != old_window && messageBox)
+    if (messageBox && !hung)
         hideQueryDialog();
 
     if (!managed_window) {
@@ -329,7 +329,7 @@ void MDecoratorWindow::createQueryDialog()
     QString name;
 
     if (messageBox)
-        return;
+        delete messageBox;
 
     XClassHint cls = {0, 0};
     XGetClassHint(QX11Info::display(), managed_window, &cls);
@@ -393,7 +393,10 @@ void MDecoratorWindow::hideQueryDialog()
         return;
 
     XSetTransientForHint(QX11Info::display(), winId(), None);
+    // do this even though messageBox may not be in the scene
+    // (animation is not visible because of stacking changes)
     sceneManager()->disappearSceneWindow(messageBox);
+    delete messageBox;
     messageBox = 0;
 
     restoreEverything();
@@ -406,8 +409,7 @@ void MDecoratorWindow::enterDisplayEvent()
         || messageBox->sceneWindowState() != MSceneWindow::Disappeared)
         return;
     hideEverything();
-    sceneManager()->appearSceneWindow(messageBox,
-                                      MSceneWindow::DestroyWhenDone);
+    sceneManager()->appearSceneWindow(messageBox);
 }
 
 void MDecoratorWindow::leaveDisplayEvent()

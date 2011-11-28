@@ -818,7 +818,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
             MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
             if (deco->managedWindow() == e->window && cw) {
                 if (cw->status() == MCompositeWindow::Hung)
-                    deco->setManagedWindow(cw, true);
+                    deco->setManagedWindow(cw, true, false, true);
                 else if (DECORATED_FS_WINDOW(cw->propertyCache()))
                     deco->setManagedWindow(cw, true, true);
                 else
@@ -1475,16 +1475,16 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     if (pc->isDecorator()) {
         MCompositeWindow *cw;
         deco->setDecoratorWindow(e->window);
-        deco->setManagedWindow(0);
 
         if ((cw = getHighestDecorated())) {
             if (cw->status() == MCompositeWindow::Hung)
-                deco->setManagedWindow(cw, true);
+                deco->setManagedWindow(cw, true, false, true);
             else if (DECORATED_FS_WINDOW(cw->propertyCache()))
                 deco->setManagedWindow(cw, true, true);
             else
                 deco->setManagedWindow(cw);
         } else {
+            deco->setManagedWindow(0);
             STACKING("positionWindow 0x%lx -> bottom", e->window);
             positionWindow(e->window, false);
         }
@@ -1928,7 +1928,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
     if (highest_d && !highest_d->isWindowTransitioning()) {
         if (highest_d->status() == MCompositeWindow::Hung)
-            deco->setManagedWindow(highest_d, true);
+            deco->setManagedWindow(highest_d, true, false, true);
         else if (DECORATED_FS_WINDOW(highest_d->propertyCache()))
             deco->setManagedWindow(highest_d, true, true);
         else
