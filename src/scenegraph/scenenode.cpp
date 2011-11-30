@@ -416,12 +416,12 @@ SceneRender::WalkNode GeometryNode::processNode()
         // Check if closest opaque nodes cover this node
         if (!r->rectVisible(world_bounding.intersected(current_rect)))
             return SceneRender::SkipNext;
-        _has_alpha = _has_alpha ? _has_alpha : r->_current_alpha;
+        bool alpha = _has_alpha || r->_current_alpha;
         // viewport is fully covered, frame is done after this node
-        if (world_bounding == r->_current_bounding && !_has_alpha)
+        if (world_bounding == r->_current_bounding && !alpha)
             return SceneRender::Stop;
         // got an alpha mesh
-        if (_has_alpha) {
+        if (alpha) {
             r->_alpha_stack.push_back(qMakePair(r->currentTransform(),this));
             return SceneRender::SkipNext;
         } 
