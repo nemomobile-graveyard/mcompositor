@@ -101,7 +101,6 @@ void MCompositeWindowShaderEffectPrivate::currentNodeProcessed(SceneNode* n)
 {
     current_node = static_cast<GeometryNode*> (n);
     current_node->setShaderId(active_fragment);
-    // qDebug() << __func__ << "shader id" << active_fragment;
     effect->render();
 }
 
@@ -157,22 +156,6 @@ GLuint MCompositeWindowShaderEffect::installShader(const QByteArray& fragment,
                                                    const QByteArray& vertex)
 {
     return SceneRender::installPixelShader(fragment, vertex);
-}
-
- /*!
-   \return Texture id of the currently rendered window
- */
-GLuint MCompositeWindowShaderEffect::texture() const
-{
-    // TODO: This assumes we have always have hadware TFP support 
-    if (d->priv_render) {
-#ifdef GLES2_VERSION
-        return d->priv_render->TFP.textureId;
-#else
-        return d->priv_render->TFP.textureId;
-#endif
-    }
-    return 0;
 }
 
 const QVector<GLuint>& MCompositeWindowShaderEffect::fragmentIds() const

@@ -44,7 +44,6 @@ class MCompositeWindowShaderEffect: public QObject
     
     GLuint installShader(const QByteArray& fragment,
                          const QByteArray& vertex = QByteArray());
-    GLuint texture() const;
     void setActiveShaderFragment(GLuint id);
     GLuint activeShaderFragment() const;
 
