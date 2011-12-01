@@ -1,3 +1,9 @@
+mcompositor (1.1.31-1) unstable; urgency=low
+
+  * Fixes: NB#292542 - Unable to swipe away call ui in ringing/ongoing state.
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Thu, 01 Dec 2011 13:04:38 +0200
+
 mcompositor (1.1.30-1) unstable; urgency=low
 
   * Fixes: NB#291498 - mdecorator heap leak triggered after Search or Settings
