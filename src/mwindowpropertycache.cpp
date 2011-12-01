@@ -599,7 +599,8 @@ void MWindowPropertyCache::desktopView(bool request_only)
                                    XCB_ATOM_CARDINAL));
 }
 
-// returns true if there was a reply with valid value
+// returns true if there was a reply with valid value or if the property
+// is not there
 bool MWindowPropertyCache::getCARD32(const CollectorKey me, CARD32 *value)
 {
     if (!is_valid || !requests[me].requested || !requests[me].cookie)
@@ -613,19 +614,20 @@ bool MWindowPropertyCache::getCARD32(const CollectorKey me, CARD32 *value)
             *value = *((CARD32*)xcb_get_property_value(r));
             free(r);
             return true;
-        } else {
-            free(r);
-            return false;
         }
+        free(r);
     }
-    return false;
+    // property is missing, we need to return 0, in case it was set before
+    // and then deleted
+    *value = 0;
+    return true;
 }
 
 bool MWindowPropertyCache::isDecorator()
 {
     CARD32 val;
     if (is_valid && getCARD32(isDecoratorKey, &val))
-        is_decorator = true;
+        is_decorator = !!val;
     return is_decorator;
 }
 
@@ -1058,7 +1060,7 @@ bool MWindowPropertyCache::skippingTaskbarMarker()
 {
     CARD32 val;
     if (is_valid && getCARD32(skippingTaskbarMarkerKey, &val))
-        skipping_taskbar_marker = true;
+        skipping_taskbar_marker = !!val;
     return skipping_taskbar_marker;
 }
 
@@ -1103,7 +1105,7 @@ int MWindowPropertyCache::globalAlpha()
     CARD32 val;
     if (is_valid && getCARD32(globalAlphaKey, &val))
         /* Map 0..0xFFFFFFFF -> 0..0xFF. */
-        global_alpha = val >> 24;
+        global_alpha = val == 0 ? 255 : val >> 24;
     return global_alpha;
 }
 
@@ -1112,7 +1114,7 @@ int MWindowPropertyCache::videoGlobalAlpha()
     CARD32 val;
     if (is_valid && getCARD32(videoGlobalAlphaKey, &val))
         /* Map 0..0xFFFFFFFF -> 0..0xFF. */
-        video_global_alpha = val >> 24;
+        video_global_alpha = val == 0 ? 255 : val >> 24;
     return video_global_alpha;
 }
 
