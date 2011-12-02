@@ -235,7 +235,7 @@ public:
     // initialize MCompositeManager with an empty window stack
     void ut_prepare();
     // for adding and mapping a window from a unit test
-    bool ut_addWindow(MWindowPropertyCache *pc);
+    bool ut_addWindow(MWindowPropertyCache *pc, bool map_it = true);
     // for replacing MDeviceState object from a unit test
     void ut_replaceDeviceState(MDeviceState *d);
 #endif
@@ -320,6 +320,7 @@ private:
     friend class ut_Compositing;
     friend class ut_netClientList;
     friend class ut_splashscreen;
+    friend class ut_PropCache;
 };
 
 #endif

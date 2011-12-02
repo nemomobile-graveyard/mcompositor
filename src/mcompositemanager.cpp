@@ -4614,7 +4614,7 @@ void MCompositeManager::ut_prepare()
     d->xserver_stacking.init();
 }
 
-bool MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
+bool MCompositeManager::ut_addWindow(MWindowPropertyCache *pc, bool map_it)
 {
     Window w = pc->winId();
     if (w == d->localwin || w == d->localwin_parent || w == d->wm_window
@@ -4623,6 +4623,7 @@ bool MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
         return false;
     d->prop_caches[w] = pc;
     d->xserver_stacking.windowCreated(w);
+    if (!map_it) return true;
 
     XMapRequestEvent mre;
     memset(&mre, 0, sizeof(mre));

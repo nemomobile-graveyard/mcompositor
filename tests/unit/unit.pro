@@ -1,6 +1,6 @@
 TEMPLATE = subdirs
 SUBDIRS += ut_stacking ut_anim ut_lockscreen ut_closeapp ut_compositing \
-           ut_netClientList ut_restackwindows ut_splashscreen
+           ut_netClientList ut_restackwindows ut_splashscreen ut_propcache
 
 td    = /usr/share/test-definition/testdefinition
 utdir = /usr/lib/mcompositor-unit-tests
