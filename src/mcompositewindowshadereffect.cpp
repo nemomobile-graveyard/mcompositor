@@ -79,6 +79,7 @@ MCompositeWindowShaderEffect::MCompositeWindowShaderEffect(QObject* parent)
 */
 MCompositeWindowShaderEffect::~MCompositeWindowShaderEffect()
 {
+    delete d;
 }
 
 /*!
