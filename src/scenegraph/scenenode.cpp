@@ -50,6 +50,7 @@ SceneNode::SceneNode()
       _lastchild(0),
       _nextsibling(0),
       _previoussibling(0),
+      _current_renderer(0),
       _position(INIT_POSITION),
       _children(0),
       _processed(false),
@@ -371,6 +372,7 @@ GeometryNode::GeometryNode(const QRectF& rect)
      _has_alpha(false),
      _visible(true),
      _inherit_transform(true),
+     _effect_processed(false),
      _blendfunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
      _uniformhandler(0)
      
@@ -438,8 +440,8 @@ SceneRender::WalkNode GeometryNode::processNode()
  */
 void GeometryNode::setUniforms(QGLShaderProgram* program)
 {
-    if (_uniformhandler)
-        _uniformhandler->setUniforms(program);
+    if (uniformHandler())
+        uniformHandler()->setUniforms(program);
 }
 
 /*!
@@ -501,6 +503,7 @@ SceneRender::WalkNode EffectNode::processNode()
     
     Q_ASSERT(render->currentParent()->nodeType() == SceneNode::Geometry);
     GeometryNode* g = static_cast<GeometryNode*>(render->currentParent());
+    g->setProcessedByEffect(true);
     effect->currentNodeProcessed(g);
     
     return SceneRender::ProcessNext;

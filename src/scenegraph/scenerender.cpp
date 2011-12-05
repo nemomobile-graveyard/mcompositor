@@ -307,11 +307,10 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
     _current_parent = root;
     
     if (_process_depth == 0) {
-        if (!_fbo_render) {
+        if (!_fbo_render && _clearscene) {
             glClearColor(0.0, 0.0, 0.0, 0.0);
             glClear(GL_COLOR_BUFFER_BIT);
-            if (_clearscene)
-                return SceneRender::Stop;
+            return SceneRender::Stop;
         }
 
         glFrontFace(GL_CW);
@@ -327,6 +326,15 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
             break;
         current->_current_renderer = this;
         current->setProcessed(false);
+
+        // explicitly process child EffectNodes first if we have one
+        if (current->_firstchild && 
+            current->_firstchild->nodeType() == SceneNode::Effect) {
+            _current_parent = current;
+            current->_firstchild->_current_renderer = this;
+            current->_firstchild->processNode();
+        }
+
         if ((status = current->processNode()) == SceneRender::SkipNext)
             continue;
         
@@ -344,10 +352,6 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
         
     if (root->nodeType() == SceneNode::Root) {
         // end of the line
-        _process_depth = 0;
-        _current_parent = 0;
-        status = SceneRender::ProcessNext;
-
         // process visible translucent items
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_CULL_FACE);
@@ -373,6 +377,9 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
         qDebug("--- end frame ---");
 #endif
         _visible_rects.clear();
+        _process_depth = 0;
+        _current_parent = 0;
+        status = SceneRender::ProcessNext;
     }
     return status;
 }
@@ -404,6 +411,15 @@ void SceneRender::renderGeometry(GeometryNode* node, QMatrix4x4& transform)
 {
     if (!QGLContext::currentContext())
         return;
+    
+    // This node has a child EffectNode child and it hasn't been processed yet
+    if (node->uniformHandler() && !node->effectProcessed())
+        return;
+    
+    if (_process_depth == 0 && !_fbo_render) {
+        glClearColor(0.0, 0.0, 0.0, 0.0);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
 
     static QMatrix4x4 ident_t;
     glBindTexture(GL_TEXTURE_2D, node->texture());

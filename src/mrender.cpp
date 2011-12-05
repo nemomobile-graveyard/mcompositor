@@ -216,6 +216,7 @@ void MRender::addNode(MCompositeWindowShaderEffect* effect,
         
         // Uniform handler;
         g->setUniformHandler(e->effectHandler());
+        g->setProcessedByEffect(false);
         effect->hookWindowNode(g);
     }
 }
@@ -235,6 +236,9 @@ int MRender::addNode(MCompositeWindowShaderEffect* effect,
     g->setAlpha(has_alpha);
     effect->effectNode()->appendChild(g);
     g->_position = effect->effectNode()->nodePosition();
+#if (defined DEBUG_SCENEGRAPH && defined CONSOLE_DEBUG)
+    qDebug("MRender::%s() Effect Texture: %d", __func__, g->texture());
+#endif
     
     return effect->addQuad(g);
 }

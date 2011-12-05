@@ -155,9 +155,13 @@ class GeometryNode: public SceneNode
     bool hasAlpha() const { return _has_alpha; }
     
     void setUniformHandler(EffectInterface* e) { _uniformhandler = e; }
+    EffectInterface* uniformHandler() { return _uniformhandler; }
     void setUniforms(QGLShaderProgram* program);
 
     const BlendFunc& blendFunc() const { return _blendfunc; }
+
+    void setProcessedByEffect(bool processed) { _effect_processed = processed; }
+    bool effectProcessed() { return _effect_processed; }
     
  private:
     QRectF           _geometry;
@@ -169,6 +173,7 @@ class GeometryNode: public SceneNode
     bool             _has_alpha;
     bool             _visible;
     bool             _inherit_transform;
+    bool             _effect_processed;
     qreal            _z_value;
     BlendFunc        _blendfunc;
     QPointer<EffectInterface> _uniformhandler;
