@@ -334,9 +334,10 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
             current->_firstchild->_current_renderer = this;
             current->_firstchild->processNode();
         }
-
-        if ((status = current->processNode()) == SceneRender::SkipNext)
-            continue;
+        if (current->nodeType() != SceneNode::Effect) {
+            if ((status = current->processNode()) == SceneRender::SkipNext)
+                continue;
+        }
         
         if (current->nodeType() == SceneNode::Geometry) {
             renderGeometry((GeometryNode*) current, _current_transform);
