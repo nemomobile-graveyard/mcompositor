@@ -1286,7 +1286,7 @@ bool MWindowPropertyCache::readSplashProperty(Window win,
 
 void MWindowPropertyCache::damageTracking(bool enabled)
 {
-    if (!is_valid)
+    if (!is_valid || is_virtual)
         return;
     if (enabled) {
         if (!damage_object && !isInputOnly())
