@@ -144,7 +144,8 @@ bool MTexturePixmapPrivate::isVisible()
     
      if (item->isDirectRendered() || !item->isVisible()
          || !(item->propertyCache()->isMapped() || 
-              item->isWindowTransitioning())
+              item->isWindowTransitioning() ||
+              item->status() == MCompositeWindow::Closing)
          || item->propertyCache()->isInputOnly())
          return false;
      

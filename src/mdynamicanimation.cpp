@@ -295,14 +295,16 @@ void MChainedAnimation::windowShown()
     if (invokerWindow())
         portrait = invokerWindow()->propertyCache()->orientationAngle() % 180;
     cropper->setPortrait(portrait);
+    QPointF startp;
     if (portrait) {
-        positionAnimation()->setStartValue(screen.translated(0,-screen.height())
-                                           .topLeft());
+        startp = screen.translated(0,-screen.height()).topLeft();
+        positionAnimation()->setStartValue(startp);
         positionAnimation()->setEndValue(QPointF(0,0));
         invoker_pos->setStartValue(QPointF(0,0));
         invoker_pos->setEndValue(screen.bottomLeft());
     } else {
-        positionAnimation()->setStartValue(screen.topRight());
+        startp = screen.topRight();
+        positionAnimation()->setStartValue(startp);
         positionAnimation()->setEndValue(QPointF(0,0));
         invoker_pos->setStartValue(QPointF(0,0));
         invoker_pos->setEndValue(screen.translated(0,-screen.width())
@@ -310,6 +312,8 @@ void MChainedAnimation::windowShown()
     }
 
     animationGroup()->setDirection(QAbstractAnimation::Forward);
+    // init the window position. don't wait until animation starts
+    targetWindow()->setPos(startp);
     targetWindow()->setVisible(true);
     start();
 }
