@@ -139,6 +139,7 @@ class GeometryNode: public SceneNode
     const QRectF& geometry() const { return _geometry; }
 
     qreal opacity() const { return _opacity; }
+    void setOpacity(qreal opacity) { _opacity = opacity; }
         
     bool inheritTransform() { return _inherit_transform; }
     void setInheritTransform(bool inherit) { _inherit_transform = inherit; }

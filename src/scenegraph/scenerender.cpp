@@ -55,7 +55,7 @@ public:
     {
     public:
         CachedShaderProgram(const QGLContext* context, QObject* parent);
-        void setWorldMatrix(const QMatrix4x4& m);
+        void setWorldMatrix(const QMatrix4x4& m, bool forced = false);
         void setTexture(GLuint t);
         void setOpacity(GLfloat o);
     
@@ -159,12 +159,16 @@ void SceneRenderPrivate::initVertices(QGLWidget *glwidget)
 
 void SceneRenderPrivate::updateVertices(const QMatrix4x4 &t, ShaderType type) 
 {        
-    if (shader[type] != currentShader)
+    bool current_changed = false;
+    if (shader[type] != currentShader) {
         currentShader = shader[type];
+        current_changed = true;
+    }
     
     if (!currentShader->bind())
         qWarning() << __func__ << "failed to bind shader program";
-    currentShader->setWorldMatrix(t);
+    // When active program changes, the uniforms must be updated
+    currentShader->setWorldMatrix(t, current_changed);
 }
 
 void SceneRenderPrivate::updateVertices(const QMatrix4x4 &t, GLuint customShaderId) 
@@ -227,10 +231,11 @@ SceneRenderPrivate::CachedShaderProgram::CachedShaderProgram(const QGLContext* c
     opacity = -1;
 }
 
-void SceneRenderPrivate::CachedShaderProgram::setWorldMatrix(const QMatrix4x4& m) 
+void SceneRenderPrivate::CachedShaderProgram::setWorldMatrix(const QMatrix4x4& m,
+                                                             bool forced) 
 {
     static bool init = true;
-    if (init || m != worldMatrix) {
+    if (init || m != worldMatrix || forced) {
         worldMatrix = m;
         setUniformValue("matWorld", worldMatrix);
         init = false;

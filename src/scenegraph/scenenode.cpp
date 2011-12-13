@@ -402,10 +402,10 @@ SceneRender::WalkNode GeometryNode::processNode()
             _blendfunc   = r->_current_blendfunc;
         } else {
             current_rect = geometry();
-            _opacity     = 1.0;
-            r->_current_alpha = false;
             _blendfunc   = qMakePair((GLenum)GL_SRC_ALPHA, 
                                      (GLenum)GL_ONE_MINUS_SRC_ALPHA);
+            if (!_visible)
+                return SceneRender::SkipNext;
         }
         
         if (topnode)
