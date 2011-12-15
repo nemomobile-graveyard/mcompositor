@@ -33,15 +33,18 @@ static QRectF screen;
 
 class MStatusBarCrop: public MCompositeWindowShaderEffect
 {
-    Q_OBJECT
  public:
-    MStatusBarCrop(QObject* parent)
-        :MCompositeWindowShaderEffect(parent),
+    MStatusBarCrop()
+        :MCompositeWindowShaderEffect(0),
          appwindow(0),
          portrait(false)
     {
-        connect(MStatusBarTexture::instance(), SIGNAL(geometryUpdated()),
-                SLOT(setupStatusbar()));
+        // This effect is created after the statusbar texture is already
+        // initialized. There is no problem initializing its texture's 
+        // reference here.
+        const MStatusBarTexture *sbtex = MStatusBarTexture::instance();
+        addQuad(sbtex->texture(), sbtex->portraitRect(),
+                sbtex->portraitTexCoords(), false);
     }
     
     void render()
@@ -70,18 +73,11 @@ class MStatusBarCrop: public MCompositeWindowShaderEffect
         portrait = p;
     }
 
-private slots:
-    void setupStatusbar()
-    {
-        const MStatusBarTexture *sbtex = MStatusBarTexture::instance();
-        addQuad(sbtex->texture(), sbtex->portraitRect(),
-                sbtex->portraitTexCoords(), false);
-    }
-
 private:
     QPointer<MCompositeWindow> appwindow;
     bool portrait;
 };
+static MStatusBarCrop* cropper = 0;
 
 /*!
  * Dynamic animators are window animators that can have their internal
@@ -90,6 +86,9 @@ private:
 MDynamicAnimation::MDynamicAnimation(QObject* parent)
     :MCompositeWindowAnimation(parent)
 {
+    if (!cropper)
+        cropper = new MStatusBarCrop();
+        
     setReplaceable(false);    
     if (screen.isEmpty())
         screen = QApplication::desktop()->availableGeometry();  
@@ -162,7 +161,6 @@ MSheetAnimation::MSheetAnimation(QObject* parent)
     int duration = mc->configInt("sheet-anim-duration", 350);
     positionAnimation()->setDuration(duration);
     activeAnimations().append(positionAnimation());
-    cropper = new MStatusBarCrop(this);
     connect(animationGroup(), SIGNAL(finished()), SLOT(endAnimation()));
 }
 
@@ -177,6 +175,9 @@ void MSheetAnimation::windowShown()
     positionAnimation()->setEasingCurve(QEasingCurve::OutExpo);
 
     if (!targetWindow()->propertyCache()->statusbarGeometry().isEmpty()) {
+        // clear previous effect
+        cropper->removeEffect(targetWindow());
+
         MStatusBarTexture::instance()->updatePixmap();
         cropper->setAppWindow(targetWindow());
         cropper->installEffect(targetWindow());
@@ -197,6 +198,9 @@ void MSheetAnimation::windowClosed()
     positionAnimation()->setEasingCurve(QEasingCurve::InOutExpo);
 
     if (!targetWindow()->propertyCache()->statusbarGeometry().isEmpty()) {
+        // clear previous effect
+        cropper->removeEffect(targetWindow());
+
         MStatusBarTexture::instance()->updatePixmap();
         cropper->setAppWindow(targetWindow());
         cropper->installEffect(targetWindow());
@@ -261,8 +265,6 @@ MChainedAnimation::MChainedAnimation(QObject* parent)
     animationGroup()->addAnimation(invoker_pos);
     
     connect(animationGroup(), SIGNAL(finished()), SLOT(endAnimation()));
-    cropper = new MStatusBarCrop(this);
-
     activeAnimations().append(positionAnimation());
     activeAnimations().append(invoker_pos);    
 }
@@ -280,6 +282,10 @@ void MChainedAnimation::windowShown()
     // sb geometry is shared by targetwindow and invokerwindow
     cropper->setAppWindow(targetWindow());
     if (!targetWindow()->propertyCache()->statusbarGeometry().isEmpty()) {
+        // clear previous effect
+        cropper->removeEffect(targetWindow());
+        cropper->removeEffect(invokerWindow());
+
         cropper->installEffect(targetWindow());
         cropper->installEffect(invokerWindow());
     }
@@ -336,6 +342,10 @@ void MChainedAnimation::windowClosed()
               ((MCompositeManager*)qApp)->stackingList().size() + 2);
 
     if (!targetWindow()->propertyCache()->statusbarGeometry().isEmpty()) {
+        // clear previous effect
+        cropper->removeEffect(targetWindow());
+        cropper->removeEffect(invokerWindow());
+
         cropper->installEffect(targetWindow());
         cropper->installEffect(invokerWindow());
     }
@@ -391,8 +401,6 @@ MCallUiAnimation::MCallUiAnimation(QObject* parent)
      call_mode(MCallUiAnimation::NoCall)
 {
     connect(animationGroup(), SIGNAL(finished()), SLOT(endAnimation()));
-    cropper = new MStatusBarCrop(this);
-
     // UX call-ui specs
     const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
     int duration = mc->configInt("callui-anim-duration", 400);
@@ -488,6 +496,11 @@ void MCallUiAnimation::setupCallMode(bool showWindow)
     }
 }
 
+static void init_win_properties(MCompositeWindow* window, QPropertyAnimation* a)
+{
+    window->setProperty(a->propertyName(), a->startValue());
+}
+
 void MCallUiAnimation::windowShown()
 {
     if (!targetWindow())
@@ -520,10 +533,15 @@ void MCallUiAnimation::windowShown()
     setupCallMode();
 
     MStatusBarTexture::instance()->updatePixmap();
+    // clear previous effect
+    cropper->removeEffect(targetWindow());
+
     cropper->setAppWindow(targetWindow());
     cropper->installEffect(targetWindow());
-    if ((behindTarget = targetWindow()->behind()) != NULL)
+    if ((behindTarget = targetWindow()->behind()) != NULL) {
+        cropper->removeEffect(behindTarget);
         cropper->installEffect(behindTarget);
+    }
     cropper->setPortrait(targetWindow()->propertyCache()->orientationAngle() % 180);
     
     if (call_mode == MCallUiAnimation::IncomingCall)
@@ -531,6 +549,12 @@ void MCallUiAnimation::windowShown()
     else if (call_mode == MCallUiAnimation::OutgoingCall)
         animationGroup()->setDirection(QAbstractAnimation::Backward);
     
+    // init values
+    init_win_properties(targetWindow(), positionAnimation());
+    init_win_properties(targetWindow(), scaleAnimation());
+    init_win_properties(targetWindow(), opacityAnimation());
+    
+    targetWindow()->setNewlyMapped(false);
     targetWindow()->setVisible(true);
     start();
 }
@@ -546,10 +570,15 @@ void MCallUiAnimation::windowClosed()
     targetWindow()->setVisible(true);
 
     MStatusBarTexture::instance()->updatePixmap();
+    // clear previous effect
+    cropper->removeEffect(targetWindow());
+
     cropper->setAppWindow(targetWindow());
     cropper->installEffect(targetWindow());
-    if ((behindTarget = targetWindow()->behind()) != NULL)
+    if ((behindTarget = targetWindow()->behind()) != NULL) {
+        cropper->removeEffect(behindTarget);
         cropper->installEffect(behindTarget);
+    }
     cropper->setPortrait(targetWindow()->propertyCache()->orientationAngle() % 180);
     
     if (call_mode == MCallUiAnimation::IncomingCall)
@@ -661,5 +690,3 @@ void MCallUiAnimation::endAnimation()
         break;
     }
 }
-
-#include "mdynamicanimation.moc"
