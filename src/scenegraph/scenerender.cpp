@@ -338,6 +338,7 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
             _current_parent = current;
             current->_firstchild->_current_renderer = this;
             current->_firstchild->processNode();
+            renderScene(current->_firstchild);
         }
         if (current->nodeType() != SceneNode::Effect) {
             if ((status = current->processNode()) == SceneRender::SkipNext)
@@ -353,7 +354,8 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
             break;   
             
         // child nodes 
-        status = renderScene(current); 
+        if (current->nodeType() != SceneNode::Effect) 
+            status = renderScene(current); 
     }
         
     if (root->nodeType() == SceneNode::Root) {
@@ -374,6 +376,7 @@ SceneRender::WalkNode SceneRender::renderScene(SceneNode* root)
                     glBlendFunc(frame_blendf.first, frame_blendf.second);
                 }
                 renderGeometry(g, m.first);   
+                ++_process_depth;
             }
             _alpha_stack.pop_back();
         }
