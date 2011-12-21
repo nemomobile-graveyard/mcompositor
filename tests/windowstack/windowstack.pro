@@ -6,7 +6,7 @@ target.path=/usr/bin
 DEPENDPATH += .
 INCLUDEPATH += . 
 
-LIBS += -lXcomposite
+LIBS += -lXcomposite -lX11
 SOURCES += windowstack.cpp 
 
 INSTALLS += target
