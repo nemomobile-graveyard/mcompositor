@@ -1,3 +1,9 @@
+mcompositor (1.1.32-1) unstable; urgency=low
+
+  * Fixes: NB#290819 - mcompositor requires credentials from X
+
+ -- Abdiel Janulgue <abdiel.janulgue@nokia.com>  Thu, 22 Dec 2011 14:56:52 +0200
+
 mcompositor (1.1.31-1) unstable; urgency=low
 
   * Fixes: NB#292542 - Unable to swipe away call ui in ringing/ongoing state.
