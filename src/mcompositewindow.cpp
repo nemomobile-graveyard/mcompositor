@@ -165,7 +165,7 @@ bool MCompositeWindow::iconify()
     return false;
 }
 
-void MCompositeWindow::setUntransformed()
+void MCompositeWindow::setUntransformed(bool preserve_iconified)
 {
     endAnimation();
     
@@ -173,7 +173,8 @@ void MCompositeWindow::setUntransformed()
     setVisible(true);
     setOpacity(1.0);
     setScale(1.0);
-    iconified = false;
+    if (!preserve_iconified)
+        iconified = false;
 }
 
 void MCompositeWindow::setIconified(bool iconified)

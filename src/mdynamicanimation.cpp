@@ -620,7 +620,7 @@ void MCallUiAnimation::resetAnimatedItems()
         cropper->setEnabled(false);
         cropper->removeEffect(targetWindow());    
         // reset default values
-        targetWindow()->setUntransformed();
+        targetWindow()->setUntransformed(true);
         targetWindow()->setPos(
               targetWindow()->propertyCache()->realGeometry().topLeft());
     }

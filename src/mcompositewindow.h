@@ -119,7 +119,7 @@ public:
     /*!
      * Set scale, opacity etc. to normal values.
      */
-    void setUntransformed();
+    void setUntransformed(bool preserve_iconified = false);
 
     /*!
      * Returns true if this window needs a decoration
