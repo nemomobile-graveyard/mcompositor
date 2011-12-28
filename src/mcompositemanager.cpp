@@ -3025,7 +3025,8 @@ bool MCompositeManagerPrivate::processX11EventFilters(XEvent *event, bool after)
 
 void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
 {
-    if (e->state & Mod5Mask && e->keycode == switcher_key)
+    if (e->type == KeyRelease &&
+        e->state & Mod5Mask && e->keycode == switcher_key)
         exposeSwitcher();
 }
 
