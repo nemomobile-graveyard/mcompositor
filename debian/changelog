@@ -1,3 +1,10 @@
+mcompositor (1.1.33-1) unstable; urgency=low
+
+  * Fixes: NB#293944 - Right view not opened after "Message"-button tapped in
+    Incoming CALL UI, when device is locked.
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 28 Dec 2011 10:09:24 +0200
+
 mcompositor (1.1.32-1) unstable; urgency=low
 
   * Fixes: NB#290819 - mcompositor requires credentials from X
