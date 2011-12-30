@@ -1,0 +1,12 @@
+<aegis>
+    <request policy="add">
+         <credential match="xserver-security-policy::record-input" />
+         <credential match="xserver-security-policy::playback-input" />
+         <credential match="xserver-security-policy::capture-drawables" />
+         <for path="/usr/bin/windowctl" />
+    </request>
+    <request policy="add">
+         <credential match="xserver-security-policy::capture-drawables" />
+         <for path="/usr/bin/windowstack" />
+    </request>
+</aegis>

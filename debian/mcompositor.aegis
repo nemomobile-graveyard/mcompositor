@@ -2,14 +2,13 @@
    <request>
       <credential name="UID::user" />
       <credential name="GID::users" />
+      <for path="/usr/bin/mcompositor" />
       <for path="/usr/bin/mdecorator" />
    </request>
    <request>
-     <credential name="UID::user" />
-     <credential name="GID::users" />
-     <credential name="xserver-security-policy::record-input" />
-     <credential name="xserver-security-policy::playback-input" />
-     <credential name="xserver-security-policy::capture-drawables" />
+     <credential match="xserver-security-policy::record-input" />
+     <credential match="xserver-security-policy::playback-input" />
+     <credential match="xserver-security-policy::capture-drawables" />
      <for path="/usr/bin/mcompositor" />
    </request>
 </aegis>
