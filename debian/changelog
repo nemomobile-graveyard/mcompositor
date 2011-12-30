@@ -1,3 +1,12 @@
+mcompositor (1.1.34-1) unstable; urgency=low
+
+  * Fixes: NB#290819 - mcompositor requires credentials from X (should work
+    now)
+  * Fixes: NB#295987 - windowctl of mcompositor-tools requires credentials to
+    work properly with X
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 30 Dec 2011 15:14:23 +0200
+
 mcompositor (1.1.33-1) unstable; urgency=low
 
   * Fixes: NB#293944 - Right view not opened after "Message"-button tapped in
