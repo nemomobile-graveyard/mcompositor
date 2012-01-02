@@ -1371,6 +1371,8 @@ void MWindowPropertyCache::shapeRefresh()
     addRequest(shapeRegionKey, SLOT(shapeRegion()),
                xcb_shape_get_rectangles(xcb_conn, window,
                                         ShapeBounding).sequence);
+
+    emit shapeUpdated();
 }
 
 bool MWindowPropertyCache::readSplashProperty(Window win,

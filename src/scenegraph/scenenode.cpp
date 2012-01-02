@@ -411,9 +411,15 @@ SceneRender::WalkNode GeometryNode::processNode()
         if (topnode)
             r->_current_bounding = current_rect;
         // Check first if this node is worth processing at all
-        if (world_bounding.intersects(current_rect))
-            r->_current_bounding |= current_rect;
-        else
+        if (world_bounding.intersects(current_rect)) { 
+            // Build a minimum bounding rectangle for all visible nodes.
+            // Subsequent nodes are merged to the bounding rectangle only if 
+            // they intersect or share an edge with the existing bounding
+            // rectangle
+            QRectF i_rect = r->intersectingVisible(current_rect);
+            if (r->intersectsOrSameEdge(current_rect, r->_current_bounding))
+                r->_current_bounding |= current_rect.united(i_rect);
+        } else
             return SceneRender::SkipNext;
         // Check if closest opaque nodes cover this node
         if (!r->rectVisible(world_bounding.intersected(current_rect)))

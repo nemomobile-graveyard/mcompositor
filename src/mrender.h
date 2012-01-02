@@ -85,6 +85,7 @@ class MRender
     static void setWindowGeometry(MCompositeWindow* item, 
                                   const QRectF& geometry,
                                   Qt::AspectRatioMode mode = Qt::IgnoreAspectRatio);
+    static void setWindowRegion(MCompositeWindow* item, const QRegion& region);
     static void freeNode(MCompositeWindow* item);
     static void freeNode(MCompositeWindowShaderEffect* effect);
     static void clearNode(MCompositeWindow* item);

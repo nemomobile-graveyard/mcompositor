@@ -61,10 +61,12 @@ class SceneRender
     void setNodeDebugFilter(RenderDebug f) {  _render_debug = f; }
     RenderDebug debugFilter() const { return _render_debug; }
 #endif
+    static bool intersectsOrSameEdge(const QRectF& r1, const QRectF& r2);
     
  private:
     void renderGeometry(GeometryNode* node, QMatrix4x4& transform);
     bool rectVisible(const QRectF& rect);
+    const QRectF intersectingVisible(const QRectF& rect);
 
     QRectF             _current_bounding;
     QVector<AlphaMesh> _alpha_stack;

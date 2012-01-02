@@ -181,6 +181,36 @@ void MRender::addNode(MCompositeWindow* item, Item2DInterface* i)
 }
 
 /*!
+ * Sets the region of a shaped window as primitive GeometryNodes
+ */
+void MRender::setWindowRegion(MCompositeWindow* item, const QRegion& region)
+{
+    GeometryNode* g = static_cast<GeometryNode*> (item->item_node.second);
+    if (!g || region.rectCount() <= 1)
+        return;
+    // clear previous regions if any
+    if (!g->regions().isEmpty()) {
+        qDeleteAll(g->regions().begin(), g->regions().end());
+        g->regions().clear();
+    }
+    for (int i = 0; i < region.rects().count(); ++i) {
+        if (i == 0) {
+            // Set the original GeometryNode to the size of the first rect.
+            setNodeGeometry(g, region.rects()[0], Qt::KeepAspectRatio);
+        } else {
+            // Ownership of these nodes belongs to the main geometry node
+            GeometryNode* region_geom = new GeometryNode(item->boundingRect());
+            setNodeGeometry(region_geom, region.rects()[i], Qt::KeepAspectRatio);
+            region_geom->setTexture(item->texture());
+            // Make sure the region is inserted at the beginning. An effect 
+            // node might be a child of the main geometry.
+            g->prependChild(region_geom);
+            g->regions().push_back(region_geom);
+        }
+    }
+}
+
+/*!
  * Helper function to map the composite window's Z value to its node's 
  * position in the scenegraph.
  */
@@ -296,16 +326,18 @@ void MRender::setFboRendered(MCompositeWindow* item, bool in_fbo)
  */
 void MRender::freeNode(MCompositeWindow* item)
 {
-#ifdef DEBUG_SCENEGRAPH
     GeometryNode* g = static_cast<GeometryNode*> (item->item_node.second);
+#ifdef DEBUG_SCENEGRAPH
     if (g)
         textured_windows.remove(g->texture());
 #endif
     
     if (item->item_node.first) 
         delete item->item_node.first;
-    if (item->item_node.second)
-        delete item->item_node.second;
+    if (g) {
+        qDeleteAll(g->regions().begin(), g->regions().end());
+        delete g;
+    }    
 }
 
 /*!

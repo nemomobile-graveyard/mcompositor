@@ -476,3 +476,26 @@ bool SceneRender::rectVisible(const QRectF& rect)
             return false;
     return true;
 }
+
+bool SceneRender::intersectsOrSameEdge(const QRectF& r1, const QRectF& r2)
+{
+    return (r1.intersects(r2)
+            || r1.top() == r2.bottom()
+            || r1.left() == r2.right()
+            || r1.right() == r2.left()
+            || r1.bottom() == r2.top());
+}
+
+/*!
+ * Returns the rectangle of the most recently rendered GeometryNode that shares
+ * an edge or intersects with the given \rect
+ */
+const QRectF SceneRender::intersectingVisible(const QRectF& rect)
+{
+    for (int i = _visible_rects.size() - 1; i >= 0; --i) {
+        QRectF c = _visible_rects[i];
+        if (intersectsOrSameEdge(rect,c))
+            return c;
+    }
+    return QRectF();
+}

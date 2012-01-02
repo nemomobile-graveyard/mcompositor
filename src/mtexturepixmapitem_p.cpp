@@ -70,8 +70,11 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
         MCompositeManager *m = (MCompositeManager*)qApp;
         glwidget = m->glWidget();
     }
-    if (item->propertyCache())
+    if (item->propertyCache()) {
         item->propertyCache()->damageTracking(true);
+        connect(item->propertyCache(), SIGNAL(shapeUpdated()),
+                SLOT(updateShapeRegion()));
+    }
     init();
 }
 
@@ -120,7 +123,18 @@ void MTexturePixmapPrivate::resize(int w, int h)
     }
     brect.setWidth(w);
     brect.setHeight(h);
-    MRender::setWindowGeometry(item, brect);
+    if (item->propertyCache() && 
+        item->propertyCache()->shapeRegion().rectCount() > 1)
+        // Geometry change is handled by shape of the window
+        return;
+    else
+        MRender::setWindowGeometry(item, brect);
+}
+
+void MTexturePixmapPrivate::updateShapeRegion()
+{
+    if (item->propertyCache())
+        MRender::setWindowRegion(item, item->propertyCache()->shapeRegion());
 }
 
 QTransform MTexturePixmapPrivate::transform() const

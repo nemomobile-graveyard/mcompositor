@@ -324,6 +324,7 @@ signals:
     void alwaysMappedChanged(MWindowPropertyCache *pc);
     void customRegionChanged(MWindowPropertyCache *pc);
     void swapCounterChanged();
+    void shapeUpdated();
 
 private slots:
     bool prestartedApp();

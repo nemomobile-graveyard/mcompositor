@@ -50,6 +50,7 @@ class QTransform;
  */
 class MTexturePixmapPrivate: public Item2DInterface
 {
+    Q_OBJECT
 public:
     MTexturePixmapPrivate(Window window, MTexturePixmapItem *item);
     ~MTexturePixmapPrivate();
@@ -89,6 +90,9 @@ public:
     static EglTextureManager *texman;
     static EglResourceManager *eglresource;
 #endif
+
+ private slots:
+    void updateShapeRegion();
 };
 
 #endif //DUITEXTUREPIXMAPITEM_P_H

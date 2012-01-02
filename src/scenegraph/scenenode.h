@@ -127,6 +127,7 @@ class EffectInterface: public QObject
 class GeometryNode: public SceneNode
 {
  public:
+    typedef QVector<GeometryNode*> Region;
 
     GeometryNode(const QRectF&);
     SceneRender::WalkNode processNode();
@@ -164,6 +165,12 @@ class GeometryNode: public SceneNode
     void setProcessedByEffect(bool processed) { _effect_processed = processed; }
     bool effectProcessed() { return _effect_processed; }
     
+    /*! 
+      Returns a list of related but distinct nodes that represents
+      regions of the texture set to this node.  
+    */
+    Region& regions() { return _regions; }
+    
  private:
     QRectF           _geometry;
     TextureCoords    _texcoords;
@@ -177,6 +184,7 @@ class GeometryNode: public SceneNode
     bool             _effect_processed;
     qreal            _z_value;
     BlendFunc        _blendfunc;
+    Region           _regions;
     QPointer<EffectInterface> _uniformhandler;
 
     friend class SgManager;
