@@ -494,8 +494,14 @@ void MCompositeWindow::closeWindowAnimation()
             p->d->enableCompositing();
             updateWindowPixmap();
         }
+        // updateWindowPixmap() triggers a repaint but the window may receive
+        // an unmap event. Temporarily tell the renderer window is mapped to 
+        // prevent window from being briefly invisible.
+        bool mapped = propertyCache()->isMapped();
+        propertyCache()->setIsMapped(true);
         d->updateWindowPixmap();
         animator->windowClosed();
+        propertyCache()->setIsMapped(mapped); // restore (un)mapped status
         window_status = Normal;
         p->servergrab.grabLater(animator->grabAllowed());
         p->servergrab.commit();
