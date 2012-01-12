@@ -17,7 +17,7 @@ contains(QT_CONFIG, opengles2) {
      } else {
          # Otherwise use GLX backend.
          message("building Makefile for GLX version")
-         DEFINES += DESKTOP_VERSION
+         DEFINES += DESKTOP_VERSION GL_GLEXT_PROTOTYPES
          SOURCES += \
 	 	    mtexturepixmapitem_glx.cpp \
 	 	    mtexturefrompixmap_glx.cpp

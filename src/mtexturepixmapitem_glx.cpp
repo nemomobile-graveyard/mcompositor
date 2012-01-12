@@ -55,8 +55,6 @@ void MTexturePixmapItem::init()
 
     d->TFP.alpha = pc->hasAlpha();
 
-    d->inverted_texture = d->TFP.invertedTexture();
-
     saveBackingStore();
 }
 

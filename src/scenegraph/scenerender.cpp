@@ -22,6 +22,12 @@
 
 #include "texturepixmapshaders.h"
 
+#ifdef DESKTOP_VERSION
+#define GL_GLEXT_PROTOTYPES 1
+#include <GL/gl.h>
+#include <GL/glext.h>
+#endif
+
 /*!
   \class SceneRender is the render object of the scenegraph that draws the
   scene while traversing the nodes
