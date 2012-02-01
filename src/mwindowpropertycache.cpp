@@ -148,12 +148,12 @@ void MWindowPropertyCache::init()
     stacked_unmapped = false;
     orientation_angle = 0;
     damage_object = 0;
+    damage_report_level = -1;
     collect_timer = 0;
     no_animations = 0;
     video_overlay = 0;
     pending_damage = false;
     skipping_taskbar_marker = false;
-    const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
     waiting_for_damage = 0;
 }
 
@@ -1291,19 +1291,36 @@ void MWindowPropertyCache::damageTracking(bool enabled)
     if (!is_valid || is_virtual)
         return;
     if (enabled) {
-        if (!damage_object && !isInputOnly())
+        if (!damage_object && !isInputOnly()) {
+            damage_report_level = XDamageReportNonEmpty;
             damage_object = XDamageCreate(QX11Info::display(), window,
-                                          XDamageReportNonEmpty);
+                                          damage_report_level);
+        }
     } else if (damage_object) {
         XDamageDestroy(QX11Info::display(), damage_object);
         damage_object = 0;
+        damage_report_level = -1;
         pending_damage = false;
     }
 }
 
+void MWindowPropertyCache::damageTracking(int damageReportLevel)
+{
+    if (!is_valid || is_virtual || isInputOnly())
+        return;
+    else if (damage_object && damageReportLevel == damage_report_level)
+        return;
+    else if (damage_object)
+        XDamageDestroy(QX11Info::display(), damage_object);
+
+    damage_object = XDamageCreate(QX11Info::display(), window,
+                                  damageReportLevel);
+    damage_report_level = damageReportLevel;
+}
+
 void MWindowPropertyCache::damageSubtract()
 {
-    if (damage_object)
+    if (damage_object && damage_report_level == XDamageReportNonEmpty)
         XDamageSubtract(QX11Info::display(), damage_object, None, None);
     pending_damage = false;
 }
@@ -1314,13 +1331,19 @@ void MWindowPropertyCache::damageReceived()
         pending_damage = true;
 }
 
-int MWindowPropertyCache::waitingForDamage()
+int MWindowPropertyCache::waitingForDamage() const
 {
     return waiting_for_damage;
 }
 
 void MWindowPropertyCache::setWaitingForDamage(int waiting)
 {
+    if (damage_object && waiting == 0 &&
+            damage_report_level == XDamageReportRawRectangles) {
+        // recreate the damage object to switch from
+        // XDamageReportRawRectangles to XDamageReportNonEmpty
+        damageTracking(XDamageReportNonEmpty);
+    }
     waiting_for_damage = waiting;
 }
 

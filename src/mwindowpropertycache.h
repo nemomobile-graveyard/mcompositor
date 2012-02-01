@@ -284,7 +284,20 @@ public:
         MWindowPropertyCache::xcb_conn = c;
     }
 
+    /*!
+     * Enables/disables damage tracking by creating/destroying the damage object.
+     * Does nothing if the object is already created/destroyed.
+     * The damage report level is XDamageReportNonEmpty.
+     */
     void damageTracking(bool enabled);
+
+    /*!
+     * Enables damage tracking by creating a damage object with the given report
+     * level. If an object with the given level already exists nothing happens,
+     * if an object with another level exists it is destroyed and a new one is
+     * created.
+     */
+    void damageTracking(int damageReportLevel);
     // XDamageSubtract wrapper for unit testing
     void damageSubtract();
     // for unit testing of damage handling code
@@ -309,7 +322,7 @@ public:
      */
     bool isVirtual() const { return is_virtual; }
 
-    int waitingForDamage();
+    int waitingForDamage() const;
     void setWaitingForDamage(int waiting);
 signals:
     void iconGeometryUpdated();
@@ -400,12 +413,15 @@ protected:
     static xcb_render_query_pict_formats_reply_t *pict_formats_reply;
     static xcb_render_query_pict_formats_cookie_t pict_formats_cookie;
     Damage damage_object;
+    int damage_report_level;
     int waiting_for_damage;
     QString wm_name;
     unsigned wm_pid, no_animations;
     int video_overlay;
     bool pending_damage;
     bool skipping_taskbar_marker;
+
+    friend class ut_Compositing;
 };
 
 // Non-deletable dummy MWindowPropertyCache.

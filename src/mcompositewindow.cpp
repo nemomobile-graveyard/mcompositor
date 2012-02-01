@@ -316,6 +316,9 @@ void MCompositeWindow::damageReceived()
     if (!pc->waitingForDamage() && !resize_expected) {
         // We aren't planning to show the window.
         Q_ASSERT(!damage_timer->isActive());
+        // triggers switch from XDamageReportRawRectangles to XDamageReportNonEmpty
+        // if needed
+        pc->setWaitingForDamage(0);
         return;
     } else if (damage_timer->isActive()) {
         // We're within timeout and just got a damage.

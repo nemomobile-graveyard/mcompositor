@@ -20,6 +20,16 @@
 
 static int dheight, dwidth;
 
+static QHash<Drawable,int> lastDamageReportLevel;
+static QHash<Drawable,int> damageCreationCounter;
+Damage
+XDamageCreate (Display*, Drawable d, int level)
+{
+    lastDamageReportLevel[d] = level;
+    ++damageCreationCounter[d];
+    return 1;
+}
+
 // Skip bad window messages for mock windows
 static int error_handler(Display * , XErrorEvent *)
 {    
@@ -170,12 +180,22 @@ void ut_Compositing::fakeDamageEvent(MCompositeWindow *cw)
 
 void ut_Compositing::testDesktopMapping()
 {
+    lastDamageReportLevel[1] = -1;
+    damageCreationCounter[1] = 0;
     fake_desktop_window *desk = new fake_desktop_window(1);
     mapWindow(desk);
     MCompositeWindow *w = cmgr->d->windows.value(1, 0);
     QCOMPARE(w != 0, true);
+    QCOMPARE(lastDamageReportLevel[1], XDamageReportRawRectangles);
+    QCOMPARE(desk->damage_report_level, XDamageReportRawRectangles);
+    QCOMPARE(damageCreationCounter[1], 1);
     fakeDamageEvent(w);
+    QCOMPARE(damageCreationCounter[1], 2);
+    QCOMPARE(lastDamageReportLevel[1], XDamageReportNonEmpty);
+    QCOMPARE(desk->damage_report_level, XDamageReportNonEmpty);
     fakeDamageEvent(w);
+    QCOMPARE(damageCreationCounter[1], 2);
+    QCOMPARE(desk->damage_report_level, XDamageReportNonEmpty);
 
     QCOMPARE(!cmgr->d->stacking_list.isEmpty(), true);
     QCOMPARE(cmgr->d->possiblyUnredirectTopmostWindow(), true);
@@ -185,11 +205,14 @@ void ut_Compositing::testDesktopMapping()
     QCOMPARE(w->window() == 1, true);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), true);
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
+    QCOMPARE(damageCreationCounter[1], 2);
 }
 
 void ut_Compositing::testAppMapping()
 {
     fake_LMT_window *app = new fake_LMT_window(2);
+    lastDamageReportLevel[2] = -1;
+    damageCreationCounter[2] = 0;
     mapWindow(app);
     MCompositeWindow *w = cmgr->d->windows.value(2, 0);
     QCOMPARE(w != 0, true);
@@ -197,11 +220,20 @@ void ut_Compositing::testAppMapping()
     // check that it is not visible after idle handlers
     QTest::qWait(10);
     QCOMPARE(app->damageObject() != 0, true);
+    QCOMPARE(damageCreationCounter[2], 1);
+    QCOMPARE(lastDamageReportLevel[2], XDamageReportRawRectangles);
+    QCOMPARE(app->damage_report_level, XDamageReportRawRectangles);
     QCOMPARE(w->isVisible(), false);
     QCOMPARE(w->windowObscured(), false);
 
     fakeDamageEvent(w);
+    QCOMPARE(damageCreationCounter[2], 1);
+    QCOMPARE(lastDamageReportLevel[2], XDamageReportRawRectangles);
+    QCOMPARE(app->damage_report_level, XDamageReportRawRectangles);
     fakeDamageEvent(w);
+    QCOMPARE(damageCreationCounter[2], 2);
+    QCOMPARE(lastDamageReportLevel[2], XDamageReportNonEmpty);
+    QCOMPARE(app->damage_report_level, XDamageReportNonEmpty);
     QCOMPARE(w->windowAnimator()->isActive(), true);
     while (w->windowAnimator()->isActive()) {
         QCOMPARE(cmgr->d->compositing, true);
@@ -217,16 +249,22 @@ void ut_Compositing::testAppMapping()
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), true);
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
+    QCOMPARE(damageCreationCounter[2], 2);
 }
 
 // unmap an application (depends on the previous test)
 void ut_Compositing::testAppUnmapping()
 {
+    lastDamageReportLevel[2] = -1;
+    damageCreationCounter[2] = 0;
     MCompositeWindow *w = cmgr->d->windows.value(2, 0);
     QCOMPARE(w != 0, true);
     ((MTexturePixmapItem*)w)->d->TFP.drawable = request_testpixmap();
     w->closeWindowRequest();
     unmapWindow(w->propertyCache());
+    QCOMPARE(damageCreationCounter[2], 1);
+    QCOMPARE(lastDamageReportLevel[2], XDamageReportNonEmpty);
+    QCOMPARE(w->propertyCache()->damage_report_level, XDamageReportNonEmpty);
     QCOMPARE(w->windowAnimator()->isActive(), true);
     while (w->windowAnimator()->isActive()) {
         QCOMPARE(cmgr->d->compositing, true);
@@ -248,6 +286,8 @@ void ut_Compositing::testAppUnmapping()
 // test re-mapping of an unmapped app (depends on the previous test)
 void ut_Compositing::testAppRemapping()
 {
+    lastDamageReportLevel[2] = -1;
+    damageCreationCounter[2] = 0;
     MCompositeWindow *w = cmgr->d->windows.value(2, 0);
     fake_LMT_window *app = (fake_LMT_window*)cmgr->d->prop_caches.value(2, 0);
     QCOMPARE(w != 0, true);
@@ -256,13 +296,23 @@ void ut_Compositing::testAppRemapping()
 
     // check that it is not visible after idle handlers
     QTest::qWait(10);
+    QCOMPARE(damageCreationCounter[2], 1);
+    QCOMPARE(lastDamageReportLevel[2], XDamageReportRawRectangles);
+    QCOMPARE(app->damage_report_level, XDamageReportRawRectangles);
     QCOMPARE(app->damageObject() != 0, true);
     QCOMPARE(w->isVisible(), false);
     QCOMPARE(w->windowObscured(), false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), false);
 
     fakeDamageEvent(w);
+    QCOMPARE(damageCreationCounter[2], 1);
+    QCOMPARE(lastDamageReportLevel[2], XDamageReportRawRectangles);
+    QCOMPARE(app->damage_report_level, XDamageReportRawRectangles);
     fakeDamageEvent(w);
+    QCOMPARE(damageCreationCounter[2], 2);
+    QCOMPARE(lastDamageReportLevel[2], XDamageReportNonEmpty);
+    QCOMPARE(app->damage_report_level, XDamageReportNonEmpty);
+
     QCOMPARE(w->windowAnimator()->isActive(), true);
     while (w->windowAnimator()->isActive()) {
         QCOMPARE(cmgr->d->compositing, true);
@@ -278,6 +328,8 @@ void ut_Compositing::testAppRemapping()
     QCOMPARE(cmgr->d->overlay_mapped, false);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), true);
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
+    QCOMPARE(damageCreationCounter[2], 2);
+    QCOMPARE(app->damage_report_level, -1);
 }
 
 // VKB appearing for an app when that app is showing the mapping animation
@@ -677,5 +729,5 @@ int main(int argc, char* argv[])
 
     ut_Compositing test;
 
-    return QTest::qExec(&test);
+    return QTest::qExec(&test, argc, argv);
 }

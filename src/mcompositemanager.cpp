@@ -1434,7 +1434,11 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
                     pc->damageTracking(false);
                 }
             } else {
-                pc->damageTracking(true);
+                // NB#296146: Use XDamageReportRawRectangles when mapping a window
+                // to make sure we are notified about all damage events.
+                // With XDamageReportNonEmpty damage events can be optimized away
+                // and we do not trigger the startup animation as expected.
+                pc->damageTracking(XDamageReportRawRectangles);
                 XCompositeRedirectWindow(QX11Info::display(), e->window,
                                          CompositeRedirectManual);
             }
