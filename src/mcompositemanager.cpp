@@ -4577,7 +4577,7 @@ void MCompositeManager::ensureSettingsFile()
     config("ping-interval-ms",                 5000);
     config("hung-dialog-reappear-ms",         30000);
     config("damages-for-starting-anim",           2);
-    config("damage-timeout-ms",                 500);
+    config("damage-timeout-ms",                1500);
     config("expect-resize-timeout-ms",          800);
     config("splash-timeout-ms",               30000);
     config("lockscreen-map-timeout-ms",        1000);
