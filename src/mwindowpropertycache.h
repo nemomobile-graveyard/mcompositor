@@ -309,6 +309,8 @@ public:
      */
     bool isVirtual() const { return is_virtual; }
 
+    int waitingForDamage();
+    void setWaitingForDamage(int waiting);
 signals:
     void iconGeometryUpdated();
     void desktopViewChanged(MWindowPropertyCache *pc);
@@ -398,6 +400,7 @@ protected:
     static xcb_render_query_pict_formats_reply_t *pict_formats_reply;
     static xcb_render_query_pict_formats_cookie_t pict_formats_cookie;
     Damage damage_object;
+    int waiting_for_damage;
     QString wm_name;
     unsigned wm_pid, no_animations;
     int video_overlay;

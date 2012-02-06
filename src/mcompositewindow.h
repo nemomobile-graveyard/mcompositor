@@ -371,7 +371,6 @@ private:
     short window_obscured;
     bool newly_mapped;
     bool is_transitioning, is_not_stacking;
-    char waiting_for_damage;
     bool resize_expected;
     bool painted_after_mapping;
     bool allow_delete;

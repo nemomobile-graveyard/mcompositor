@@ -153,6 +153,8 @@ void MWindowPropertyCache::init()
     video_overlay = 0;
     pending_damage = false;
     skipping_taskbar_marker = false;
+    const MCompositeManager *mc = static_cast<MCompositeManager*>(qApp);
+    waiting_for_damage = 0;
 }
 
 void MWindowPropertyCache::init_invalid()
@@ -1310,6 +1312,16 @@ void MWindowPropertyCache::damageReceived()
 {
     if (damage_object) // <-- check object for unit tests
         pending_damage = true;
+}
+
+int MWindowPropertyCache::waitingForDamage()
+{
+    return waiting_for_damage;
+}
+
+void MWindowPropertyCache::setWaitingForDamage(int waiting)
+{
+    waiting_for_damage = waiting;
 }
 
 bool MWindowPropertyCache::isAppWindow(bool include_transients)
