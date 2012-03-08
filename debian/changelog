@@ -1,3 +1,9 @@
+mcompositor (1.1.35-1) unstable; urgency=low
+
+  * Fixes: NB#296146 - startup time for applications increased by 400ms
+
+ -- Armin Berres <armin.berres@basyskom.de>  Thu, 08 Mar 2012 15:52:21 +0100
+
 mcompositor (1.1.34-1) unstable; urgency=low
 
   * Fixes: NB#290819 - mcompositor requires credentials from X (should work
