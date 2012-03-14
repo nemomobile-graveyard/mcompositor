@@ -26,7 +26,7 @@ Description: MeeGo Touch UI Compositing Window Manager header files
 
 Package: mcompositor-utils
 Architecture: any
-Depends: ${shlibs:Depends}, mcetools, gconf2, aegis-dss-tools [arm armel]
+Depends: ${shlibs:Depends}, mcetools, gconf2
 Suggests: python
 Description: commandline tools for testing mcompositor
 

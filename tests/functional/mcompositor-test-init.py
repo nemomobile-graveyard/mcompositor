@@ -18,8 +18,8 @@ if os.system('pidof mcompositor'):
   print 'mcompositor is not running'
   sys.exit(1)
 
-os.system('aegis-su -o com.nokia.maemo -n /usr/bin/windowstack')
-os.system('aegis-su -o com.nokia.maemo -n /usr/bin/windowctl')
+#os.system('aegis-su -o com.nokia.maemo -n /usr/bin/windowstack')
+#os.system('aegis-su -o com.nokia.maemo -n /usr/bin/windowctl')
 
 if os.system('windowstack m | grep mdecorator'):
   print 'mdecorator is not mapped!'
