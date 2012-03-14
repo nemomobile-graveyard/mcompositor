@@ -1,3 +1,9 @@
+mcompositor (1.1.35-2~unreleased) unstable; urgency=low
+
+  * unreleased
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 14 Mar 2012 13:49:21 +0200
+
 mcompositor (1.1.35-1) unstable; urgency=low
 
   * Fixes: NB#296146 - startup time for applications increased by 400ms
