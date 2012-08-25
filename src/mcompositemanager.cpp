@@ -429,8 +429,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
       defaultGraphicsAlpha(MAXIMUM_GLOBAL_ALPHA),
       defaultVideoAlpha(MAXIMUM_GLOBAL_ALPHA),
       globalAlphaOverridden(false),
-      disable_redrawing_due_to_damage(false),
-      lockscreen_painted(false)
+      disable_redrawing_due_to_damage(false)
 {
     xcb_conn = XGetXCBConnection(QX11Info::display());
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
@@ -447,11 +446,6 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(MCompositeManager *p)
             this, SLOT(callOngoing(bool)));
     stacking_timer.setSingleShot(true);
     connect(&stacking_timer, SIGNAL(timeout()), this, SLOT(stackingTimeout()));
-    lockscreen_map_timer.setSingleShot(true);
-    lockscreen_map_timer.setInterval(qobject_cast<MCompositeManager*>(p)->
-                                     configInt("lockscreen-map-timeout-ms"));
-    connect(&lockscreen_map_timer, SIGNAL(timeout()), p,
-            SLOT(lockScreenPainted()));
 }
 
 MCompositeManagerPrivate::~MCompositeManagerPrivate()
@@ -621,6 +615,7 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
     MCompositeWindow *item = COMPOSITE_WINDOW(e->drawable);
     if (item) {
         item->propertyCache()->damageReceived();
+
         /* partial updates disabled for now, does not always work, unless we
          * check for EGL_BUFFER_PRESERVED or GLX_SWAP_COPY_OML first, see
          * http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html and
@@ -1085,8 +1080,6 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
             XRemoveFromSaveSet(QX11Info::display(), e->window);
         if (wpc->isDecorator())
             MDecoratorFrame::instance()->setDecoratorItem(0);
-        if (wpc->isLockScreen())
-            lockscreen_painted = false;
     }
 
     // do not keep unmapped windows in windows_as_mapped list
@@ -2149,14 +2142,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
 
     pc->setBeingMapped(false);
     pc->setIsMapped(true);
-    if (pc->isLockScreen()) {
-        lockscreen_map_timer.stop();
-        if (e->send_event == False)
-            lockscreen_painted = false;
-        else
-            // we just started -> don't expect any damage
-            lockscreen_painted = true;
-    }
 
 #ifdef ENABLE_BROKEN_SIMPLEWINDOWFRAME
     FrameData fd = framed_windows.value(win);
@@ -2741,14 +2726,6 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         dirtyStacking(false);
 }
 
-void MCompositeManager::lockScreenPainted()
-{
-    d->lockscreen_painted = true;
-    if (!d->device_state->displayOff())
-        d->displayOff(false);
-    d->watch->keep_black = false;
-}
-
 MWindowPropertyCache *MCompositeManagerPrivate::findLockScreen() const
 {
     for (QHash<Window, MWindowPropertyCache*>::const_iterator
@@ -2763,36 +2740,32 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
     if (display_off) {
         if (splash)
             splashTimeout();
-        lockscreen_map_timer.stop();
         if (!haveMappedWindow())
             enableCompositing();
         MWindowPropertyCache *pc;
         MCompositeWindow *cw;
-        if (!(pc = findLockScreen()) || !(cw = COMPOSITE_WINDOW(pc->winId()))
-            || !pc->isMapped() || !cw->paintedAfterMapping())
-            lockscreen_painted = false;
+
         // check whether there is a low-power mode window visible -- when the
         // lockscreen is visible we trust it to become the low-power mode window
         // even if the flag is not yet set
-        bool lpm_window = lockscreen_painted;
-        if (!lpm_window) {
-            int covering_i = indexOfLastVisibleWindow();
-            for (int i = stacking_list.size() - 1; i >= covering_i; --i) {
-                Window w = stacking_list[i];
-                MWindowPropertyCache *pc = prop_caches.value(w, 0);
-                if (pc && pc->isMapped() && pc->lowPowerMode() > 0) {
-                    lpm_window = true;
-                    break;
-                }
-            }
-            if (!lpm_window) {
-                watch->keep_black = true;
-                if (!compositing)
-                    enableCompositing();
-                else
-                    glwidget->update();
+        int covering_i = indexOfLastVisibleWindow();
+        bool lpm_window = false;
+        for (int i = stacking_list.size() - 1; i >= covering_i; --i) {
+            Window w = stacking_list[i];
+            MWindowPropertyCache *pc = prop_caches.value(w, 0);
+            if (pc && pc->isMapped() && pc->lowPowerMode() > 0) {
+                lpm_window = true;
+                break;
             }
         }
+        if (!lpm_window) {
+            watch->keep_black = true;
+            if (!compositing)
+                enableCompositing();
+            else
+                glwidget->update();
+        }
+
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
@@ -2809,15 +2782,6 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
                  i->propertyCache()->damageTracking(false);
         }
     } else {
-        MWindowPropertyCache *pc;
-        if (device_state->touchScreenLock() == "locked" &&
-            !lockscreen_painted && (pc = findLockScreen())) {
-            // lockscreen not painted yet: wait for painting or timeout
-            if (!pc->isMapped())
-                // give it little time to map but not for ever
-                lockscreen_map_timer.start();
-            return;
-        }
         watch->keep_black = false;
         glwidget->update();
         if (!possiblyUnredirectTopmostWindow() && !compositing)
@@ -4595,7 +4559,7 @@ void MCompositeManager::ensureSettingsFile()
     config("damage-timeout-ms",                 500);
     config("expect-resize-timeout-ms",          800);
     config("splash-timeout-ms",               30000);
-    config("lockscreen-map-timeout-ms",        1000);
+    config("lockscreen-map-timeout-ms",        1000); // TODO: unused now?
     config("default-statusbar-height",           36);
     config("default-desktop-angle",             270);
     config("close-timeout-ms",                 5000);

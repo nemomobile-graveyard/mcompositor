@@ -431,13 +431,11 @@ void ut_Lockscreen::testPaintingDuringScreenOff()
 
     QCOMPARE(cmgr->d->watch->keep_black, true);
     QCOMPARE(cmgr->d->compositing, true);
-    QCOMPARE(cmgr->d->lockscreen_painted, false);
     QCOMPARE(cw->paintedAfterMapping(), false);
 
     QCOMPARE(pc->pendingDamage(), false);
     fakeDamageEvent(cw); // second damage stops the wait
     QCOMPARE(pc->pendingDamage(), false);
-    QCOMPARE(cmgr->d->lockscreen_painted, true);
     QCOMPARE(cw->paintedAfterMapping(), true);
     QCOMPARE(cmgr->d->watch->keep_black, false);
 }
