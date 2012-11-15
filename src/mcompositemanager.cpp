@@ -1029,12 +1029,13 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         MCompositeWindow *p_cw;
         if (cw->propertyCache()->windowTypeAtom() ==
                                        ATOM(_NET_WM_WINDOW_TYPE_INPUT)
+            && cw->propertyCache()->isMapped()
             && (parent = cw->propertyCache()->transientFor())
             && (p_cw = COMPOSITE_WINDOW(parent))
             && (p_cw->isClosing() || p_cw->isWindowTransitioning()))
             // input method window's transient parent is animating
             return false;
-        if (!cw->paintedAfterMapping())
+        if (!cw->paintedAfterMapping() && cw->propertyCache()->isMapped())
             return false;
         if (cw->isMapped() && (cw->needsCompositing()
             // FIXME: implement direct rendering for shaped windows
@@ -1485,7 +1486,11 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
                     pc->damageTracking(false);
                 }
             } else {
-                pc->damageTracking(true);
+                // NB#296146: Use XDamageReportRawRectangles when mapping a window
+                // to make sure we are notified about all damage events.
+                // With XDamageReportNonEmpty damage events can be optimized away
+                // and we do not trigger the startup animation as expected.
+                pc->damageTracking(XDamageReportRawRectangles);
                 XCompositeRedirectWindow(QX11Info::display(), e->window,
                                          CompositeRedirectManual);
             }
@@ -1526,16 +1531,15 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     if (pc->isDecorator()) {
         MCompositeWindow *cw;
         deco->setDecoratorWindow(e->window);
-        deco->setManagedWindow(0);
-
         if ((cw = getHighestDecorated())) {
             if (cw->status() == MCompositeWindow::Hung)
-                deco->setManagedWindow(cw, true);
+                deco->setManagedWindow(cw, true, false, true);
             else if (DECORATED_FS_WINDOW(cw->propertyCache()))
                 deco->setManagedWindow(cw, true, true);
             else
                 deco->setManagedWindow(cw);
         } else {
+            deco->setManagedWindow(0);
             STACKING("positionWindow 0x%lx -> bottom", e->window);
             positionWindow(e->window, false);
         }
@@ -1644,6 +1648,8 @@ static Bool timestamp_predicate(Display *display, XEvent *xevent, XPointer arg)
 
 Time MCompositeManager::getServerTime() const
 {
+    if (!d->localwin)
+        return CurrentTime;
     XEvent xevent;
     long data = 0;
     /* zero-length append to get timestamp in the PropertyNotify */
@@ -1977,7 +1983,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
     if (highest_d && !highest_d->isWindowTransitioning()) {
         if (highest_d->status() == MCompositeWindow::Hung)
-            deco->setManagedWindow(highest_d, true);
+            deco->setManagedWindow(highest_d, true, false, true);
         else if (DECORATED_FS_WINDOW(highest_d->propertyCache()))
             deco->setManagedWindow(highest_d, true, true);
         else
@@ -2193,7 +2199,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e, bool startup)
         return;
 
     addMapInformation(true, pc);
-
     pc->setBeingMapped(false);
     pc->setIsMapped(true);
     if (pc->isLockScreen()) {
@@ -3104,7 +3109,8 @@ bool MCompositeManagerPrivate::processX11EventFilters(XEvent *event, bool after)
 
 void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
 {
-    if (e->state & Mod5Mask && e->keycode == switcher_key)
+    if (e->type == KeyRelease &&
+        e->state & Mod5Mask && e->keycode == switcher_key)
         exposeSwitcher();
 }
 
@@ -4694,7 +4700,7 @@ void MCompositeManager::ut_prepare()
     d->xserver_stacking.init();
 }
 
-bool MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
+bool MCompositeManager::ut_addWindow(MWindowPropertyCache *pc, bool map_it)
 {
     Window w = pc->winId();
     if (w == d->localwin || w == d->localwin_parent || w == d->wm_window
@@ -4703,6 +4709,7 @@ bool MCompositeManager::ut_addWindow(MWindowPropertyCache *pc)
         return false;
     d->prop_caches[w] = pc;
     d->xserver_stacking.windowCreated(w);
+    if (!map_it) return true;
 
     XMapRequestEvent mre;
     memset(&mre, 0, sizeof(mre));

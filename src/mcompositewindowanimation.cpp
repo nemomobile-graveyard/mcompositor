@@ -318,6 +318,7 @@ void MCompositeWindowAnimation::windowShown()
 
     animationGroup()->setDirection(QAbstractAnimation::Forward);
     animationGroup()->start();
+
     // Make sure the window is visible in the unit-test and environment 
     // without a compositor plugin
     ((QGraphicsItem*) targetWindow())->setVisible(true);

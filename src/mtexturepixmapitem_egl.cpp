@@ -121,6 +121,7 @@ void MTexturePixmapItem::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
+    d->inverted_texture = d->TFP.invertedTexture();
     d->saveBackingStore();
     if (propertyCache()->isVirtual())
         // splash screen hasn't loaded the pixmap yet
@@ -157,7 +158,7 @@ void MTexturePixmapItem::enableDirectFbRendering()
 
     Drawable pixmap = d->TFP.drawable;
     d->TFP.unbind();
-    
+
     if (pixmap)
         XFreePixmap(QX11Info::display(), pixmap);
 
@@ -205,7 +206,6 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
     const int      limit  =   30;
 
     if (hasTransitioningWindow()) {
-
         if (!windowAnimator()->isManuallyUpdated() &&
             MCompositeWindowAnimation::hasActiveAnimation()) {
             if (!d->damageRetryTimer.isActive()) {

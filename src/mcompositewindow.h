@@ -124,7 +124,7 @@ public:
     /*!
      * Set scale, opacity etc. to normal values.
      */
-    void setUntransformed();
+    void setUntransformed(bool preserve_iconified = false);
 
     /*!
      * Returns true if this window needs a decoration
@@ -199,6 +199,11 @@ public:
       Returns the texture used by this window
      */
     virtual GLuint texture() = 0;
+
+    /*!
+      Returns pixmap for the window.
+     */
+    virtual Pixmap windowPixmap() const = 0;
 
     /*!
       Returns pixmap for the window.
@@ -299,8 +304,8 @@ public:
       */
     void endAnimation();
 
-    void dumpStateAndDie();
 public slots:
+    void dumpStateAndDie();
 #ifdef HAVE_XSYNC
     void initSyncCounters();
 #endif
@@ -370,7 +375,7 @@ signals:
     virtual QPainterPath shape() const;
         
 private:
-    void clearSyncObjects();    
+    void clearSyncObjects();
 
     /* re-implemented in GL/GLES2 backends for internal interaction
       between shader effects */
@@ -391,7 +396,6 @@ private:
     short window_obscured;
     bool newly_mapped;
     bool is_transitioning, is_not_stacking;
-    char waiting_for_damage;
     bool resize_expected;
     bool painted_after_mapping;
     bool allow_delete;

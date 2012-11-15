@@ -191,11 +191,14 @@ void ut_Compositing::testDesktopMapping()
     QCOMPARE(w->window() == 1, true);
     QCOMPARE(((MTexturePixmapItem*)w)->isDirectRendered(), true);
     QCOMPARE(cmgr->servergrab.hasGrab(), false);
+    QCOMPARE(damageCreationCounter[1], 2);
 }
 
 void ut_Compositing::testAppMapping()
 {
     fake_LMT_window *app = new fake_LMT_window(2);
+    lastDamageReportLevel[2] = -1;
+    damageCreationCounter[2] = 0;
     mapWindow(app);
     MCompositeWindow *w = cmgr->d->windows.value(2, 0);
     QCOMPARE(w != 0, true);
@@ -208,6 +211,13 @@ void ut_Compositing::testAppMapping()
 
     fakeDamageEvent(w);
     fakeDamageEvent(w);
+    QCOMPARE(damageCreationCounter[2], 1);
+    QCOMPARE(lastDamageReportLevel[2], XDamageReportRawRectangles);
+    QCOMPARE(app->damage_report_level, XDamageReportRawRectangles);
+    fakeDamageEvent(w);
+    QCOMPARE(damageCreationCounter[2], 2);
+    QCOMPARE(lastDamageReportLevel[2], XDamageReportNonEmpty);
+    QCOMPARE(app->damage_report_level, XDamageReportNonEmpty);
     QCOMPARE(w->windowAnimator()->isActive(), true);
     while (w->windowAnimator()->isActive()) {
         QCOMPARE(cmgr->d->compositing, true);
@@ -683,5 +693,5 @@ int main(int argc, char* argv[])
 
     ut_Compositing test;
 
-    return QTest::qExec(&test);
+    return QTest::qExec(&test, argc, argv);
 }

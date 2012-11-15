@@ -121,6 +121,7 @@ private:
     MRmiClient *remote_decorator;
     int top_offset;
     int sent_orientation;
+    bool sent_show_dialog;
     bool no_resize, only_statusbar;
     QRect available_rect;
 };

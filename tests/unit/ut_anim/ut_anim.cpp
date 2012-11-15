@@ -1,4 +1,3 @@
-
 #ifdef WINDOW_DEBUG
 #define DEBUG_SCENEGRAPH
 #define HAVE_XSYNC
@@ -124,7 +123,6 @@ public:
 };
 
 static fake_device_state *device_state;
-
 
 void ut_Anim::setPaintCounter(MCompositeWindow* window)
 {

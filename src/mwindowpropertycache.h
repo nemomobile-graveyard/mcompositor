@@ -22,10 +22,10 @@
 
 #include <QRegion>
 #include <QX11Info>
-#include <QHash>
 #include <QVector>
 #include <X11/Xutil.h>
 #include <X11/Xlib-xcb.h>
+#include <X11/Xmd.h>
 #include <xcb/render.h>
 #include <xcb/shape.h>
 #include <X11/extensions/shape.h>
@@ -57,9 +57,10 @@ public:
     };
     class Collector {
     public:
-        Collector() : cookie(0), name(QLatin1String("")) {}
+        Collector() : cookie(0), name(QLatin1String("")), requested(0) {}
         unsigned cookie;
         QLatin1String name;
+        unsigned char requested;
     };
     enum CollectorKey {
         shapeRegionKey,
@@ -90,7 +91,8 @@ public:
         windowTypeAtomKey,
         realGeometryKey,
         wmNameKey,
-        swapCounterKey
+        swapCounterKey,
+        lastCollectorKey
     };
 
     /*! Construct a MWindowPropertyCache
@@ -275,7 +277,6 @@ public slots:
 
     bool skippingTaskbarMarker();
 
-    
 #ifdef HAVE_XSYNC
     XSyncCounter swapCounter();
 #endif
@@ -293,7 +294,20 @@ public:
         MWindowPropertyCache::xcb_conn = c;
     }
 
+    /*!
+     * Enables/disables damage tracking by creating/destroying the damage object.
+     * Does nothing if the object is already created/destroyed.
+     * The damage report level is XDamageReportNonEmpty.
+     */
     void damageTracking(bool enabled);
+
+    /*!
+     * Enables damage tracking by creating a damage object with the given report
+     * level. If an object with the given level already exists nothing happens,
+     * if an object with another level exists it is destroyed and a new one is
+     * created.
+     */
+    void damageTracking(int damageReportLevel);
     // XDamageSubtract wrapper for unit testing
     void damageSubtract();
     // for unit testing of damage handling code
@@ -318,6 +332,8 @@ public:
      */
     bool isVirtual() const { return is_virtual; }
 
+    int waitingForDamage() const;
+    void setWaitingForDamage(int waiting);
 signals:
     void iconGeometryUpdated();
     void desktopViewChanged(MWindowPropertyCache *pc);
@@ -332,7 +348,7 @@ private slots:
 private:
     void init();
     void init_invalid();
-    int alphaValue(CollectorKey me);
+    bool getCARD32(const CollectorKey key, CARD32 *value);
 
 protected:
     Window transient_for;
@@ -388,17 +404,16 @@ protected:
     // When a request is made @collect_timer is restarted, and we collect
     // the reply unconditionally when it expires.
     MCSmartTimer *collect_timer;
-    QHash<CollectorKey, Collector> requests;
-    bool isUpdate(CollectorKey collector);
-    bool requestPending(CollectorKey collector);
-    void addRequest(CollectorKey key, const QLatin1String &collector,
+    Collector requests[lastCollectorKey];
+    bool isUpdate(const CollectorKey collector);
+    void addRequest(const CollectorKey key, const QLatin1String &collector,
                     unsigned cookie);
-    void replyCollected(CollectorKey key);
-    void cancelRequest(CollectorKey key);
+    void replyCollected(const CollectorKey key);
+    void cancelRequest(const CollectorKey key);
     unsigned requestProperty(Atom prop, Atom type, unsigned n = 1);
 
     // Overloads to make the routines above callable with other types.
-    void addRequest(CollectorKey key, const char *collector, unsigned cookie)
+    void addRequest(const CollectorKey key, const char *collector, unsigned cookie)
         { addRequest(key, QLatin1String(collector), cookie); }
     unsigned requestProperty(MCompAtoms::Atoms prop, Atom type,
                              unsigned n = 1)
@@ -410,6 +425,8 @@ protected:
     static xcb_render_query_pict_formats_reply_t *pict_formats_reply;
     static xcb_render_query_pict_formats_cookie_t pict_formats_cookie;
     Damage damage_object;
+    int damage_report_level;
+    int waiting_for_damage;
     QString wm_name;
     unsigned wm_pid, no_animations;
     int video_overlay;
@@ -419,6 +436,7 @@ protected:
 #ifdef HAVE_XSYNC
     XSyncCounter swap_counter;
 #endif
+    friend class ut_Compositing;
 };
 
 // Non-deletable dummy MWindowPropertyCache.

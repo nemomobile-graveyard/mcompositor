@@ -55,8 +55,7 @@
 #define DEPTH GL_DEPTH_COMPONENT
 #endif
 
-
-class MCompositeWindowGroupPrivate: public Item2DInterface
+class MCompositeWindowGroupPrivate : public Item2DInterface
 {
 public:
     MCompositeWindowGroupPrivate(MTexturePixmapItem* mainWindow, 
@@ -132,13 +131,13 @@ qreal MCompositeWindowGroupPrivate::opacity()
 MCompositeWindowGroup::MCompositeWindowGroup(MTexturePixmapItem* mainWindow)
     :MCompositeWindow(0, MWindowDummyPropertyCache::get()),
      d_ptr(new MCompositeWindowGroupPrivate(mainWindow, this))
-{    
+{
     MCompositeManager *p = (MCompositeManager *) qApp;
     p->scene()->addItem(this);
-    
+
     init();
     setZValue(mainWindow->zValue());
-    
+
     MRender::addNode(this, d_ptr.data());
     stackBefore(mainWindow);
 }
@@ -150,16 +149,16 @@ MCompositeWindowGroup::MCompositeWindowGroup(MTexturePixmapItem* mainWindow)
 MCompositeWindowGroup::~MCompositeWindowGroup()
 {
     Q_D(MCompositeWindowGroup);
-    
+
     if (!QGLContext::currentContext()) {
         qWarning("MCompositeWindowGroup::%s(): no current GL context",
                  __func__);
         return;
     }
-    
+
     if (d->main_window)
         MRender::setFboRendered(d->main_window, false);
-    
+
     // if stacking is dirty, stack windows now, otherwise we paint the scene
     // according to the old stacking
     MCompositeManager *p = (MCompositeManager*)qApp;
@@ -310,7 +309,6 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
         return;
     }
 
-   
     // The redirection method is expected not to play with GL_FRAMEBUFFER.
     d->main_window->enableRedirectedRendering();
     for (int i = 0; i < d->item_list.size(); ++i) {

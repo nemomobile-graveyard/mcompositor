@@ -349,3 +349,4 @@ void MCompositeWindowShaderEffect::hookWindowNode(GeometryNode* node)
 {
     d->hooked_windows.append(node);
 }
+

@@ -23,6 +23,7 @@
 #include <QObject>
 #include <QRect>
 #include <QRegion>
+#include <QPointer>
 #include <QtOpenGL>
 #include <X11/Xlib.h>
 

@@ -1,0 +1,15 @@
+CaseName="test_property_notify_handling"
+CaseRequirement="NONE"
+CaseTimeout="30"
+CaseDescription="Verify some aspects of PropertyNotify handling.
+
+- Test steps
+	- create a window
+        - set _MEEGOTOUCH_CANNOT_MINIMIZE=1 onto it
+        - check that it cannot be minimized
+	- delete the _MEEGOTOUCH_CANNOT_MINIMIZE property 
+	- create a window
+        - set _MEEGOTOUCH_CANNOT_MINIMIZE=1 onto it
+        - check that it cannot be minimized
+        - set _MEEGOTOUCH_CANNOT_MINIMIZE=0 onto it
+	- check that it can be minimized\n"
