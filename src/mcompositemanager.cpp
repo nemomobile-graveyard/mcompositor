@@ -2853,7 +2853,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
                  i->propertyCache()->damageTracking(false);
         }
     } else {
-        watch->keep_black = false;
+        MRender::setClearedScene(false);
         glwidget->update();
         if (!possiblyUnredirectTopmostWindow() && !compositing)
             enableCompositing();

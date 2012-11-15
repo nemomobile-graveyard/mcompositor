@@ -89,6 +89,10 @@ int main(int argc, char *argv[])
                       QApplication::desktop()->height());
     app.setGLWidget(w);
     view.setViewport(w);
+qDebug("Calling makeCurrent");
+qDebug() << "isValid: " << w->isValid();
+    w->makeCurrent();
+qDebug("Done calling makeCurrent");
 
     int testPlugin;
     const QStringList &args = app.arguments();

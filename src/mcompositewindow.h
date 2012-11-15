@@ -206,11 +206,6 @@ public:
     virtual Pixmap windowPixmap() const = 0;
 
     /*!
-      Returns pixmap for the window.
-     */
-    virtual Pixmap windowPixmap() const = 0;
-
-    /*!
       Returns true if the window corresponding to the offscreen pixmap
       is rendering directly to the framebuffer, otherwise return false.
      */

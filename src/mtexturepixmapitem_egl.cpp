@@ -121,7 +121,6 @@ void MTexturePixmapItem::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
-    d->inverted_texture = d->TFP.invertedTexture();
     d->saveBackingStore();
     if (propertyCache()->isVirtual())
         // splash screen hasn't loaded the pixmap yet
