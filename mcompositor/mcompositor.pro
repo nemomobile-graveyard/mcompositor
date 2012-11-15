@@ -5,6 +5,9 @@ INCLUDEPATH += ../src
 
 LIBS += ../src/libmcompositor.so ../decorators/libdecorator/libdecorator.so
 
+CONFIG += link_pkgconfig
+PKGCONFIG += libsystemd-daemon
+
 target.path += $$M_INSTALL_BIN
 INSTALLS += target 
 
