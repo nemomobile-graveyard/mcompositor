@@ -437,13 +437,11 @@ void ut_Lockscreen::testPaintingDuringScreenOff()
 
     QVERIFY(MRender::isClearedScene());
     QCOMPARE(cmgr->d->compositing, true);
-    QCOMPARE(cmgr->d->lockscreen_painted, false);
     QCOMPARE(cw->paintedAfterMapping(), false);
 
     QCOMPARE(pc->pendingDamage(), false);
     fakeDamageEvent(cw); // second damage stops the wait
     QCOMPARE(pc->pendingDamage(), false);
-    QCOMPARE(cmgr->d->lockscreen_painted, true);
     QCOMPARE(cw->paintedAfterMapping(), true);
     QVERIFY(!MRender::isClearedScene());
 }

@@ -6,7 +6,7 @@ target.path=/usr/bin
 QMAKE_CXXFLAGS+= -Wall
 QMAKE_CFLAGS+= -Wall
 
-LIBS+=-lX11 -lXrender -lXdamage -lXext
+LIBS+=-lX11 -lXrender -lXdamage -lXext -lXi
 
 DEPENDPATH += .
 INCLUDEPATH += .  

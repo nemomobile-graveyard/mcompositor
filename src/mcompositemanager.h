@@ -296,7 +296,6 @@ public slots:
     void windowBound(MCompositeWindow* window);
 
 private slots:
-    void lockScreenPainted();
     void handleSigHup();
 
 private:

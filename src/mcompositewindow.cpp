@@ -367,7 +367,6 @@ void MCompositeWindow::damageReceived()
         newly_mapped = false;
         setVisible(true);
         endAnimation();
-        m->lockScreenPainted();
         m->possiblyUnredirectTopmostWindow();
         return;
     }

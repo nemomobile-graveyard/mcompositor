@@ -21,6 +21,7 @@
 #include <QGLWidget>
 #include "mrender.h"
 #include "mcompositemanager.h"
+#include <systemd/sd-daemon.h>
 
 // @plugindir ?
 #define PLUGINDIR "/usr/lib/mcompositor"
@@ -100,5 +101,8 @@ int main(int argc, char *argv[])
     app.prepareEvents();
     app.redirectWindows();
     view.show();
+    if (app.arguments().indexOf("-systemd") >= 0) {
+        sd_notify(0, "READY=1");
+    }
     return app.exec();
 }

@@ -63,7 +63,7 @@ private:
 MRmiPrivate::MRmiPrivate(const QString &key, bool isServer)
         : _key(key), _obj(0), method_size(0)
 {
-    _key = "/var/run/" + key;
+    _key = QDir::homePath() + "/" + key;
     output_buffer.open(QIODevice::WriteOnly);
     if (!isServer)
           return;

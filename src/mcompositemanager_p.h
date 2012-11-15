@@ -225,7 +225,6 @@ public:
     void pingTopmost();
     MSplashScreen *splash;
     QPointer<MCompositeWindow> waiting_damage;
-    QTimer lockscreen_map_timer;
     QSocketNotifier *sighupNotifier;
 
     struct DismissedSplash {
@@ -266,7 +265,6 @@ public:
     int defaultVideoAlpha;
     bool globalAlphaOverridden;
     bool disable_redrawing_due_to_damage;
-    bool lockscreen_painted;
 
     QQueue<QString> mapUnmapTracker;
 

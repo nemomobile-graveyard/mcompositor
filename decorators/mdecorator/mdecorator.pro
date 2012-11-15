@@ -5,7 +5,7 @@ INCLUDEPATH += ../libdecorator
 CONFIG += meegotouch release
 QT += opengl dbus
 
-LIBS += ../libdecorator/libdecorator.so
+LIBS += ../libdecorator/libdecorator.so -lX11 -lXfixes
 
 SOURCES += main.cpp mdecoratorwindow.cpp
 HEADERS += mdecoratorwindow.h

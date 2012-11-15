@@ -21,7 +21,7 @@ contains(QT_CONFIG, opengles2) {
      }
 }
 
-LIBS += ../../../decorators/libdecorator/libdecorator.so ../../../src/libmcompositor.so
+LIBS += ../../../decorators/libdecorator/libdecorator.so ../../../src/libmcompositor.so -lX11
 
 # Input
 HEADERS += ut_compositing.h
