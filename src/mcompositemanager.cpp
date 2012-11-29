@@ -108,6 +108,7 @@ const int MAXIMUM_GLOBAL_ALPHA = 255;
                      X->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU))
 
 static KeyCode switcher_key = 0;
+static KeyCode printscreen_key = 0;
 int MCompositeManager::sighupFd[2];
 static QHash<QLatin1String, QVariant> default_settings;
 
@@ -499,6 +500,15 @@ static void setup_key_grabs()
                  RootWindow(QX11Info::display(), 0), True,
                  GrabModeAsync, GrabModeAsync);
         XGrabKey(dpy, switcher_key, Mod5Mask | LockMask,
+                 RootWindow(QX11Info::display(), 0), True,
+                 GrabModeAsync, GrabModeAsync);
+
+        printscreen_key = XKeysymToKeycode(dpy,
+                            XStringToKeysym("p"));
+        XGrabKey(dpy, printscreen_key, Mod5Mask,
+                 RootWindow(QX11Info::display(), 0), True,
+                 GrabModeAsync, GrabModeAsync);
+        XGrabKey(dpy, printscreen_key, Mod5Mask | LockMask,
                  RootWindow(QX11Info::display(), 0), True,
                  GrabModeAsync, GrabModeAsync);
     }
@@ -2993,9 +3003,23 @@ bool MCompositeManagerPrivate::processX11EventFilters(XEvent *event, bool after)
 
 void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
 {
-    if (e->type == KeyRelease &&
-        e->state & Mod5Mask && e->keycode == switcher_key)
+    if (e->type != KeyRelease)
+        return;
+
+    if (!(e->state & Mod5Mask))
+        return;
+
+    if (e->keycode == switcher_key)
         exposeSwitcher();
+    else if (e->keycode == printscreen_key) {
+        QPixmap screenshot = QPixmap::grabWindow(localwin);
+
+        QString path = QDir::homePath();
+        QString fileFormat(QString("%1/%2-%3.png").arg(path).arg(QDate::currentDate().toString("yyyyMMdd")).arg(QTime::currentTime().toString("hhmmss")));
+
+        if (!screenshot.save(fileFormat))
+            qWarning() << "Could not save screenshot to" << path;
+    }
 }
 
 QGraphicsScene *MCompositeManagerPrivate::scene()
