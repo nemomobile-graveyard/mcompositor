@@ -3331,17 +3331,6 @@ static bool compareWindows(Window w_a, Window w_b)
         goto use_old_order;
     }
 
-    if (pc_a->isLockScreen()) {
-        // if a is a lockscreen, and b isn't, then don't sort a below b
-        if (!pc_b->isLockScreen())
-            SORTING(false, "A LOCKSCREEN");
-        // otherwise fallthrough, they're both lockscreens, more comparison
-        // needed
-    } else if (pc_b->isLockScreen()) {
-        // b is a lockscreen, and a isn't, then sort a below b
-        SORTING(true, "B LOCKSCREEN");
-    }
-
     // Both @pc_a and @pc_b are in NormalState.
     // Sort the desktop below all NormalState windows.
     // (Quiz: why do we check @pc_b before @pc_a?
