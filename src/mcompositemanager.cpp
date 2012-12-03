@@ -3823,7 +3823,7 @@ void MCompositeManagerPrivate::takeScreenshot()
 {
     QPixmap screenshot = QPixmap::grabWindow(localwin);
 
-    QString path = QDir::homePath();
+    QString path = QDesktopServices::storageLocation(QDesktopServices::PicturesLocation);
     QString fileFormat(QString("%1/%2-%3.png").arg(path).arg(QDate::currentDate().toString("yyyyMMdd")).arg(QTime::currentTime().toString("hhmmss")));
 
     if (!screenshot.save(fileFormat))
