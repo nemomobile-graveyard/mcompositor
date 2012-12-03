@@ -284,9 +284,7 @@ public slots:
      */
     void playFeedback(const QString &name) const;
 
-#ifdef REMOTE_CONTROL
     void remoteControl(int fd);
-#endif
 
  signals:
     /*!

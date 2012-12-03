@@ -3012,13 +3012,7 @@ void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
     if (e->keycode == switcher_key)
         exposeSwitcher();
     else if (e->keycode == printscreen_key) {
-        QPixmap screenshot = QPixmap::grabWindow(localwin);
-
-        QString path = QDir::homePath();
-        QString fileFormat(QString("%1/%2-%3.png").arg(path).arg(QDate::currentDate().toString("yyyyMMdd")).arg(QTime::currentTime().toString("hhmmss")));
-
-        if (!screenshot.save(fileFormat))
-            qWarning() << "Could not save screenshot to" << path;
+        takeScreenshot();
     }
 }
 
@@ -3825,6 +3819,17 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
     activateWindow(w->window(), CurrentTime, false);
 }
 
+void MCompositeManagerPrivate::takeScreenshot()
+{
+    QPixmap screenshot = QPixmap::grabWindow(localwin);
+
+    QString path = QDir::homePath();
+    QString fileFormat(QString("%1/%2-%3.png").arg(path).arg(QDate::currentDate().toString("yyyyMMdd")).arg(QTime::currentTime().toString("hhmmss")));
+
+    if (!screenshot.save(fileFormat))
+        qWarning() << "Could not save screenshot to" << path;
+}
+
 void MCompositeManagerPrivate::exposeSwitcher()
 {
     MCompositeWindow *i = 0;
@@ -4128,6 +4133,60 @@ void MCompositeManager::dumpState(const char *heading)
     }
 }
 
+void MCompositeManager::xtrace(const char *fun, const char *msg, int lmsg)
+{
+    MCompositeManager *p = static_cast<MCompositeManager *>(qApp);
+    char str[160];
+
+    // Normalize @fun and @msg so that @msg != NULL in the end,
+    // and turn synopsis [2] into MCompositor::xtrace(NULL, msg).
+    if (!msg) {
+        if (fun) {
+            msg = fun;
+            fun = NULL;
+        } else {
+            msg = "HERE";
+            lmsg = strlen("HERE");
+        }
+    }
+
+    // Fail if we don't have an X connection yet.
+    if (!p || !p->d || !p->d->xcb_conn) {
+        qWarning("cannot xtrace yet from %s", fun ? fun : msg);
+        return;
+    }
+
+    // Format @str to include both @fun and @msg if @fun was specified,
+    // and count the length of @str.
+    if (fun != NULL) {
+        lmsg = snprintf(str, sizeof(str), "%s from %s", msg, fun);
+        msg = str;
+    } else if (lmsg < 0)
+        lmsg = strlen(msg);
+
+    // Make @str visible in xtrace by sending it along with an innocent
+    // X request.  Unfortunately this makes this function a synchronisation
+    // point (it has to wait for the reply).  Use xcb rather than libx11
+    // because the latter maintains a hashtable of known Atom:s.
+    free(xcb_intern_atom_reply(p->d->xcb_conn,
+                               xcb_intern_atom(p->d->xcb_conn, False,
+                                               lmsg, msg),
+                               NULL));
+}
+
+void MCompositeManager::xtracef(const char *fun, const char *fmt, ...)
+{
+    va_list printf_args;
+    char msg[160];
+    int lmsg;
+
+    va_start(printf_args, fmt);
+    lmsg = vsnprintf(msg, sizeof(msg), fmt, printf_args);
+    va_end(printf_args);
+    xtrace(fun, msg, lmsg);
+}
+#endif //REMOTE_CONTROL
+
 // Called when the remote control pipe has got input.
 void MCompositeManager::remoteControl(int cmdfd)
 {
@@ -4140,6 +4199,7 @@ void MCompositeManager::remoteControl(int cmdfd)
         lcmd--;
     cmd[lcmd] = '\0';
 
+#ifdef REMOTE_CONTROL
     if (!strcmp(cmd, "state")) {
         dumpState();
     } else if (!strncmp(cmd, "state ", strlen("state "))) {
@@ -4250,8 +4310,15 @@ void MCompositeManager::remoteControl(int cmdfd)
         delete d;
         XFlush(QX11Info::display());
         _exit(0);
+    } else
+#endif // REMOTE_CONTROL
+    if (!strcmp(cmd, "screenshot")) {
+        qDebug("Taking screenshot");
+        d->takeScreenshot();
     } else if (!strcmp(cmd, "help")) {
-        qDebug("Commands i understand:");
+        qDebug("Regular commands I understand:");
+        qDebug("  screenshot      take a screenshot, dump it in the home directory");
+        qDebug("Debug mode commands I understand:");
         qDebug("  state [<tag>]   dump MCompositeManager, MCompositeWindow:s ");
         qDebug("                  and QGraphicsScene state information");
         qDebug("  save [<fname>]  dump it into <fname>");
@@ -4262,63 +4329,10 @@ void MCompositeManager::remoteControl(int cmdfd)
         qDebug("  exit, quit      geez");
         qDebug("  restart         re-execute mcompositor");
         qDebug("  reload          reload the settings");
-    } else
+    } else {
         qDebug("%s: unknown command", cmd);
-}
-
-void MCompositeManager::xtrace(const char *fun, const char *msg, int lmsg)
-{
-    MCompositeManager *p = static_cast<MCompositeManager *>(qApp);
-    char str[160];
-
-    // Normalize @fun and @msg so that @msg != NULL in the end,
-    // and turn synopsis [2] into MCompositor::xtrace(NULL, msg).
-    if (!msg) {
-        if (fun) {
-            msg = fun;
-            fun = NULL;
-        } else {
-            msg = "HERE";
-            lmsg = strlen("HERE");
-        }
     }
-
-    // Fail if we don't have an X connection yet.
-    if (!p || !p->d || !p->d->xcb_conn) {
-        qWarning("cannot xtrace yet from %s", fun ? fun : msg);
-        return;
-    }
-
-    // Format @str to include both @fun and @msg if @fun was specified,
-    // and count the length of @str.
-    if (fun != NULL) {
-        lmsg = snprintf(str, sizeof(str), "%s from %s", msg, fun);
-        msg = str;
-    } else if (lmsg < 0)
-        lmsg = strlen(msg);
-
-    // Make @str visible in xtrace by sending it along with an innocent
-    // X request.  Unfortunately this makes this function a synchronisation
-    // point (it has to wait for the reply).  Use xcb rather than libx11
-    // because the latter maintains a hashtable of known Atom:s.
-    free(xcb_intern_atom_reply(p->d->xcb_conn,
-                               xcb_intern_atom(p->d->xcb_conn, False,
-                                               lmsg, msg),
-                               NULL));
 }
-
-void MCompositeManager::xtracef(const char *fun, const char *fmt, ...)
-{
-    va_list printf_args;
-    char msg[160];
-    int lmsg;
-
-    va_start(printf_args, fmt);
-    lmsg = vsnprintf(msg, sizeof(msg), fmt, printf_args);
-    va_end(printf_args);
-    xtrace(fun, msg, lmsg);
-}
-#endif //REMOTE_CONTROL
 
 MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
@@ -4345,12 +4359,10 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
 #ifdef WINDOW_DEBUG
     signal(SIGUSR1, sigusr1_handler);
 #endif
-#ifdef REMOTE_CONTROL
     // Open the remote control interface.
     mknod("/tmp/mrc", S_IFIFO | 0666, 0);
     connect(new QSocketNotifier(open("/tmp/mrc", O_RDWR), QSocketNotifier::Read),
             SIGNAL(activated(int)), SLOT(remoteControl(int)));
-#endif
 }
 
 MCompositeManager::~MCompositeManager()

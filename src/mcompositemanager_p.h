@@ -268,6 +268,7 @@ public slots:
     void onFirstAnimationStarted();
     void onAnimationsFinished(MCompositeWindow*);
     void exposeSwitcher();
+    void takeScreenshot();
     
     void displayOff(bool display_off);
     void callOngoing(bool call_ongoing);
