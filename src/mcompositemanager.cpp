@@ -505,10 +505,10 @@ static void setup_key_grabs()
 
         printscreen_key = XKeysymToKeycode(dpy,
                             XStringToKeysym("p"));
-        XGrabKey(dpy, printscreen_key, Mod5Mask,
+        XGrabKey(dpy, printscreen_key, Mod5Mask | ControlMask,
                  RootWindow(QX11Info::display(), 0), True,
                  GrabModeAsync, GrabModeAsync);
-        XGrabKey(dpy, printscreen_key, Mod5Mask | LockMask,
+        XGrabKey(dpy, printscreen_key, Mod5Mask | ControlMask | LockMask,
                  RootWindow(QX11Info::display(), 0), True,
                  GrabModeAsync, GrabModeAsync);
     }
