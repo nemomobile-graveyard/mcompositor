@@ -40,9 +40,10 @@ public:
             dpy = eglGetDisplay(EGLNativeDisplayType(QX11Info::display()));
 
         QString exts = QLatin1String(eglQueryString(dpy, EGL_EXTENSIONS));
-        if ((exts.contains("EGL_KHR_image")/* &&
+        if (qgetenv("MCOMPOSITOR_USE_TFP") == "1" ||
+            (exts.contains("EGL_KHR_image") &&
              exts.contains("EGL_KHR_image_pixmap") &&
-             exts.contains("EGL_KHR_gl_texture_2D_image")*/)) {
+             exts.contains("EGL_KHR_gl_texture_2D_image"))) {
             has_tfp = true;
             eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC) eglGetProcAddress("eglCreateImageKHR");
             eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC) eglGetProcAddress("eglDestroyImageKHR"); 
