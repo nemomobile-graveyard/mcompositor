@@ -307,10 +307,8 @@ void MTexturePixmapPrivate::renderTexture(const QTransform& transform)
 {
     if (item->propertyCache()->hasAlphaAndIsNotOpaque() ||
         item->opacity() < 1.0f) {
-        // Blend differently if fading in on the top of a splash screen.
         glEnable(GL_BLEND);
-        glBlendFunc(static_cast<MCompositeManager*>(qApp)->splashed(item)
-                        ? GL_ONE : GL_SRC_ALPHA,
+        glBlendFunc(GL_ONE, // Correct for premultiplied-alpha textures
                     GL_ONE_MINUS_SRC_ALPHA);
     }
     glBindTexture(GL_TEXTURE_2D, TFP.textureId);
