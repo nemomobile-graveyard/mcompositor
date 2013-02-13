@@ -15,4 +15,4 @@ isEqual(REMOTE_CONTROL,"on") {
 }
 
 # Compositor components only
-VERSION = 1.1.3
+VERSION = 1.2.2
