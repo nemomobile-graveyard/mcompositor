@@ -1,13 +1,10 @@
 /***************************************************************************
 **
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (directui@nokia.com)
+** Copyright (C) 2012 Jolla Ltd.
+** Contact: Vesa Halttunen (vesa.halttunen@jollamobile.com)
 **
-** This file is part of duicompositor.
-**
-** If you have questions regarding the use of this file, please contact
-** Nokia at directui@nokia.com.
+** This file is part of mcompositor.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -19,89 +16,51 @@
 #ifndef MDECORATORWINDOW_H
 #define MDECORATORWINDOW_H
 
-#include <MApplicationWindow>
-#include <MHomeButtonPanel>
-#include <MEscapeButtonPanel>
-#include <MNavigationBar>
-#include <MMessageBox>
-#include <mstatusbar.h>
-#include <mlocale.h>
-
+#include <QDeclarativeView>
 #include <X11/Xlib.h>
-#ifdef HAVE_SHAPECONST
-#include <X11/extensions/shapeconst.h>
-#else
-#include <X11/extensions/shape.h>
-#endif
 
-#include <QObject>
-
-class MSceneManager;
 class MDecorator;
-class MAction;
-class MApplicationMenu;
 class MDecoratorAppInterface;
 
-class MDecoratorWindow : public MApplicationWindow
+class MDecoratorWindow : public QDeclarativeView
 {
     Q_OBJECT
+    Q_PROPERTY(bool windowVisible READ windowVisible WRITE setWindowVisible NOTIFY windowVisibleChanged)
+    Q_PROPERTY(QString windowTitle READ windowTitle NOTIFY windowTitleChanged)
+    Q_PROPERTY(int orientationAngle READ orientationAngle NOTIFY orientationAngleChanged)
 
 public:
     explicit MDecoratorWindow(QWidget *parent = 0);
 
-    const QRect availableClientRect() const;
-    void setOnlyStatusbar(bool mode, bool temporary = false);
-    void hideEverything();
-    void restoreEverything();
-    /*!
-     * \brief Sets the region of the window that can receive input events.
-     *
-     * Input events landing on the area outside this region will fall directly
-     * to the windows below.
-     */
-    void setInputRegion();
-    void managedWindowChanged(Qt::HANDLE w, const QString &title,
-                                            M::OrientationAngle orient,
-                                            bool hung);
-    void createQueryDialog();
+    void managedWindowChanged(Qt::HANDLE window, const QString &title, int orientation, bool hung);
+    bool windowVisible() const;
+    QString windowTitle() const;
+    int orientationAngle() const;
+    void setWindowVisible(bool visible);
     void hideQueryDialog();
-    void addActions(QList<MAction*> actions);
+
+    Q_INVOKABLE void closeApplication();
+    Q_INVOKABLE void doNotCloseApplication();
 
 protected:
-    virtual void closeEvent(QCloseEvent * event );
-    virtual void enterDisplayEvent();
-    virtual void leaveDisplayEvent();
-
-private slots:
-    void screenRotated(const M::Orientation &orientation);
-    void yesButtonClicked();
-    void noButtonClicked();
-    void menuAppearing();
-    void menuDisappeared();
+    virtual void closeEvent(QCloseEvent *event);
 
 signals:
-
-    void homeClicked();
-    void escapeClicked();
+    void windowVisibleChanged();
+    void windowTitleChanged();
+    void orientationAngleChanged();
 
 private:
+    void setInputRegion();
     void setSceneSize();
     void setMDecoratorWindowProperty();
-    void setMeegotouchOpaqueProperty(bool enable);
-    M::OrientationAngle desktopOrientationAngle() const;
 
-    MHomeButtonPanel *homeButtonPanel;
-    MEscapeButtonPanel *escapeButtonPanel;
-    MNavigationBar *navigationBar;
-    MStatusBar *statusBar;
-    MMessageBox *messageBox;
-    Window managed_window;
-    QRect availableRect; // available area for the managed window
-    bool only_statusbar, requested_only_statusbar;
-    MDecorator *d;
-    MDecoratorAppInterface *app;
-    MLocale locale;
-    bool menuVisible;
+    Window managedWindow;
+    MDecorator *decorator;
+    MDecoratorAppInterface *appInterface;
+    bool windowVisible_;
+    QString windowTitle_;
+    int orientationAngle_;
 
     Q_DISABLE_COPY(MDecoratorWindow);
 };
