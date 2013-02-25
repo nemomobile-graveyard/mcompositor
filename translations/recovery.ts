@@ -4,22 +4,24 @@
 <context>
     <name></name>
     <message id="qtn_reco_app_not_responding">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="369"/>
-        <source></source>
-        <translation>%1 sucks</translation>
+        <location filename="../decorators/mdecorator/qml/main.qml" line="49"/>
+        <source>%1 is not responding.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message id="qtn_reco_close_app_question">
-        <location filename="../decorators/mdecorator/mdecoratorwindow.cpp" line="376"/>
-        <source></source>
-        <translation>Do you want to close it?</translation>
+        <location filename="../decorators/mdecorator/qml/main.qml" line="51"/>
+        <source>Do you want to close it?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message id="qtn_comm_command_yes">
-        <source></source>
-        <translation type="obsolete">Aje</translation>
+        <location filename="../decorators/mdecorator/qml/main.qml" line="77"/>
+        <source>Yes</source>
+        <translation type="unfinished"></translation>
     </message>
     <message id="qtn_comm_command_no">
-        <source></source>
-        <translation type="obsolete">Oh, no!</translation>
+        <location filename="../decorators/mdecorator/qml/main.qml" line="104"/>
+        <source>No</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>

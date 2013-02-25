@@ -539,7 +539,9 @@ void MCompositeWindow::setVisible(bool visible)
     bool old_value = isVisible();
     QGraphicsItem::setVisible(visible);
     MCompositeManager *p = (MCompositeManager *) qApp;
+#ifdef WINDOW_DEBUG
     p->d->setWindowDebugProperties(window());
+#endif
 
     QGraphicsScene* sc = scene();    
     if (sc && !visible && sc->items().count() == 1)
@@ -715,9 +717,11 @@ bool MCompositeWindow::hasTransitioningWindow()
 QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant &value)
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
+#ifdef WINDOW_DEBUG
     if (change == ItemZValueHasChanged) {
         p->d->setWindowDebugProperties(window());
     }
+#endif
 
     if (change == ItemVisibleHasChanged) {
         // Be careful not to update if this item whose visibility is about

@@ -70,23 +70,11 @@ void MAbstractDecorator::RemoteSetManagedWinId(unsigned window,
                                                bool show_dialog)
 {
     Q_D(MAbstractDecorator);
-    M::OrientationAngle orient;
 
     d->client = window;
     d->clientGeometry = geo;
 
-    if (angle == 0)
-        orient = M::Angle0;
-    else if (angle == 270)
-        orient = M::Angle270;
-    else if (angle == 90)
-        orient = M::Angle90;
-    else if (angle == 180)
-        orient = M::Angle180;
-    else
-        orient = M::Angle0;
-
-    manageEvent(window, wmname, orient, only_statusbar, show_dialog);
+    manageEvent(window, wmname, angle, only_statusbar, show_dialog);
 }
 
 void MAbstractDecorator::setAvailableGeometry(const QRect& rect)
