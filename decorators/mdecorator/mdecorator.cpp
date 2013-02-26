@@ -12,24 +12,29 @@
 **
 ****************************************************************************/
 
-#include <QApplication>
-#include <QTranslator>
-#include <QtDeclarative>
+#include "mdecorator.h"
 #include "mdecoratorwindow.h"
 
-int main(int argc, char **argv)
+MDecorator::MDecorator(MDecoratorWindow *p) : MAbstractDecorator(p),
+      decorwindow(p)
 {
-    QApplication app(argc, argv);
+}
 
-    QTranslator engineeringEnglish;
-    engineeringEnglish.load("recovery", "/usr/share/translations");
-    app.installTranslator(&engineeringEnglish);
-    QTranslator translator;
-    translator.load(QLocale(), "recovery", "-", "/usr/share/translations");
-    app.installTranslator(&translator);
+void MDecorator::manageEvent(Qt::HANDLE window, const QString &wmname, int orient, bool, bool hung)
+{
+    decorwindow->managedWindowChanged(window, wmname, orient, hung);
+    setAvailableGeometry(decorwindow->geometry());
+}
 
-    qmlRegisterUncreatableType<MDecoratorWindow>("org.nemomobile.mdecorator", 0, 1, "MDecoratorWindow", "This type is initialized by main");
-    MDecoratorWindow window;
+void MDecorator::hideQueryDialog()
+{
+    decorwindow->hideQueryDialog();
+}
 
-    return app.exec();
+void MDecorator::setOnlyStatusbar(bool)
+{
+}
+
+void MDecorator::playFeedback(const QString &)
+{
 }

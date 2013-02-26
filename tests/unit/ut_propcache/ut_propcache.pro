@@ -16,4 +16,6 @@ HEADERS += ut_propcache.h
 SOURCES += ut_propcache.cpp
 
 QT += testlib core gui opengl dbus
-CONFIG += debug
+CONFIG += debug link_pkgconfig
+PKGCONFIG += x11
+

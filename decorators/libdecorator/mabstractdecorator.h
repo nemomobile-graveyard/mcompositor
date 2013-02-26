@@ -20,7 +20,6 @@
 #ifndef MABSTRACTDECORATOR_H
 #define MABSTRACTDECORATOR_H
 
-#include <MWindow>
 #include <QObject>
 #include "mabstractappinterface.h"
 
@@ -81,7 +80,7 @@ protected:
       */
     virtual void manageEvent(Qt::HANDLE window,
                              const QString &wmname,
-                             M::OrientationAngle orient,
+                             int orient,
                              bool sbonly, bool hung) = 0;
 
      /*!
