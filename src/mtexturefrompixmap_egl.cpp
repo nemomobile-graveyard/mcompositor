@@ -99,7 +99,11 @@ void MTextureFromPixmap::update()
     QPixmap qp = QPixmap::fromX11Pixmap(drawable);
 
     QT_TRY {
-        QImage img = QGLWidget::convertToGLFormat(qp.toImage());
+        // MTexturePixmapItem assumes premultiplied format but
+        // convertToGLFormat does img.convertToFormat(ARGB32)
+        QImage argb_p = qp.toImage().convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        QImage argb(argb_p.constBits(), argb_p.width(), argb_p.height(), QImage::Format_ARGB32);
+        QImage img = QGLWidget::convertToGLFormat(argb);
         glBindTexture(GL_TEXTURE_2D, textureId);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(), 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
