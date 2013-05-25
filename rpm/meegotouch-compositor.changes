@@ -1,0 +1,312 @@
+* Fri Feb 22 2013 Vesa Halttunen <vesa.halttunen@jollamobile.com> - 1.3.0
+- Fixes NEMO#577: Drop meegotouch dependency in mcompositor
+
+* Wed Feb 13 2013 Mikko Harju <mikko.harju@jollamobile.com> - 1.2.2
+- Fix blending of transparent windows
+
+* Tue Jan 22 2013 Robin Burchell <robin+mer@viroteck.net> - 1.2.1
+- Remove debian packaging directory (from Robin)
+- Save screenshots to XDG pictures directory, not the home directory (from Robin)
+- Fix incorrect TFP in SDK environments, add MCOMPOSITOR_USE_TFP to force TFP (from Robin)
+- Change screenshot key to mod+ctrl+p instead of just mod+p (from Robin)
+
+* Wed Jan 16 2013 Marko Saukko <marko.saukko@jollamobile.com> - 1.2.0
+- Drop test-definitions build dependency.
+
+* Thu Nov 29 2012 Robin Burchell <robin+mer@viroteck.net> - 1.2.0
+- Move files in packaging to yaml (from Robin)
+- Create a tools package, move the (incorrectly placed) binaries from -devel to -tools (from Robin)
+- Remove (now unused) .desktop files (from Robin)
+- Roll in Nemo patches from packaging (from Robin)
+- Fixes NEMO#237: Allow screenshotting with meta+p (similar grabbing as meta+backspace to open switcher) (from Robin)
+- Revert "sort lockscreens before checking desktops", breaks things, not necessary (from Vesa)
+
+* Mon Nov 05 2012 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 1.1.31-1
+- Add patch 0012-systemd-ready-signal.patch
+  This signals systemd when initialization is done
+  Fixes: NEMO#558
+
+* Fri Nov 02 2012 Robin Burchell <robin+mer@viroteck.net> - 1.1.31-1
+- Restart mcompositor.service if it terminates.
+
+* Sat Sep 01 2012 Carsten Munk <carsten.munk@jollamobile.com> - 1.1.31-1
+- Add mcompositor.service for user sessions 
+
+* Thu Aug 30 2012 Robin Burchell <robin+mer@viroteck.net> - 1.1.31-1
+- Remove no_mce.patch. Breaks lipstick homescreen, wastes battery, not useful.
+- Add 0001-remove-lockscreen_painted-waiting-logic.patch, waiting for lockscreen
+  paints is no longer necessary.
+- Add  0001-sort-lockscreens-before-checking-desktops.patch, lockscreen should
+  always be sorted above everything. Required now the desktop can also be a
+  lockscreen.
+
+* Fri Mar 02 2012 Marko Saukko <marko.saukko@gmail.com> - 1.1.31-1
+- Removed mdecorator disabling hack used for Intel arch.
+
+* Thu Mar 01 2012 Marko Saukko <marko.saukko@gmail.com> - 1.1.31-1
+- Added X-MEEGO-HS.desktop file for xsessions.
+
+* Wed Dec 21 2011 Marko Saukko <marko.saukko@cybercom.com> - 1.1.31-1
+- Added: meegotouch-compositor-1.1.31-1-add-missing-libs-for-linking.patch
+  to fix the linking with newer toolchain.
+
+* Thu Dec 15 2011 Marko Saukko <marko.saukko@cybercom.com> - 1.1.31-1
+- Updated to version 1.1.31-1
+
+* Fri Nov 18 2011 Robin Burchell <robin+nemo@viroteck.net> - 1.1.27
+- Bump version to upstream 1.1.27-1
+
+* Thu Nov 17 2011 w00t <robin+meego@viroteck.net> - 1.1.26
+- Bump version to upstream 1.1.26-2
+
+* Wed Nov 16 2011 w00t <robin+meego@viroteck.net> - 1.1.20
+- Patch out EGL_KHR_gl_texture_2D_image.
+  Mesa doesn't actually support this extension, despite (erroneously) reporting
+  support for it in the past, and switching this check off doesn't do any harm.
+
+* Thu Nov 10 2011 w00t <robin+meego@viroteck.net> - 1.1.20
+- patch to fix use with mcompositor gestures plugin
+
+* Mon Oct 31 2011 Miroslav Safr <miroslav.safr@tieto.com> - 1.1.20
+- decorator desktop changed to software because creating of gl context can cause problems 
+-- BMC#23759 	Failed to create a texture from a shared image (qt 4.8.0/lmt) 
+
+* Fri Oct 21 2011 Miroslav Safr <miroslav.safr@tieto.com> - 1.1.20
+- upgrade
+
+* Mon Oct 10 2011 Miroslav Safr <miroslav.safr@tieto.com> - 1.1.19
+- upgrade
+
+* Fri Sep 02 2011 Marko Saukko <marko.saukko@cyberom.com> - 1.1.7
+- Changed /var/run/ to users home, because in MeeGo 1.3 we do not 
+  have permission to write to /var/run/. Fixes BMC#22845.
+  Patch: BMC_22845_move-var-run-to-home.patch
+
+* Thu Aug 25 2011 Miroslav Safr <miroslav.safr@tieto.com> - 1.1.7
+- upgrade
+
+* Wed Aug 10 2011 Miroslav Safr <miroslav.safr@tieto.com> - 1.1.3
+- upgrade 1.1.3, enabled no_mce.patch because in 1.3 it was removed
+
+* Mon Jun 27 2011 Alexandr Ivanov <alexandr.ivanov@tieto.com> - 1.0.3
+- Fixed BMC#18554 - xTerm is improperly redrawn after maximization
+
+* Mon Jun 27 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 1.0.3
+- added new test definition xml update patch: new_test_definitions.patch
+
+* Wed Jun 15 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 1.0.3
+- BMC#18546 - meegotouch application framework update for Meego 1.2
+--updated to 1.0.3-1  - should solve windows stacking
+
+* Wed Jun 15 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 1.0.2
+- BMC#18546 - meegotouch application framework update for Meego 1.2
+--updated to 1.0.2-1
+-- removed file sections from yaml
+-- enabled mce because in DE we have it
+
+* Wed Jun 15 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 1.0.0
+- BMC#19275 - [DE]Switch decorator to use HW randering
+-- switched in mdecorator startup
+
+* Wed Jun 06 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 1.0.0
+- BMC#18546 - meegotouch application framework update for Meego 1.2..
+
+* Thu Apr 07 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 0.8.9
+- updated to 0.8.9 (BMC#15199)
+- re-added mdecorator.desktop on ARM (BMC#15038)
+- disabled Introduce-_MEEGOTOUCH_SKIP_ANIMATIONS-window-propert.patch
+- moved org.maemo.mcompositor.context and recovery.qm from -devel to
+  meegotouch-compositor package
+
+* Fri Mar 25 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 0.8.8
+- updated to 0.8.8
+  It solves flashing issues and unnecessary compositing (BMC#5275)
+- removed patches:
+  add_Xext_lib_to_windowctl.patch - merged upstream
+  initialize_EGL_library.patch - merged upstream
+  do_not_use_TFP_when_EGL_KHR_image_pixmap_extension_is_missing_bmc11128.patch
+   - merged upstream
+  BMC_13622_statusbar.patch - stolen upstream
+  BMC_13622_statusbar_2.patch - stolen upstream
+  decorator_removal.patch - mdecorator desktop file isn't installed and
+  it isn't launched by uxlaunch anymore
+- disabled patches because MCompwindowAnimator is deprecated/removed since 0.8.8:
+  Fix-flashing-in-transition-starts.patch
+  Add-transition-interface-to-be-used-in-MCompWindowAn.patch
+  Introduce-Rotate-in-transition.patch
+  Take-the-new-transition-interface-into-use-in-MCompW.patch
+
+* Thu Mar 24 2011 Rusty Lynch <rusty.lynch@intel.com> - 0.8.5
+- added patches for the tablet vertical support (BMC#14913)
+  decorator_removal.patch
+  Fix-flashing-in-transition-starts.patch
+  Introduce-_MEEGOTOUCH_SKIP_ANIMATIONS-window-propert.patch
+  XSync-after-un-redirecting-windows-in-EGL-MTexturePi.patch
+  Use-QTransform-rather-than-the-deprecated-matrix-cla.patch
+  Add-transition-interface-to-be-used-in-MCompWindowAn.patch
+  Introduce-Rotate-in-transition.patch
+  Take-the-new-transition-interface-into-use-in-MCompW.patch
+- removed mdecorator.desktop file
+- updated files list: remove decorator related files and *.pyc/pyo files
+
+* Mon Mar 21 2011 Fathi Boudra <fathi.boudra@nokia.com> - 0.8.5
+- removed mce build requires: it's going to be removed from the Core OS
+- added no_mce.patch to avoid ftbfs
+
+* Thu Mar 11 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 0.8.5
+- added BMC_14207_double_xterm_thumbnail.patch
+- added temp BMC_13622_statusbar.patch
+- added temp BMC_13622_statusbar_2.patch
+
+* Thu Feb 24 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 0.8.5
+- Update meegotouch components to week 8 (BMC#13802)
+- removed obsolete building patches fix_build_on_ARM.patch, fix_test_compile_issues.patch
+- added mce build requires
+
+* Tue Feb 08 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 0.8.4
+- BMC#13441 - Update meegotouch components to week 6
+- updated to 0.8.4-1
+
+* Fri Feb 04 2011 Miroslav Safr <miroslav.safr@tieto.com.com> - 0.8.3
+- BMC#13257 - Update meegotouch components to week 5
+- updated to 0.8.3-1
+
+* Wed Feb 02 2011 Miroslav Safr <miroslav.safr@tieto.com> - 0.8.3
+- switched mdecorator.desktop file to use software rendering 
+
+* Fri Jan 28 2011 Miroslav Safr <miroslav.safr@tieto.com> - 0.8.3
+- updated to 0.8.3
+- removed integrated patch windowwp_deinit_badalloc.patch
+
+* Mon Jan 17 2011 Miroslav Safr <miroslav.safr@tieto.com> - 0.8.2
+- BMC#12165 - meegotouch-compositor 0.8.2 requires libxcb >= 1.6
+- removed the compile_with_old_libxcu.patch
+
+* Mon Jan 17 2011 Miroslav Safr <miroslav.safr@tieto.com> - 0.8.2
+- BMC#11128 - added do_not_use_TFP_when_EGL_KHR_image_pixmap_extension_is_missing_bmc11128.patch
+
+* Wed Jan 12 2011 Miroslav Safr <miroslav.safr@tieto.com> - 0.8.2
+- BMC#11128 - added windowwp_deinit_badalloc.patch to test it
+
+* Mon Jan 10 2011 Miroslav Safr <miroslav.safr@tieto.com> - 0.8.2
+- BMC#12170 - Update to latest mcompositor 0.8.2-1
+- added compile_with_old_libxcu.patch to temporary disable features from new libxcu - BMC#12165 - meegotouch-compositor 0.8.2 requires newer libxcb (current 1.5-4.2 -should be >=1.7-1)
+- added dependency on test-definition 
+- added disable_funtional_tests.patch to fix build
+
+* Thu Dec 09 2010 Fathi Boudra <fathi.boudra@nokia.com> - 0.8.0
+- Update to 0.8.0-2 (BMC#11090)
+
+* Wed Nov 09 2010 Fathi Boudra <fathi.boudra@nokia.com> - 0.7.8
+- Remove gl build requirement
+
+* Wed Nov 09 2010 Miroslav Safr <miroslav.safr@tieto.com> - 0.7.8
+- BMC#8957: - mcompositor 0.7.6 core dumps on netbook
+ -fixed and tested on netbook
+
+* Tue Nov 03 2010 Miroslav Safr <miroslav.safr@tieto.com> - 0.7.8
+- updated to release 0.7.8~1
+- added pkgconfig(xrandr), build requires it
+
+* Tue Nov 03 2010 Miroslav Safr <miroslav.safr@tieto.com> - 0.7.7
+- updated to release 0.7.7-1
+
+* Tue Oct 26 2010 Miroslav Safr <miroslav.safr@tieto.com> - 0.7.6
+- updated to release 0.7.6-1
+- removed obsolete plankton theme
+
+* Tue Oct 19 2010 Miroslav Safr <mirsolav.safr@tieto.com> - 0.7.5
+- updated to 0.7.5-1 (with build fix)
+- updated initialize_EGL_library.patch
+
+* Fri Oct 08 2010 Miroslav Safr <mirsolav.safr@tieto.com> - 0.7.3
+- Update to 0.7.3
+- removed integrated patches:
+  mcompositor-black-screen-gtk.patch
+  re-add_fallback_when_Image_extension_is_not_available.patch
+- added %{_libdir}/libmcompositor.so* and includes
+
+* Tue Oct 05 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.5.8
+- Update to 0.5.8 to resolve mthemedaemon stability issues
+
+* Wed Sep 29 2010 Fathi Boudra <fathi.boudra@nokia.com> - 0.5.7
+- Add re-add_fallback_when_Image_extension_is_not_available.patch:
+  Khronos image extensions are not universal yet. The current fallback code is
+  just leftover dead code. Re-surrect the custom TfP function.
+  It fixes mcompositor segfault on MeeGo SDK N900 QEMU image (BMC#7642)
+- Fix 3rd party Applications window (i.e. glxgears, xterm) not working in
+  the fullscreen mode (BMC#2953)
+- Cleanup build requirements
+- Use spectacle qmake builder
+
+* Tue Sep 28 2010 Miroslav Safr <mirsolav.safr@tieto.com> - 0.5.7
+- Add Fixes-MB-2951-black-screen-on-netbook.patch:
+  fix black screen when application is launched
+- Use %qmake and %qmake_install macros
+
+* Tue Sep 28 2010 Fathi Boudra <fathi.boudra@nokia.com> - 0.5.7
+- Re-add Carsten Valdemar Munk to fix build on ARM
+- Various cleanup in meegotouch-compositor packaging
+- Add initialize_EGL_library.patch to fix mcompositor segfault when built
+  against GLESv2 enabled Qt. Thanks to Jesse Barnes.
+
+* Tue Sep 28 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.10
+- BMC #2951 - Cleanup debug statements from mcompositor-black-screen-gtk.patch
+
+* Wed Sep 22 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.10
+- BMC #3916 - Fix black screen when system startup on Netbook
+- BMC #2951 - Fix black screen when launching GTK apps / VKB
+
+* Mon Jul 26 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.10
+- Add x11, xext, xrender to spec / yaml file
+- Change qmake-qt4 to qmake in spec file
+
+* Fri Jul 09 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.10
+- Update to release tag 0.4.10-4
+- Remove patches for issues fixed upstream:
+  mcompositor-vkbd-fix-2.patch
+- This update resolves BMC #2600
+
+* Thu Jul 08 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.6
+- Change X-DUI to X-MEEGO-HS in the mdecorator.desktop autostart file
+
+* Mon Jun 21 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.6
+- Add -remote-theme to exec command in desktop file - BMC #3337
+
+* Sun Jun 20 2010 Carsten Munk <carsten@maemo.org> - 0.4.6
+- There's no MCE in MeeGo. Fixed build on ARM/GLES2 version.
+
+* Tue Jun 15 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.6
+- Change package name to meegotouch-compositor to align with git repo rename
+
+* Thu Jun 03 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.6
+- Update to release tag 0.4.6-1
+
+* Tue May 25 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.5
+- Update to release 0.4.5-1
+- Remove unset LD_AS_NEEDED from spec
+- Patch to fix issue with black screen on startup
+
+* Fri May 21 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.3
+- mcompositor-decorator-bounding-fix.patch: fixes the window sizing with
+  non-MTF apps.  The drawing boundaries aren't correctly calculated in 
+  mdecorator, leading to an overlap of the title bar with the window contents.
+
+* Thu May 20 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.3
+- Start mdecorator with -software
+
+* Tue May 18 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.3
+- mcompositor-vkbd-fix-2.patch - fix BMC #2172
+- Add desktop file to launch mdecorator 
+
+* Fri May 14 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.3
+- Update to release 0.4.3
+
+* Fri May 07 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.4.1
+- Update to release 0.4.1
+
+* Fri May 07 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.3.9
+- Convert spec to spectacle, fix rpmlint errors
+
+* Tue Apr 30 2010 Kaitlin Rupert <kaitlin.rupert@intel.com> - 0.3.9
+- Initial import of mcompositor - based on duicompositor release 0.3.9
