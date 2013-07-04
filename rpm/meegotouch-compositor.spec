@@ -17,8 +17,8 @@ URL:        http://github.com/nemomobile/mcompositor
 Source0:    %{name}-%{version}.tar.bz2
 Source1:    mcompositor.service
 Source100:  meegotouch-compositor.yaml
-Requires(post): /sbin/ldconfig
-Requires(postun): /sbin/ldconfig
+Requires: systemd
+Requires: systemd-user-session-targets
 BuildRequires:  pkgconfig(QtDBus)
 BuildRequires:  pkgconfig(QtNetwork)
 BuildRequires:  pkgconfig(QtOpenGL)
@@ -100,6 +100,20 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}%{_libdir}/systemd/user/
 cp -a %{SOURCE1} %{buildroot}%{_libdir}/systemd/user/
 
+mkdir -p %{buildroot}%{_libdir}/systemd/user/user-session.target.wants  
+ln -s ../contactsd.service %{buildroot}%{_libdir}/systemd/user/user-session.target.wants/
+
+%post
+if [ "$1" -ge 1 ]; then
+systemctl-user daemon-reload || :
+systemctl-user restart contactsd.service || :
+fi
+
+%postun
+if [ "$1" -eq 0 ]; then
+systemctl-user stop contactsd.service || :
+systemctl-user daemon-reload || :
+fi
 
 # >> install post
 # << install post
@@ -117,6 +131,8 @@ cp -a %{SOURCE1} %{buildroot}%{_libdir}/systemd/user/
 %{_datadir}/contextkit/providers/org.maemo.mcompositor.context
 %{_datadir}/translations/recovery.qm
 %{_libdir}/systemd/user/mcompositor.service
+%{_libdir}/systemd/user/user-session.target.wants/mcompositor.service
+
 # >> files
 # << files
 
