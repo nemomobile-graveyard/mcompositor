@@ -131,9 +131,9 @@ fi
 %{_datadir}/contextkit/providers/org.maemo.mcompositor.context
 %{_datadir}/translations/recovery.qm
 %{_libdir}/systemd/user/mcompositor.service
-%{_libdir}/systemd/user/user-session.target.wants/mcompositor.service
 
 # >> files
+%{_libdir}/systemd/user/user-session.target.wants/mcompositor.service
 # << files
 
 %files devel
