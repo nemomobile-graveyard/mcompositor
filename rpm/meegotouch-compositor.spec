@@ -106,12 +106,12 @@ ln -s ../contactsd.service %{buildroot}%{_libdir}/systemd/user/user-session.targ
 %post
 if [ "$1" -ge 1 ]; then
 systemctl-user daemon-reload || :
-systemctl-user restart contactsd.service || :
+systemctl-user restart mcompositor.service || :
 fi
 
 %postun
 if [ "$1" -eq 0 ]; then
-systemctl-user stop contactsd.service || :
+systemctl-user stop mcompositor.service || :
 systemctl-user daemon-reload || :
 fi
 
