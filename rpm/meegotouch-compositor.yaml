@@ -39,6 +39,9 @@ Obsoletes:
     - mcompositor < 0.4.6
 Configure: none
 Builder: qmake
+Requires:
+    - systemd
+    - systemd-user-session-targets
 Files:
     - "%{_bindir}/mcompositor"
     - "%{_bindir}/mdecorator"
