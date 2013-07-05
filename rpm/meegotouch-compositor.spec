@@ -116,7 +116,7 @@ ln -s ../mcompositor.service %{buildroot}%{_libdir}/systemd/user/user-session.ta
 # >> post
 if [ "$1" -ge 1 ]; then
 systemctl-user daemon-reload || :
-systemctl-user restart voicecall-manager.service || :
+systemctl-user restart mcompositor.service || :
 fi
 # << post
 
@@ -127,7 +127,7 @@ fi
 
 # >> postun
 if [ "$1" -eq 0 ]; then
-systemctl-user stop voicecall-manager.service || :
+systemctl-user stop mcompositor.service || :
 systemctl-user daemon-reload || :
 fi
 # << postun 
