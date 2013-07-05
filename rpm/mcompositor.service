@@ -1,7 +1,7 @@
 [Unit]
 Description=The MTF compositor
-After=xorg.target
-Requires=dbus.socket xorg.target
+After=pre-user-session.target
+Requires=dbus.socket
 
 [Service]
 Type=notify
@@ -9,4 +9,4 @@ ExecStart=/usr/bin/mcompositor -systemd
 Restart=always
 
 [Install]
-WantedBy=nemo-middleware.target
+WantedBy=user-session.target
