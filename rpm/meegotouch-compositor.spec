@@ -112,7 +112,6 @@ ln -s ../mcompositor.service %{buildroot}%{_libdir}/systemd/user/user-session.ta
 
 %post
 /sbin/ldconfig 
-
 # >> post
 if [ "$1" -ge 1 ]; then
 systemctl-user daemon-reload || :
@@ -123,8 +122,6 @@ fi
 
 %postun
 /sbin/ldconfig
-
-
 # >> postun
 if [ "$1" -eq 0 ]; then
 systemctl-user stop mcompositor.service || :
